@@ -9,6 +9,18 @@ jobs:
   check:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
+    services:
+      db:
+        image: postgres:17
+        env: { POSTGRES_USER: bolasfoot, POSTGRES_PASSWORD: bolasfoot, POSTGRES_DB: bolasfoot_test }
+        ports: ['5432:5432']
+        options: --health-cmd pg_isready --health-interval 2s --health-retries 15
+    env:
+      APP_ENV: local
+      DATABASE_URL: postgres://bolasfoot:bolasfoot@localhost:5432/bolasfoot_test
+      SESSION_SECRET: ci
+      ADMIN_USERNAME: admin
+      ADMIN_PASSWORD: admin
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -27,6 +39,12 @@ jobs:
       ADMIN_USERNAME: admin
       ADMIN_PASSWORD: admin
       TEST_ENDPOINTS: '1'
+    services:
+      db:
+        image: postgres:17
+        env: { POSTGRES_USER: bolasfoot, POSTGRES_PASSWORD: bolasfoot, POSTGRES_DB: bolasfoot_test }
+        ports: ['5432:5432']
+        options: --health-cmd pg_isready --health-interval 2s --health-retries 15
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -34,4 +52,5 @@ jobs:
         with: { node-version-file: .nvmrc, cache: pnpm }
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter web exec playwright install --with-deps chromium
+      - run: pnpm db:migrate && pnpm db:seed
       - run: pnpm e2e
