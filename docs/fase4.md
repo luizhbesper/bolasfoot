@@ -49,6 +49,7 @@ Objetivo: tokens, layout do jogo e componentes base.
 Contrato: `app/globals.css`; `app/jogo/[id]/layout.tsx` (sidebar + topbar); `app/_ui/` (Tabela densa ordenável, Painel/Drawer, Escudo, Camisa com fallback `camisas/genericas`, Bandeira, ChipPosicao, Forca, Energia, Forma, Avatar, icones). Hook de cliente `useMundo(gid)`: baixa `/api/games/[id]/snapshot`, guarda em contexto e rebaixa quando o SSE avisa mudança de rodada (absorve o `ao-vivo.tsx`).
 Fora de escopo: telas.
 Testes: nenhum novo (visual).
+**Entregue:** `app/globals.css` (tokens + classes `.card`, `.tabela`, `.rolagem`, `.primario`), fontes no `app/layout.tsx`, `app/_ui/` (`ui.tsx`, `camisa.tsx`, `icones.tsx`), `app/jogo/[id]/` (`layout.tsx`, `contexto.tsx` com `useJogo`/`useRelogio`, `casca.tsx`, `nav.ts`, `consultas.ts`). O `ao-vivo.tsx` saiu: fase, prazo, prontos e o botão de pronto ficam na barra. Itens do menu sem tela ainda aparecem desabilitados. Tabela ordenável e drawer ficam para a U3, quando o elenco usar.
 
 ## U2 — Fora do jogo
 Objetivo: entrar, convite, seus jogos, admin, lobby e escolha de times no visual novo.

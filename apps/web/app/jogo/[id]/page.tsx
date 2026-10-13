@@ -3,11 +3,10 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { membroAtual } from '../../../lib/auth/sessao.ts'
 import { db } from '../../../lib/db/index.ts'
-import { gameMembers, games, gameSettings, roundLogs, rounds, users } from '../../../lib/db/schema.ts'
+import { gameMembers, games, roundLogs, rounds, users } from '../../../lib/db/schema.ts'
 import type { ResumoRodada } from '../../../lib/game/rodada.ts'
 import { catalogo, permitido } from '../../../lib/game/escolha.ts'
 import { escolherAcao, readyAcao } from './acoes.ts'
-import { AoVivo } from './ao-vivo.tsx'
 
 type Busca = { q?: string; uf?: string; div?: string; erro?: string }
 
@@ -17,7 +16,6 @@ export default async function Jogo({ params, searchParams }: { params: Promise<{
   const ctx = await membroAtual(gid)
   if (!ctx) redirect('/')
   const [g] = await db().select().from(games).where(eq(games.id, gid))
-  const [s] = await db().select().from(gameSettings).where(eq(gameSettings.gameId, gid))
   const [r] = await db().select().from(rounds).where(and(eq(rounds.gameId, gid), eq(rounds.n, g!.round)))
   const membros = await db().select({ id: gameMembers.id, username: users.username, teamRef: gameMembers.teamRef, ready: gameMembers.ready, tecnicoId: gameMembers.tecnicoId })
     .from(gameMembers).innerJoin(users, eq(users.id, gameMembers.userId)).where(eq(gameMembers.gameId, gid)).orderBy(gameMembers.id)
@@ -26,22 +24,21 @@ export default async function Jogo({ params, searchParams }: { params: Promise<{
     // o que ainda está tocando ao vivo não aparece pronto
     .filter((l) => !(l.n === g!.round && ((l.etapa === 0 && r?.phase === 'ao_vivo_1t') || (l.etapa === 1 && r?.phase === 'ao_vivo_2t'))))
   const eu = ctx.membro
-  const podeReady = g!.status === 'picking' ? eu.teamRef !== null
-    : g!.status === 'running' && (r?.phase === 'planejamento' || r?.phase === 'intervalo') && eu.tecnicoId !== null
+  // com o mundo criado, fase, prazo, prontos e o botão de pronto ficam na barra da casca
+  const antes = g!.status === 'lobby' || g!.status === 'picking'
 
   return (
     <main>
-      <h1>{g!.name}</h1>
-      <p><Link href="/">seus jogos</Link> · {g!.status} · rodada {g!.round}</p>
-      <AoVivo jogo={gid} msPorMinuto={s!.msPerMinute} inicial={{ fase: r?.phase ?? null, prazo: g!.deadline?.getTime() ?? null, inicio: r?.startedAt?.getTime() ?? null }} />
+      {antes && <h1>{g!.name}</h1>}
+      {antes && <p><Link href="/">seus jogos</Link> · {g!.status}</p>}
 
       {busca.erro && <p role="alert">{busca.erro}</p>}
       {g!.status === 'lobby' && <p>Esperando o admin abrir a escolha de times.</p>}
       {g!.status === 'picking' && <Escolha jogo={gid} gameSeed={g!.gameSeed} config={g!.config} busca={busca} ocupados={new Map(membros.filter((m) => m.teamRef).map((m) => [m.teamRef!, m.username]))} />}
 
-      <h2>Técnicos</h2>
-      <ul>{membros.map((m) => <li key={m.id}>{m.username} {m.teamRef && `(${m.teamRef})`} {m.ready ? '✔ pronto' : ''}</li>)}</ul>
-      {podeReady && (
+      {antes && <h2>Técnicos</h2>}
+      {antes && <ul>{membros.map((m) => <li key={m.id}>{m.username} {m.teamRef && `(${m.teamRef})`} {m.ready ? '✔ pronto' : ''}</li>)}</ul>}
+      {g!.status === 'picking' && eu.teamRef !== null && (
         <form action={readyAcao}>
           <input type="hidden" name="jogo" value={gid} />
           <input type="hidden" name="ready" value={eu.ready ? '0' : '1'} />
