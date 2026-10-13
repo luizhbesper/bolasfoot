@@ -75,6 +75,7 @@ Testes: e2e live (6.5 #1).
 ## U8 — Caixa de entrada e fim de temporada
 Objetivo: substituir os modais do original.
 Contrato: lista com filtros e detalhe; propostas humanas (`responderProposta`), ofertas de emprego (`aceitarOferta`), aposentadoria, demissão, fim de temporada. **Motor:** `Aviso` ganha `tipo` e ref opcional (golden atualizado de propósito).
+**Entregue:** motor: `Aviso.tipo` (`proposta`, `mercado`, `emprego`, `demissao`, `aposentadoria`, `temporada`) e `ref` (proposta ou jogador), valores em "R$ 1,9 mi", e na virada um aviso de resumo por técnico humano (colocação na série, acesso/queda, títulos, campeões). O golden da temporada não mudou: ele vira a temporada pelo `fimDeTemporada`, sem a rodada. Tela `caixa` (filtros por tipo, não lidos marcados, detalhe com a ação: aceitar/recusar proposta de amigo, aceitar oferta de emprego, deixar se aposentar; carreira com pedir demissão) e contador de não lidos no menu (último dia visto no `localStorage`, por aparelho). Hub avisa a virada da temporada; sem clube aponta para a caixa. A barra de prontos e prazo já vinha da U1. Avisos de mundos antigos (sem `tipo`) aparecem como mercado. E2E `e2e/caixa.e2e.ts` (dois técnicos: proposta chega na caixa com contador e é aceita).
 
 ## U5 — Competições e mundo
 Contrato: tabelas (de `FaseLiga.linhas`), agenda, história, times e técnicos, transferências. **Motor:** estatísticas de temporada por jogador (gols, assistências, jogos, notas) acumuladas no pós-jogo, para artilharia e a ficha do jogador.

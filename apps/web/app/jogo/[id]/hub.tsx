@@ -17,7 +17,7 @@ export function SemClube() {
   return (
     <div className="card secao">
       <h2>Você está sem clube</h2>
-      <p className="mudo" style={{ margin: 0 }}>As propostas de emprego chegam pela caixa de entrada.</p>
+      <p className="mudo" style={{ margin: 0 }}>As propostas de emprego chegam pela <Link href={`/jogo/${useJogo().jogo}/caixa`}>caixa de entrada</Link>.</p>
     </div>
   )
 }
@@ -39,6 +39,13 @@ export function Hub({ ultima, erro }: { ultima: { n: number; resumo: ResumoRodad
   return (
     <div className={s.grade}>
       <Erro texto={erro} />
+      {ultima?.resumo.virou && (
+        <div className="card secao" style={{ gridColumn: '1 / -1', flexDirection: 'row', alignItems: 'center', borderColor: 'rgba(238,221,156,.35)' }}>
+          <span className="etiqueta lavanda">Nova temporada</span>
+          <span style={{ flex: 1 }}>A temporada virou: campeões, acessos e rebaixamentos já valem.</span>
+          <Link href={`${base}/caixa`}>Ver o resumo</Link>
+        </div>
+      )}
       <section className={s.principal}>
         {prox && adv ? (
           <div className={`card ${s.proximo}`}>

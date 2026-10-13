@@ -10,7 +10,8 @@ import {
   anunciar, comprarEmprestado, darLance, disponibilizarEmprestimo, dispensarJunior, encerrarEmprestimo, pedirEmprestado,
   promoverJunior, proporCompra, renovarContrato, retirarDaLista, transferir, venderAgora, type Proposta,
 } from './mercado.ts'
-import type { Mundo, Tatica, TimeM } from './mundo.ts'
+import type { Mundo, Tatica, TimeM, TipoAviso } from './mundo.ts'
+import { ANO_INICIAL } from './calendario.ts'
 import { mudarTatica, substituir, type Partida } from './partida.ts'
 import { derivar, type Rng } from './rng.ts'
 import { fimDeTemporada } from './temporada.ts'
@@ -187,9 +188,12 @@ export function validar(m: Mundo, tecnicoId: number, c: Comando): string | null 
 const soTatica = (c: { estilo?: number; marcacao?: number; jogada?: number }): Partial<Pick<Tatica, 'estilo' | 'marcacao' | 'jogada'>> =>
   Object.fromEntries(Object.entries({ estilo: c.estilo, marcacao: c.marcacao, jogada: c.jogada }).filter(([, v]) => v !== undefined))
 
-function avisar(m: Mundo, tecnico: number, texto: string): void {
-  m.avisos.push({ tecnico, dia: m.dia, texto })
+function avisar(m: Mundo, tecnico: number, tipo: TipoAviso, texto: string, ref?: number): void {
+  m.avisos.push({ tecnico, dia: m.dia, texto, tipo, ...(ref === undefined ? {} : { ref }) })
 }
+
+/** 1_500_000 → "R$ 1,5 mi"; 80_000 → "R$ 80 mil" (texto dos avisos). */
+const reais = (v: number) => (v >= 1e6 ? `R$ ${(Math.round(v / 1e5) / 10).toString().replace('.', ',')} mi` : `R$ ${Math.round(v / 1e3)} mil`)
 
 /** Executa um comando já validado. */
 function executar(m: Mundo, base: Base, tc: number, t: TimeM | null, c: Comando, rng: Rng): Omit<ResultadoComando, 'tecnico' | 'comando'> {
@@ -224,7 +228,7 @@ function executar(m: Mundo, base: Base, tc: number, t: TimeM | null, c: Comando,
         if (!t!.financas || t!.financas.caixa < c.valor) return ok('valor maior que o caixa')
         const p = { id: (m.propostasHumanas.at(-1)?.id ?? 0) + 1, comprador: id, jogador: j.id, valor: c.valor, dia: m.dia }
         m.propostasHumanas.push(p)
-        avisar(m, dono.tecnico, `${t!.nome} oferece ${c.valor} por ${j.nome} (proposta ${p.id}).`)
+        avisar(m, dono.tecnico, 'proposta', `${t!.nome} oferece ${reais(c.valor)} por ${j.nome}.`, p.id)
         return ok()
       }
       const proposta = proporCompra(m, id, j.id, c.valor, rng, c.aceitarContraproposta ?? false, base)
@@ -236,13 +240,13 @@ function executar(m: Mundo, base: Base, tc: number, t: TimeM | null, c: Comando,
       const j = m.jogadores[p.jogador]!, comp = m.times[p.comprador]!
       const tecComp = comp.tecnico
       if (!c.aceitar) {
-        avisar(m, tecComp, `${t!.nome} recusou a proposta por ${j.nome}.`)
+        avisar(m, tecComp, 'mercado', `${t!.nome} recusou a proposta por ${j.nome}.`, j.id)
         return ok()
       }
       if (!comp.humano || !comp.financas || comp.financas.caixa < p.valor) return ok('o comprador não tem mais o dinheiro')
       if (comp.jogadores.length >= 35) return ok('o elenco do comprador está cheio')
       transferir(m, j, comp.id, p.valor)
-      avisar(m, tecComp, `${t!.nome} aceitou: ${j.nome} é seu por ${p.valor}.`)
+      avisar(m, tecComp, 'mercado', `${t!.nome} aceitou: ${j.nome} é seu por ${reais(p.valor)}.`, j.id)
       return ok()
     }
     case 'anunciar':
@@ -321,16 +325,35 @@ function avisosDoDia(m: Mundo, d: number): boolean {
   for (const x of m.transferencias) {
     if (x.dia !== d || x.valor === 0) continue
     const nome = m.jogadores[x.jogador]!.nome, de = tecDe(x.de), para = tecDe(x.para)
-    if (de !== null) avisar(m, de, `${nome} foi vendido ao ${m.times[x.para]!.nome} por ${x.valor}.`)
-    if (para !== null && de === null) avisar(m, para, `${nome} chegou do ${m.times[x.de]!.nome} por ${x.valor}.`)
+    if (de !== null) avisar(m, de, 'mercado', `${nome} foi vendido ao ${m.times[x.para]!.nome} por ${reais(x.valor)}.`, x.jogador)
+    if (para !== null && de === null) avisar(m, para, 'mercado', `${nome} chegou do ${m.times[x.de]!.nome} por ${reais(x.valor)}.`, x.jogador)
   }
   for (const x of m.trocasDeTecnico) {
     const saiu = x.saiu !== null ? m.tecnicos[x.saiu]! : null
-    if (x.dia === d && saiu?.humano && x.motivo > 0) avisar(m, saiu.id, `Você foi demitido do ${m.times[x.time]!.nome}: ${MOTIVOS_DEMISSAO[x.motivo]}`)
+    if (x.dia === d && saiu?.humano && x.motivo > 0) avisar(m, saiu.id, 'demissao', `Você foi demitido do ${m.times[x.time]!.nome}: ${MOTIVOS_DEMISSAO[x.motivo]}`)
   }
   const novas = m.ofertas.filter((o) => o.dia === d && m.tecnicos[o.tecnico]!.humano)
-  for (const o of novas) avisar(m, o.tecnico, `Propostas de emprego: ${o.times.map((t) => m.times[t]!.nome).join(', ')}.`)
+  for (const o of novas) avisar(m, o.tecnico, 'emprego', `Propostas de emprego: ${o.times.map((t) => m.times[t]!.nome).join(', ')}.`)
   return novas.length > 0
+}
+
+/** Na virada, um aviso por técnico humano: onde o time terminou na série e quem ganhou o quê. */
+function resumoDaTemporada(m: Mundo): void {
+  const hist = m.historico.filter((h) => h.temporada === m.temporada - 1)
+  const campeoes = hist.filter((h) => h.campeao !== null && (h.competicao.startsWith('BR-') || h.competicao === 'CB'))
+    .map((h) => `${h.nome}: ${m.times[h.campeao!]!.nome}`).join('; ')
+  for (const tc of m.tecnicos) {
+    if (!tc.humano || tc.time === null) continue
+    const t = m.times[tc.time]!
+    const serie = hist.find((h) => h.competicao.startsWith('BR-') && h.classificacao.includes(t.id))
+    const titulos = hist.filter((h) => h.campeao === t.id).map((h) => h.nome)
+    const partes = [
+      serie ? `${t.nome} terminou em ${serie.classificacao.indexOf(t.id) + 1}º na ${serie.nome}${serie.subiram.includes(t.id) ? ' e subiu' : serie.cairam.includes(t.id) ? ' e caiu' : ''}.` : `${t.nome} não disputou as séries.`,
+      titulos.length ? `Títulos: ${titulos.join(', ')}.` : '',
+      campeoes ? `Campeões — ${campeoes}.` : '',
+    ]
+    avisar(m, tc.id, 'temporada', `Fim da temporada ${ANO_INICIAL + m.temporada - 2}. ${partes.filter(Boolean).join(' ')}`)
+  }
 }
 
 /**
@@ -343,9 +366,10 @@ function seguir(m: Mundo, base: Base, seed: string, r: Rodada, jogado: number, p
     if (prox === null) {
       r.encerradas = m.competicoes
       fimDeTemporada(m, base, seed)
+      resumoDaTemporada(m)
       for (const id of m.queremParar) {
         const j = m.jogadores[id]!
-        avisar(m, m.times[j.time]!.tecnico, `${j.nome} (${j.idade} anos) quer se aposentar.`)
+        avisar(m, m.times[j.time]!.tecnico, 'aposentadoria', `${j.nome} (${j.idade} anos) quer se aposentar.`, j.id)
       }
       r.virou = true
       return r
@@ -368,7 +392,7 @@ export function avancarRodada(m: Mundo, base: Base, comandos: readonly ComandoDe
   const pendentes = new Set(m.propostasHumanas)
   const resultados = aplicarComandos(m, base, comandos, derivar(seed, 'comandos'))
   for (const p of m.propostasHumanas.filter((x) => pendentes.has(x)))
-    avisar(m, m.times[p.comprador]!.tecnico, `Sem resposta pela proposta por ${m.jogadores[p.jogador]!.nome}: recusada.`)
+    avisar(m, m.times[p.comprador]!.tecnico, 'mercado', `Sem resposta pela proposta por ${m.jogadores[p.jogador]!.nome}: recusada.`, p.jogador)
   m.propostasHumanas = m.propostasHumanas.filter((x) => !pendentes.has(x))
   m.queremParar = m.queremParar.filter((id) => m.jogadores[id]!.time >= 0)
   const humano = humanoJoga(m)

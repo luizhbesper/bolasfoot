@@ -31,6 +31,10 @@ describe('rodada', () => {
       if (!virou) expect(humanoEmCampo(m) || m.ofertas.length > 0).toBe(true)
     }
     expect(m.temporada).toBe(2)
+    // cada humano empregado recebe o resumo da temporada na caixa
+    const empregados = m.tecnicos.filter((c) => c.humano && c.time !== null)
+    expect(m.avisos.filter((x) => x.tipo === 'temporada').map((x) => x.tecnico).sort()).toEqual(empregados.map((c) => c.id).sort())
+    expect(m.avisos.find((x) => x.tipo === 'temporada')!.texto).toMatch(/^Fim da temporada 2026\. .+ (terminou em \d+º|não disputou)/)
     // liga (38) + estadual + copa: bem menos rodadas que dias de jogo da temporada (~80)
     expect(rodadas).toBeGreaterThan(38)
     expect(rodadas).toBeLessThan(80)
@@ -101,7 +105,8 @@ describe('rodada', () => {
     timeDe(m, a).financas!.caixa = 50_000_000
     avancarRodada(m, B, [{ tecnico: a, comando: { tipo: 'comprar', jogador: j1!, valor: 1_000_000 } }, { tecnico: a, comando: { tipo: 'comprar', jogador: j2!, valor: 1_000_000 } }], 'p1')
     expect(m.propostasHumanas).toHaveLength(2)
-    expect(m.avisos.filter((x) => x.tecnico === b && /oferece/.test(x.texto))).toHaveLength(2)
+    expect(m.avisos.filter((x) => x.tecnico === b && /oferece R\$ 1 mi/.test(x.texto))).toHaveLength(2)
+    expect(m.avisos.filter((x) => x.tecnico === b && x.tipo === 'proposta').map((x) => x.ref)).toEqual(m.propostasHumanas.map((p) => p.id))
     const caixaB = timeDe(m, b).financas!.caixa
     const r = avancarRodada(m, B, [{ tecnico: b, comando: { tipo: 'responderProposta', proposta: m.propostasHumanas[0]!.id, aceitar: true } }], 'p2')
     expect(r.resultados[0]!.erro).toBeNull()

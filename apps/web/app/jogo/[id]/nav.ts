@@ -3,7 +3,7 @@ import type { NomeIcone } from '../../_ui/icones.tsx'
 
 export interface ItemNav { chave: NomeIcone; rotulo: string; rota: string | null }
 
-export const CAIXA: ItemNav = { chave: 'caixa', rotulo: 'Caixa de entrada', rota: null }
+export const CAIXA: ItemNav = { chave: 'caixa', rotulo: 'Caixa de entrada', rota: 'caixa' }
 
 export const GRUPOS: { titulo: string; itens: ItemNav[] }[] = [
   {

@@ -186,10 +186,16 @@ export interface Mundo {
   emJogo: DiaEmJogo | null
 }
 
+/** O que o aviso é, para a caixa de entrada filtrar e oferecer a ação certa. */
+export type TipoAviso = 'proposta' | 'mercado' | 'emprego' | 'demissao' | 'aposentadoria' | 'temporada'
+
 export interface Aviso {
   tecnico: number
   dia: number
   texto: string
+  tipo: TipoAviso
+  /** proposta (id em propostasHumanas) ou jogador (mercado, aposentadoria) */
+  ref?: number
 }
 
 export interface PropostaHumana {

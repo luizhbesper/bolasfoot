@@ -9,6 +9,7 @@ import { readyAcao } from './acoes.ts'
 import s from './casca.module.css'
 import { dataLonga, dinheiro, NOME_DIVISAO, proximoJogo } from './consultas.ts'
 import { useJogo, useRelogio } from './contexto.tsx'
+import { useNaoLidos } from './caixa/lidos.ts'
 import { CAIXA, GRUPOS, itemDaRota, type ItemNav } from './nav.ts'
 
 export function Casca({ nomeJogo, usuario, timeInicial, children }: {
@@ -41,12 +42,14 @@ function Menu({ base, sufixo, nomeJogo, usuario, timeInicial }: {
   base: string; sufixo: string; nomeJogo: string; usuario: string; timeInicial: { fileRef: string; nome: string } | null
 }) {
   const { meuTime, eu, prontos } = useJogo()
+  const naoLidos = useNaoLidos()
   const time = meuTime ?? timeInicial
   const item = (i: ItemNav) => i.rota === null
     ? <span key={i.chave} className={s.item} aria-disabled="true" title="Em breve"><Icone nome={i.chave} /><span>{i.rotulo}</span></span>
     : (
       <Link key={i.chave} href={i.rota ? `${base}/${i.rota}` : base} className={s.item} aria-current={i.rota === sufixo ? 'page' : undefined}>
         <Icone nome={i.chave} /><span>{i.rotulo}</span>
+        {i.chave === 'caixa' && naoLidos > 0 && <span className={s.contador} aria-label={`${naoLidos} não lidos`}>{naoLidos}</span>}
       </Link>
     )
   return (
