@@ -1,23 +1,47 @@
 .grade {
+  /* tela única no desktop: a página não rola; o elenco e a coluna da direita rolam por dentro (64 da barra, 48 do padding) */
+  height: calc(100vh - 64px - 48px);
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   gap: 20px;
-  align-items: start;
-}
-
-.grade > [role='alert'] {
-  grid-column: 1 / -1;
 }
 
 .principal,
 .lado {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
   min-width: 0;
+  min-height: 0;
+}
+
+.lado {
+  overflow-y: auto;
+}
+
+.elenco {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.rolagem {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.rolagem thead th {
+  position: sticky;
+  top: 0;
+  background: var(--surface);
 }
 
 .proximo {
+  flex: none;
   padding: 20px 24px;
   display: flex;
   flex-direction: column;
@@ -142,6 +166,12 @@
 
 @media (max-width: 900px) {
   .grade {
+    height: auto;
     grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+  }
+
+  .elenco {
+    max-height: 70vh;
   }
 }

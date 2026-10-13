@@ -3,7 +3,7 @@
 import type { Competicao, FaseLiga, FaseMataMata, Jogo, Mundo } from '@bolasfoot/engine'
 import { useState } from 'react'
 import { Escudo, Forma } from '../../../_ui/ui.tsx'
-import { artilharia, dataLonga, jogosDaComp, participa, proximoJogo, resultadoPara, type Resultado } from '../consultas.ts'
+import { artilharia, dataLonga, jogosDaComp, NOME_RODADA, participa, proximoJogo, resultadoPara, type Resultado } from '../consultas.ts'
 import { useJogo } from '../contexto.tsx'
 import { Carregando } from '../hub.tsx'
 
@@ -129,8 +129,6 @@ function Liga({ m, c, f, eu }: { m: Mundo; c: Competicao; f: FaseLiga; eu: numbe
 function Ponto({ cor }: { cor: string | null }) {
   return <span style={{ width: 7, height: 7, borderRadius: '50%', flex: 'none', background: cor ? `var(--${cor})` : 'transparent' }} />
 }
-
-const NOME_RODADA: Record<number, string> = { 1: 'Final', 2: 'Semifinal', 4: 'Quartas de final', 8: 'Oitavas de final' }
 
 function MataMata({ m, f, eu }: { m: Mundo; f: FaseMataMata; eu: number }) {
   if (!f.rodadas.length) return <div className="card secao"><p className="mudo" style={{ margin: 0 }}>Chaves ainda não sorteadas.</p></div>

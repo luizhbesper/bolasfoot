@@ -22,6 +22,34 @@ export function dinheiro(v: number): string {
   return `${sinal}R$ ${fmt(a, 0)}`
 }
 
+export const NOME_RODADA: Record<number, string> = { 1: 'Final', 2: 'Semifinal', 4: 'Quartas de final', 8: 'Oitavas de final' }
+
+/**
+ * O que é o jogo dentro da competição: "7ª rodada", "Grupo B, 3ª rodada", "2ª fase, 4ª rodada",
+ * "Oitavas de final, ida". Vazio se não achar o jogo (casa × fora no dia).
+ */
+export function etapaDoJogo(m: Mundo, compId: string, casa: number, fora: number, dia: number): string {
+  const c = m.competicoes.find((x) => x.id === compId)
+  if (!c) return ''
+  for (const [fi, f] of c.fases.entries()) {
+    const prefixo = c.fases.length > 1 ? [`${fi + 1}ª fase`] : []
+    if (f.tipo === 'liga') {
+      if (!f.jogos.some((j) => j.dia === dia && j.casa === casa && j.fora === fora)) continue
+      // a rodada do time: quantos jogos ele tem nessa fase até esse dia
+      const n = f.jogos.filter((j) => j.dia <= dia && (j.casa === casa || j.fora === casa)).length
+      const g = f.grupos.findIndex((x) => x.includes(casa))
+      return [...prefixo, ...(f.grupos.length > 1 && g >= 0 ? [`Grupo ${String.fromCharCode(65 + g)}`] : []), `${n}ª rodada`].join(', ')
+    }
+    for (const [ri, r] of f.rodadas.entries()) {
+      const k = r.jogos.findIndex((j) => j.dia === dia && j.casa === casa && j.fora === fora)
+      if (k < 0) continue
+      const nome = NOME_RODADA[r.confrontos.length] ?? `${ri + 1}ª fase`
+      return [nome, ...(r.idaVolta ? [k < r.confrontos.length ? 'ida' : 'volta'] : [])].join(', ')
+    }
+  }
+  return ''
+}
+
 export interface ProximoJogo { dia: number; compId: string; comp: string; casa: boolean; adversario: number }
 
 /** O próximo jogo ainda não disputado do time, em qualquer competição. */

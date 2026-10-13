@@ -104,7 +104,7 @@ async function mudarFase(tx: Tx, g: Jogo, n: number, phase: FaseRodada, deadline
   if (phase === 'intervalo') await tx.update(gameMembers).set({ ready: false }).where(eq(gameMembers.gameId, g.id))
 }
 
-/** Quando o tempo ao vivo acaba no relógio do cliente: 45 + o maior acréscimo entre as partidas. */
+/** Quando o tempo ao vivo acaba no relógio do cliente: 45 + o maior acréscimo entre todas as partidas do dia (a tela mostra todas). */
 const fimDoTempo = (inicio: Date, partidas: Partida[], tempo: 1 | 2, msPorMinuto: number) =>
   new Date(inicio.getTime() + (45 + Math.max(0, ...partidas.map((p) => p.acrescimos[tempo - 1]!))) * msPorMinuto)
 
@@ -144,11 +144,11 @@ async function resolver(tx: Tx, g: Jogo, n: number, etapa: 0 | 1, s: Settings) {
   const agora = new Date()
   if (r.fase === 'intervalo') {
     await salvarMundo(tx, g.id, n, 1, m)
-    return mudarFase(tx, g, n, 'ao_vivo_1t', fimDoTempo(agora, r.partidas, 1, s.msPerMinute), agora)
+    return mudarFase(tx, g, n, 'ao_vivo_1t', fimDoTempo(agora, r.todas.map((x) => x.partida), 1, s.msPerMinute), agora)
   }
   await salvarMundo(tx, g.id, n + 1, 0, m)
   await tx.update(rounds).set({ seed }).where(and(eq(rounds.gameId, g.id), eq(rounds.n, n))) // revela
-  if (etapa) return mudarFase(tx, g, n, 'ao_vivo_2t', fimDoTempo(agora, r.partidas, 2, s.msPerMinute), agora)
+  if (etapa) return mudarFase(tx, g, n, 'ao_vivo_2t', fimDoTempo(agora, r.todas.map((x) => x.partida), 2, s.msPerMinute), agora)
   if (r.partidas.length) return mudarFase(tx, g, n, 'resultados', daqui(s.resultsPauseS))
   return abrirRodada(tx, g, n + 1, s)
 }
@@ -261,8 +261,9 @@ export async function definirComandos(d: Db, gameId: number, userId: number, nov
   return enviarComandos(d, gameId, userId, juntarComandos(await comandosPendentes(d, gameId, userId), novos))
 }
 
-/** Pronto / não pronto na fase corrente (ou na escolha de times); o último pronto resolve. */
-export async function marcarReady(d: Db, gameId: number, userId: number, ready: boolean): Promise<void> {
+/** Pronto / não pronto na fase corrente (ou na escolha de times); o último pronto resolve (`resolver = false`: quem chama
+ * transiciona depois). */
+export async function marcarReady(d: Db, gameId: number, userId: number, ready: boolean, resolver = true): Promise<void> {
   const [g] = await d.select().from(games).where(eq(games.id, gameId))
   const naEscolha = g?.status === 'picking'
   if (!naEscolha && (g?.status !== 'running' || etapaDa((await rodadaDe(d, gameId, g.round))?.phase) === null)) return
@@ -270,7 +271,7 @@ export async function marcarReady(d: Db, gameId: number, userId: number, ready: 
   // na escolha, só fica pronto quem já tem time
   await d.update(gameMembers).set({ ready }).where(naEscolha ? and(onde, isNotNull(gameMembers.teamRef)) : onde)
   publicar(gameId, await prontos(d, gameId))
-  if (ready) await transicionar(d, gameId)
+  if (ready && resolver) await transicionar(d, gameId)
 }
 
 // --- admin ---------------------------------------------------------------------------------------------------------

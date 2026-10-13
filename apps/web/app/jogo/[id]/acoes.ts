@@ -3,15 +3,18 @@ import { revalidatePath } from 'next/cache'
 import { exigirUsuario } from '../../../lib/auth/sessao.ts'
 import { db } from '../../../lib/db/index.ts'
 import { escolherTime } from '../../../lib/game/escolha.ts'
-import { definirComandos, enviarComandos, marcarReady } from '../../../lib/game/rodada.ts'
+import { definirComandos, enviarComandos, marcarReady, transicionar } from '../../../lib/game/rodada.ts'
 import type { Comando } from '@bolasfoot/engine'
 import { redirect } from 'next/navigation'
+import { after } from 'next/server'
 
 export async function readyAcao(f: FormData) {
   const u = await exigirUsuario()
   const jogo = Number(f.get('jogo'))
-  await marcarReady(db(), jogo, u.id, f.get('ready') === '1')
-  revalidatePath(`/jogo/${jogo}`)
+  const ready = f.get('ready') === '1'
+  await marcarReady(db(), jogo, u.id, ready, false)
+  // o motor roda depois da resposta: o botão volta na hora e o SSE leva a fase nova a todos
+  if (ready) after(() => transicionar(db(), jogo))
 }
 
 export async function escolherAcao(f: FormData) {

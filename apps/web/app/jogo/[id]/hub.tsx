@@ -4,8 +4,8 @@ import { folha } from '@bolasfoot/engine'
 import Link from 'next/link'
 import type { ResumoRodada } from '../../../lib/game/rodada.ts'
 import { Erro } from '../../_ui/pagina.tsx'
-import { ChipPosicao, Escudo, Forma } from '../../_ui/ui.tsx'
-import { alerta, dataLonga, dinheiro, forma, jogadoresDe, proximoJogo, tabelaDoTime } from './consultas.ts'
+import { ChipPosicao, Energia, Escudo, Forca, Forma } from '../../_ui/ui.tsx'
+import { alerta, dataLonga, dinheiro, etapaDoJogo, forma, jogadoresDe, proximoJogo, tabelaDoTime } from './consultas.ts'
 import { useJogo } from './contexto.tsx'
 import s from './hub.module.css'
 
@@ -32,26 +32,27 @@ export function Hub({ ultima, erro }: { ultima: { n: number; resumo: ResumoRodad
   const mandante = prox ? (prox.casa ? t : adv!) : null
   const tecnico = m.tecnicos[t.tecnico]!
   const tabela = prox ? tabelaDoTime(m, prox.compId, t.id) : null
-  const avisos = jogadoresDe(m, t.jogadores).map((j) => ({ j, a: alerta(m, j) })).filter((x) => x.a)
+  const elenco = jogadoresDe(m, t.jogadores).sort((a, b) => a.posicao - b.posicao || b.forca - a.forca)
   // técnico humano de cada time, para o feed
   const humanos = new Map(membros.filter((x) => x.teamRef).map((x) => [m.times.find((tt) => tt.fileRef === x.teamRef)?.id, x.nome]))
 
   return (
     <div className={s.grade}>
-      <Erro texto={erro} />
-      {ultima?.resumo.virou && (
-        <div className="card secao" style={{ gridColumn: '1 / -1', flexDirection: 'row', alignItems: 'center', borderColor: 'rgba(238,221,156,.35)' }}>
-          <span className="etiqueta lavanda">Nova temporada</span>
-          <span style={{ flex: 1 }}>A temporada virou: campeões, acessos e rebaixamentos já valem.</span>
-          <Link href={`${base}/caixa`}>Ver o resumo</Link>
-        </div>
-      )}
       <section className={s.principal}>
+        <Erro texto={erro} />
+        {ultima?.resumo.virou && (
+          <div className="card secao" style={{ flexDirection: 'row', alignItems: 'center', borderColor: 'rgba(238,221,156,.35)' }}>
+            <span className="etiqueta lavanda">Nova temporada</span>
+            <span style={{ flex: 1 }}>A temporada virou: campeões, acessos e rebaixamentos já valem.</span>
+            <Link href={`${base}/caixa`}>Ver o resumo</Link>
+          </div>
+        )}
         {prox && adv ? (
           <div className={`card ${s.proximo}`}>
             <div className="linha mudo" style={{ fontSize: 13 }}>
               <span className="etiqueta ceu">Próximo jogo</span>
-              {prox.comp} · {dataLonga(prox.dia)} · {mandante!.estadio.nome}
+              <strong style={{ color: 'var(--text)' }}>{[prox.comp, etapaDoJogo(m, prox.compId, mandante!.id, prox.casa ? adv.id : t.id, prox.dia)].filter(Boolean).join(', ')}</strong>
+              · {dataLonga(prox.dia)} · {mandante!.estadio.nome}
             </div>
             <div className={s.confronto}>
               <Lado time={t} forma={forma(m, t.id)} />
@@ -68,26 +69,31 @@ export function Hub({ ultima, erro }: { ultima: { n: number; resumo: ResumoRodad
           <div className="card secao"><p className="mudo" style={{ margin: 0 }}>Sem jogos marcados por enquanto.</p></div>
         )}
 
-        <div className="card" style={{ overflow: 'hidden' }}>
+        <div className={`card ${s.elenco}`}>
           <div className="cabecalho">
             <h2 style={{ flex: 1 }}>Elenco <span className="fraco" style={{ fontWeight: 400 }}>{t.jogadores.length} jogadores</span></h2>
             <Link href={`${base}/elenco`}>Ver todos</Link>
           </div>
-          {avisos.length === 0 ? (
-            <p className="mudo" style={{ margin: 0, padding: '0 20px 20px' }}>Todo mundo inteiro e disponível.</p>
-          ) : (
+          <div className={s.rolagem}>
             <table className="tabela">
+              <thead><tr><th>Pos</th><th>Nome</th><th className="num">Idade</th><th className="num">Força</th><th>Energia</th><th /></tr></thead>
               <tbody>
-                {avisos.map(({ j, a }) => (
-                  <tr key={j.id}>
-                    <td style={{ width: 50 }}><ChipPosicao posicao={j.posicao} /></td>
-                    <td>{j.nome}</td>
-                    <td className="num"><span className={`etiqueta ${a!.cor === 'manteiga' ? '' : a!.cor}`}>{a!.texto}</span></td>
-                  </tr>
-                ))}
+                {elenco.map((j) => {
+                  const a = alerta(m, j)
+                  return (
+                    <tr key={j.id}>
+                      <td style={{ width: 50 }}><ChipPosicao posicao={j.posicao} /></td>
+                      <td>{j.nome}</td>
+                      <td className="num mudo">{j.idade}</td>
+                      <td className="num"><Forca valor={j.forca} /></td>
+                      <td style={{ width: 90 }}><Energia valor={j.energia} /></td>
+                      <td className="num">{a && <span className={`etiqueta ${a.cor === 'manteiga' ? '' : a.cor}`}>{a.texto}</span>}</td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
-          )}
+          </div>
         </div>
       </section>
 
