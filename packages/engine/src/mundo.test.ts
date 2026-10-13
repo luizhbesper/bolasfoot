@@ -47,8 +47,9 @@ test('novoJogo: divisões, carga e determinismo', () => {
   expect(br).toHaveLength(196)
   for (const d of [1, 2, 3]) expect(br.filter((t) => t.divisao === d)).toHaveLength(20)
   expect(br.filter((t) => t.divisao === 1).every((t) => t.nivel >= 16)).toBe(true)
-  const porPais = Map.groupBy(m.times, (t) => t.pais)
-  for (const [pais, ts] of porPais) if (pais !== BRA) expect(ts.length).toBeLessThanOrEqual(15)
+  const porPais = new Map<number, number>()
+  for (const t of m.times) porPais.set(t.pais, (porPais.get(t.pais) ?? 0) + 1)
+  for (const [pais, n] of porPais) if (pais !== BRA) expect(n).toBeLessThanOrEqual(15)
   for (const j of m.jogadores) {
     expect(j.forca).toBeGreaterThan(0)
     expect(j.forca).toBeLessThanOrEqual(100)
