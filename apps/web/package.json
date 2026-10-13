@@ -14,6 +14,7 @@
     "db:reset": "node lib/db/cli.ts reset"
   },
   "dependencies": {
+    "@bolasfoot/data": "workspace:*",
     "@bolasfoot/engine": "workspace:*",
     "drizzle-orm": "^0.45.4",
     "next": "^16.4.0",

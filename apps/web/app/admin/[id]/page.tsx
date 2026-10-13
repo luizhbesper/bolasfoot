@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation'
 import { exigirAdmin } from '../../../lib/auth/sessao.ts'
 import { db } from '../../../lib/db/index.ts'
 import { gameMembers, games, gameSettings, invites, users } from '../../../lib/db/schema.ts'
-import { apagarAcao, conviteAcao, expulsarAcao, revogarAcao, settingsAcao } from '../acoes.ts'
+import { apagarAcao, conviteAcao, expulsarAcao, forcarAcao, pausarAcao, retomarAcao, revogarAcao, settingsAcao } from '../acoes.ts'
 
 export default async function AdminJogo({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ erro?: string }> }) {
   await exigirAdmin()
@@ -23,6 +23,9 @@ export default async function AdminJogo({ params, searchParams }: { params: Prom
       <h1>{g.name}</h1>
       <p><Link href="/admin">admin</Link> · <Link href={`/jogo/${gid}`}>abrir o jogo</Link> · {g.mode} · {g.status} · rodada {g.round}</p>
       {erro && <p role="alert">{erro}</p>}
+      {g.status === 'running' && <form action={pausarAcao}>{jogo}<button>Pausar</button></form>}
+      {g.status === 'paused' && <form action={retomarAcao}>{jogo}<button>Retomar</button></form>}
+      {g.status === 'running' && <form action={forcarAcao}>{jogo}<button>Forçar avanço</button></form>}
 
       <h2>Membros</h2>
       <ul>

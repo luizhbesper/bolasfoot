@@ -80,6 +80,8 @@ describe('rodada', () => {
       [{ tipo: 'anunciar', jogador: deB, preco: 10 }, /fora do elenco/],
       [{ tipo: 'escalar', formacao: 99, titulares: [], banco: [] }, /formação/],
       [{ tipo: 'tatica', estilo: 7 }, /tática/],
+      [{ tipo: 'hackear' } as unknown as Comando, /comando inválido/],
+      [null as unknown as Comando, /comando inválido/],
       [{ tipo: 'substituir', sai: 1, entra: 2 }, /fora do intervalo/],
       [{ tipo: 'comprar', jogador: timeDe(m, a).jogadores[0]!, valor: 1 }, /seu time/],
       [{ tipo: 'comprar', jogador: deB, valor: 1000 }, null],

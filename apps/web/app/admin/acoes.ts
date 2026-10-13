@@ -5,6 +5,7 @@ import { exigirAdmin } from '../../lib/auth/sessao.ts'
 import { db } from '../../lib/db/index.ts'
 import type { ModoJogo } from '../../lib/db/schema.ts'
 import { apagarJogo, criarJogo, editarSettings, expulsar, gerarConvite, revogarConvite } from '../../lib/game/admin.ts'
+import { pausar, retomar, transicionar } from '../../lib/game/rodada.ts'
 
 const txt = (f: FormData, k: string) => String(f.get(k) ?? '').trim()
 const num = (f: FormData, k: string) => Number(txt(f, k))
@@ -63,4 +64,22 @@ export async function apagarAcao(f: FormData) {
   await apagarJogo(db(), id(f))
   revalidatePath('/admin')
   redirect('/admin')
+}
+
+export async function pausarAcao(f: FormData) {
+  await exigirAdmin()
+  await pausar(db(), id(f))
+  voltar(id(f))
+}
+
+export async function retomarAcao(f: FormData) {
+  await exigirAdmin()
+  await retomar(db(), id(f))
+  voltar(id(f))
+}
+
+export async function forcarAcao(f: FormData) {
+  await exigirAdmin()
+  await transicionar(db(), id(f), true)
+  voltar(id(f))
 }

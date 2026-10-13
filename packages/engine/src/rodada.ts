@@ -72,6 +72,11 @@ export interface Rodada {
 }
 
 const INTERVALO = new Set<Comando['tipo']>(['substituir', 'mudarTatica'])
+const TIPOS = new Set<string>([
+  'escalar', 'tatica', 'batedores', 'treino', 'ingresso', 'banco', 'obra', 'comprar', 'responderProposta', 'anunciar',
+  'retirarDaLista', 'venderAgora', 'paraEmprestimo', 'pedirEmprestado', 'encerrarEmprestimo', 'comprarEmprestado', 'lance',
+  'promoverJunior', 'dispensarJunior', 'renovar', 'aposentar', 'aceitarOferta', 'pedirDemissao', 'substituir', 'mudarTatica',
+] satisfies Comando['tipo'][])
 const inteiro = (n: unknown, min = 0) => typeof n === 'number' && Number.isInteger(n) && n >= min
 
 const humanoJoga = (m: Mundo) => jogosDoDia(m).some(({ jogo }) => m.times[jogo.casa]!.humano || m.times[jogo.fora]!.humano)
@@ -95,6 +100,7 @@ const taticaOk = (c: { estilo?: number; marcacao?: number; jogada?: number }) =>
  * cheio, o jogador aceita…) ficam com a função que executa, que devolve o motivo. Roda igual no navegador.
  */
 export function validar(m: Mundo, tecnicoId: number, c: Comando): string | null {
+  if (typeof c !== 'object' || c === null || !TIPOS.has(c.tipo)) return 'comando inválido'
   const tc = m.tecnicos[tecnicoId]
   if (!tc?.humano) return 'técnico inválido'
   if (INTERVALO.has(c.tipo) !== (m.emJogo !== null)) return m.emJogo ? 'só substituições e tática no intervalo' : 'fora do intervalo'
