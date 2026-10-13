@@ -1,6 +1,6 @@
 // Motor de partida: estado serializável + simulação minuto a minuto, segmentada por tempo.
 // Fonte principal: c/b.java (tick, posse, ataque, chute, gol) e best/I.java (orquestração).
-import { foraDePosicao, type Escalacao } from './escalacao.ts'
+import { escolherParaSlot, foraDePosicao, type Escalacao } from './escalacao.ts'
 import type { Habilidades, Mundo, Tatica } from './mundo.ts'
 import type { Rng } from './rng.ts'
 
@@ -99,6 +99,14 @@ export interface Evento {
   /** assistente, quem entrou (6) ou o goleiro que defendeu (7) */
   jogador2?: number
   subtipo?: TipoGol
+  /** dias de lesão (5) */
+  dias?: number
+}
+
+export interface Cobranca {
+  lado: 0 | 1
+  jogador: number
+  gol: boolean
 }
 
 export interface Partida {
@@ -116,7 +124,7 @@ export interface Partida {
   incidentes: { amarelos: number; vermelhos: number; lesoes: number }
   eventos: Evento[]
   /** disputa de pênaltis, se houve */
-  penaltis: { placar: [number, number]; vencedor: 0 | 1 } | null
+  penaltis: { placar: [number, number]; vencedor: 0 | 1; cobrancas: Cobranca[] } | null
 }
 
 const outro = (l: 0 | 1): 0 | 1 => (l === 0 ? 1 : 0)
@@ -190,7 +198,32 @@ export function iniciarPartida(mundo: Mundo, times: [number, number], escalacoes
     eventos: [],
     penaltis: null,
   }
+  sortearMinutosSub(p, rng)
   return p
+}
+
+/** Minutos das substituições da IA. Fonte: best/I.java:208-292 (hb) */
+function sortearMinutosSub(p: Partida, rng: Rng): void {
+  const faixa = (a: number, b: number) => Array.from({ length: b - a + 1 }, (_, i) => a + i)
+  const [m, v] = p.lados
+  const gs = rng.shuffle(faixa(19, 38))
+  const r = rng.int(100)
+  m.minTatica[0] = gs[0]!
+  m.minTatica[1] = gs[1]!
+  v.minTatica[0] = gs[2]!
+  v.minTatica[1] = gs[3]!
+  if (rng.int(100) > 30) m.minTatica[2] = gs[4]!
+  if (rng.int(100) > 30) v.minTatica[2] = gs[5]!
+  const pool = rng.shuffle(r > 90 ? faixa(5, 15) : r > 50 ? faixa(16, 35) : faixa(36, 42))
+  m.minCansaco[0] = pool[0]!
+  m.minCansaco[1] = pool[1]!
+  v.minCansaco[0] = pool[2]!
+  v.minCansaco[1] = pool[3]!
+  const gw = rng.shuffle(faixa(43, 47))
+  if (rng.int(100) > 20) m.minCansaco[2] = gw[0]!
+  if (rng.int(100) > 50) m.minCansaco[3] = gw[1]!
+  if (rng.int(100) > 20) v.minCansaco[2] = gw[2]!
+  if (rng.int(100) > 50) v.minCansaco[3] = gw[3]!
 }
 
 // ── Valor do jogador e setores ────────────────────────────────────────────
@@ -486,9 +519,262 @@ export function tick(p: Partida, tempo: 1 | 2, minuto: number, rng: Rng): void {
 /** Simula um tempo inteiro. Fonte: best/I.java:1036-1123 (V) */
 export function simularTempo(p: Partida, tempo: 1 | 2, rng: Rng): Partida {
   if (p.tempo !== tempo - 1) throw new Error(`tempo ${tempo} fora de ordem (último: ${p.tempo})`)
-  for (let minuto = 0; minuto < 45 + p.acrescimos[tempo - 1]!; minuto++) tick(p, tempo, minuto, rng)
+  if (tempo === 2) subsIA(p, 0, rng) // intervalo: m(2, 0)
+  for (let minuto = 0; minuto < 45 + p.acrescimos[tempo - 1]!; minuto++) {
+    incidentes(p, tempo, minuto, rng)
+    tick(p, tempo, minuto, rng)
+  }
   p.tempo = tempo
+  if (tempo === 2 && p.ctx.mataMata?.penaltis && confrontoEmpatado(p)) disputaPenaltis(p, rng)
   return p
+}
+
+// ── Cartões, lesões, energia ───────────────────────────────────────────────
+
+/** Perda por idade a cada 7 minutos. Fonte: best/F.java:349-361 (fq), :334 (aj) */
+function drenarEnergia(p: Partida, tempo: 1 | 2): void {
+  for (const l of [0, 1] as const)
+    for (const j of emCampo(p, l)) {
+      if (j.slot === 1 && tempo === 1) continue
+      j.energia -= j.idade <= 20 ? 1 : j.idade <= 25 ? 2 : j.idade <= 31 ? 3 : j.idade <= 36 ? 4 : 5
+      if (j.energia < 0) j.energia = 1
+    }
+}
+
+/** Faixas de slot das vítimas. Fonte: best/aq.java:843 (sS) */
+const FAIXAS_VITIMA: [number, number][] = [[10, 13], [14, 17], [3, 8], [2, 3], [8, 9], [19, 24], [1, 1]]
+
+/** Sorteio uniforme entre quem está numa faixa de slots. Fonte: best/I.java:956-970 */
+function sortearNaFaixa(lista: JogadorPartida[], [de, ate]: [number, number], rng: Rng): JogadorPartida | null {
+  const c = lista.filter((j) => j.slot >= de && j.slot <= ate)
+  return c.length ? c[rng.int(c.length)]! : null
+}
+
+const vitimaAmarelo = (r: number) => (r < 25 ? 0 : r < 40 ? 1 : r < 65 ? 2 : r < 73 ? 3 : r < 82 ? 4 : r < 85 ? 6 : 5) // I.java:938 (H), rand(100)
+const vitimaVermelho = (r: number) => (r === 0 ? 6 : r < 80 ? 0 : r < 110 ? 1 : r < 160 ? 2 : r < 170 ? 3 : r < 190 ? 4 : 5) // I.java:972 (J), rand(200)
+const vitimaLesao = (r: number) => (r === 0 ? 6 : r < 150 ? 0 : r < 250 ? 1 : r < 320 ? 2 : r < 360 ? 3 : r < 420 ? 4 : 5) // I.java:947 (I), rand(500)
+
+/** Cartões, lesão, energia e substituições da IA no minuto. Fonte: best/I.java:517-596 */
+function incidentes(p: Partida, tempo: 1 | 2, minuto: number, rng: Rng): void {
+  const l: 0 | 1 = rng.int(100) > 55 ? 0 : 1 // mandante punido em 44%
+  const lista = emCampo(p, l)
+  const marc = [30, 10, 0][p.lados[l].tatica.marcacao] ?? 30
+  const f = minuto < 15 ? 0 : minuto < 30 ? 1 : 2
+  if (minuto % 7 === 0) drenarEnergia(p, tempo)
+  let Y = (tempo === 1 ? [70, 40, 30] : [45, 40, 30])[f]! + marc
+  const R = (tempo === 1 ? [1200, 900, 800] : [800, 700, 550])[f]!
+  const J = (tempo === 1 ? [1500, 1000, 800] : [800, 600, 600])[f]!
+  const c = p.incidentes
+  if (c.amarelos > 5) Y *= 2 // o ramo "> 10 → 1000" do original nunca roda
+  if (c.vermelhos >= 2) Y = R * 2
+  if (c.lesoes >= 1) Y = J * 5
+  if (rng.int(Y) === 1) {
+    const v = sortearNaFaixa(lista, FAIXAS_VITIMA[vitimaAmarelo(rng.int(100))]!, rng)
+    c.amarelos++
+    if (v) registrar(p, ++v.amarelos === 2 ? 3 : 2, l, v, tempo, minuto, rng)
+  } else if (rng.int(R) === 1) {
+    const v = sortearNaFaixa(lista, FAIXAS_VITIMA[vitimaVermelho(rng.int(200))]!, rng)
+    if (v) registrar(p, 4, l, v, tempo, minuto, rng)
+    c.vermelhos++
+  } else if (rng.int(J) === 1) {
+    c.lesoes++
+    const v = sortearNaFaixa(lista, FAIXAS_VITIMA[vitimaLesao(rng.int(500))]!, rng)
+    if (v) registrar(p, 5, l, v, tempo, minuto, rng)
+  } else if (tempo === 2 && minuto >= 5) subsIA(p, minuto, rng)
+}
+
+/** Dias de lesão; ≥35 anos perde 5 de força. Fonte: best/F.java:2116-2162 (p) */
+export function duracaoLesao(j: Pick<JogadorPartida, 'idade' | 'energia' | 'forca'>, rng: Rng): number {
+  const a = rng.int(14)
+  const b = 5 + rng.int(20)
+  const e = j.energia < 10 ? 5 : j.energia < 50 ? 1 : 0
+  const i = j.idade
+  let dias = i <= 20 ? a : i <= 25 ? e + a + 1 : i <= 30 ? e + a + 2 : i <= 35 ? e + a + 3 : i <= 45 ? e + a + b : e + a + 10 + b
+  if (i >= 35 && (j.forca -= 5) < 0) j.forca = 1
+  const r = rng.int(100)
+  dias += r === 1 ? 70 : r < 4 ? 40 : r < 10 ? 20 : 0
+  return dias
+}
+
+/** Evento de cartão/lesão e reposição da IA. Fonte: best/I.java:646-707 */
+function registrar(p: Partida, tipo: 2 | 3 | 4 | 5, l: 0 | 1, j: JogadorPartida, tempo: 1 | 2, minuto: number, rng: Rng): void {
+  const ev: Evento = { tipo, tempo, minuto, lado: l, jogador: j.id }
+  p.eventos.push(ev)
+  if (tipo === 2 || tipo === 3) j.e.amarelos++
+  if (tipo === 4 || tipo === 3) j.e.vermelhos++
+  const lado = p.lados[l]
+  if (tipo === 3 || tipo === 4) {
+    remover(lado.emCampo, j.id)
+    if (j.slot <= 13 && !lado.humano && lado.subs > 0) repor(p, l, j, true, false, tempo, minuto, rng)
+  } else {
+    ev.dias = j.lesao = duracaoLesao(j, rng)
+    if (!lado.humano) {
+      remover(lado.emCampo, j.id)
+      if (lado.subs > 0) repor(p, l, j, false, true, tempo, minuto, rng)
+    }
+  }
+}
+
+function remover(lista: number[], id: number): void {
+  const i = lista.indexOf(id)
+  if (i >= 0) lista.splice(i, 1)
+}
+
+/**
+ * Reposição pelo banco. Expulsão: sai um atacante (ou meia; ou qualquer um se o expulso era o goleiro)
+ * e quem entra ocupa o slot do expulso. Fonte: best/I.java:709-750
+ */
+function repor(p: Partida, l: 0 | 1, j: JogadorPartida, expulsao: boolean, lesao: boolean, tempo: 1 | 2, minuto: number, rng: Rng): void {
+  const lista = emCampo(p, l)
+  const sai = expulsao
+    ? (sortearNaFaixa(lista, [18, 25], rng) ?? sortearNaFaixa(lista, [14, 17], rng) ?? (j.slot === 1 ? sortearNaFaixa(lista, [2, 25], rng) : null))
+    : j
+  if (!sai || j.slot < 0) return
+  const entra = escolherParaSlot(p.lados[l].banco.map((id) => p.jogadores[id]!), j.slot)
+  if (!entra) return
+  if (lesao && sai.posicao !== 0 && entra.posicao === 0) return
+  trocar(p, l, sai, entra, j.slot, tempo, minuto)
+}
+
+/** Fonte: best/I.java:752-785 */
+function trocar(p: Partida, l: 0 | 1, sai: JogadorPartida, entra: JogadorPartida, slot: number, tempo: 1 | 2, minuto: number): void {
+  const lado = p.lados[l]
+  entra.slot = slot > 0 ? slot : sai.slot
+  remover(lado.emCampo, sai.id)
+  lado.emCampo.push(entra.id)
+  lado.entraram.push(entra.id)
+  remover(lado.banco, entra.id)
+  lado.subs--
+  p.eventos.push({ tipo: 6, tempo, minuto, lado: l, jogador: sai.id, jogador2: entra.id })
+}
+
+// ── Substituições da IA ───────────────────────────────────────────────────
+
+/** l perde por pelo menos n gols. Fonte: best/I.java:883 (n) */
+const perdendo = (p: Partida, l: 0 | 1, n: number) => p.placar[outro(l)] - p.placar[l] >= n
+
+/** Fonte: best/I.java:808-838 (m). Só no 2º tempo; minuto 0 = intervalo. */
+function subsIA(p: Partida, minuto: number, rng: Rng): void {
+  const [m, v] = p.lados
+  let fez = false
+  if (!m.humano && m.subs > 0) {
+    if (minuto === 0 && perdendo(p, 0, 1)) {
+      if (rng.int(100) > 50) fez = trocaIA(p, 0, 'tatica', minuto, rng)
+    } else if (m.minTatica.includes(minuto)) {
+      if (perdendo(p, 0, 1) || p.placar[0] === p.placar[1]) fez = trocaIA(p, 0, 'tatica', minuto, rng)
+    } else if (m.minCansaco.includes(minuto)) fez = trocaIA(p, 0, 'cansaco', minuto, rng)
+  }
+  if (!fez && !v.humano && v.subs > 0) {
+    if (minuto === 0 && perdendo(p, 1, 2)) {
+      if (rng.int(100) > 50) trocaIA(p, 1, 'tatica', minuto, rng)
+    } else if (v.minTatica.includes(minuto)) {
+      if (perdendo(p, 1, 1)) trocaIA(p, 1, 'tatica', minuto, rng)
+    } else if (v.minCansaco.includes(minuto)) trocaIA(p, 1, 'cansaco', minuto, rng)
+  }
+}
+
+/**
+ * Fonte: best/I.java:840-877. Correção do port: a troca tática olha quem já entrou
+ * no próprio lado (o original sempre olhava o mandante).
+ */
+function trocaIA(p: Partida, l: 0 | 1, tipo: 'tatica' | 'cansaco', minuto: number, rng: Rng): boolean {
+  const lista = emCampo(p, l)
+  if (tipo === 'cansaco') {
+    let limiar = 60, inicio = 0
+    if (minuto > 40) {
+      limiar = 90
+      if (lista.length) inicio = rng.int(lista.length)
+    }
+    for (let i = inicio; i < lista.length; i++) {
+      const j = lista[i]!
+      if (j.slot !== 1 && j.energia < limiar) {
+        repor(p, l, j, false, false, 2, minuto, rng)
+        return true
+      }
+    }
+    return false
+  }
+  if (!lista.length) return false
+  const entraram = p.lados[l].entraram
+  let j = lista[rng.int(lista.length)]!
+  if (entraram.includes(j.id)) j = lista[rng.int(lista.length)]!
+  if (j.slot === 1 || entraram.includes(j.id)) return false
+  repor(p, l, j, false, false, 2, minuto, rng)
+  return true
+}
+
+// ── Comandos do técnico humano (intervalo) ─────────────────────────────────
+
+/** Substituição pedida pelo humano; `slot` opcional muda a posição de quem entra. */
+export function substituir(p: Partida, l: 0 | 1, saiId: number, entraId: number, slot?: number): void {
+  const lado = p.lados[l]
+  if (lado.subs <= 0) throw new Error('sem substituições')
+  if (!lado.emCampo.includes(saiId)) throw new Error('quem sai não está em campo')
+  if (!lado.banco.includes(entraId)) throw new Error('quem entra não está no banco')
+  if (slot !== undefined && (slot < 1 || slot > 25 || emCampo(p, l).some((j) => j.slot === slot && j.id !== saiId)))
+    throw new Error('slot inválido')
+  trocar(p, l, p.jogadores[saiId]!, p.jogadores[entraId]!, slot ?? 0, (p.tempo === 2 ? 2 : p.tempo + 1) as 1 | 2, 0)
+}
+
+export function mudarTatica(p: Partida, l: 0 | 1, tatica: Partial<Pick<Tatica, 'marcacao' | 'estilo' | 'jogada'>>): void {
+  Object.assign(p.lados[l].tatica, tatica)
+}
+
+// ── Pênaltis ──────────────────────────────────────────────────────────────
+
+/** Ainda empatado no confronto (inclui ida e gol fora). Fonte: best/I.java:1125-1180 (hk) */
+export function confrontoEmpatado(p: Partida): boolean {
+  const mm = p.ctx.mataMata
+  if (!mm) return false
+  const [g0, g1] = p.placar
+  let v0 = 0, v1 = 0
+  if (g0 > g1) v0++
+  else if (g1 > g0) v1++
+  let t0 = g0, t1 = g1
+  if (mm.ida) {
+    const [i0, i1] = mm.ida
+    if (i0 > i1) v0++
+    else if (i1 > i0) v1++
+    t0 += i0
+    t1 += i1
+  }
+  if (v0 !== v1) return false
+  if (t0 !== t1) return false
+  if (mm.ida && mm.golFora && mm.ida[0] !== g1) return false
+  return true
+}
+
+/** Fonte: best/I.java:1107-1119 (só IA) e a/bg_0.java:165-264 (com humano: cobrança a cobrança, 70%) */
+function disputaPenaltis(p: Partida, rng: Rng): void {
+  if (!algumHumano(p)) {
+    const a = rng.int(7) + 2
+    const b = rng.int(7) + 2
+    p.penaltis = a >= b ? { placar: [a, a - 1], vencedor: 0, cobrancas: [] } : { placar: [a, a + 1], vencedor: 1, cobrancas: [] }
+    return
+  }
+  // ponytail: ordem dos batedores = posição desc, força desc (o comparador abg do original é inconsistente)
+  const fila = ([0, 1] as const).map((l) =>
+    emCampo(p, l).sort((a, b) => b.posicao - a.posicao || b.forca - a.forca || b.energia - a.energia),
+  )
+  const gols: [number, number] = [0, 0]
+  const batidas: [number, number] = [0, 0]
+  const cobrancas: Cobranca[] = []
+  for (;;) {
+    for (const l of [0, 1] as const) {
+      const f = fila[l]!
+      const j = f[batidas[l] % Math.max(f.length, 1)]
+      const gol = rng.int(100) + 1 <= 70
+      batidas[l]++
+      if (gol) gols[l]++
+      if (j) cobrancas.push({ lado: l, jogador: j.id, gol })
+      // melhor de 5 com fim antecipado; depois, morte súbita a cada par
+      const [b0, b1] = batidas
+      if (b0 <= 5 && b1 <= 5) {
+        if (gols[0] > gols[1] + (5 - b1)) return void (p.penaltis = { placar: gols, vencedor: 0, cobrancas })
+        if (gols[1] > gols[0] + (5 - b0)) return void (p.penaltis = { placar: gols, vencedor: 1, cobrancas })
+      } else if (l === 1 && gols[0] !== gols[1]) return void (p.penaltis = { placar: gols, vencedor: gols[0] > gols[1] ? 0 : 1, cobrancas })
+    }
+  }
 }
 
 /** Posse em % (aq.A). */

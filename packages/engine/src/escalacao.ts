@@ -38,7 +38,7 @@ export function foraDePosicao(posicao: number, slot: number): boolean {
   return slot <= 0 || (slot <= 25 && SLOTS[slot]![0] !== posicao)
 }
 
-type Escalavel = Pick<JogadorM, 'posicao' | 'lado' | 'ex'>
+type Escalavel = { posicao: number; lado: number; ex: number }
 
 /**
  * Melhor jogador da lista (já ordenada) para o slot. Os valores de lado/ex sobrescritos nos
