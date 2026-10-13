@@ -82,6 +82,8 @@ Contrato: tabelas (de `FaseLiga.linhas`), agenda, história, times e técnicos, 
 
 ## U6 — Gestão
 Contrato: finanças (`financas`), estádio, ingresso, obras (`orcamentoObra`), empréstimo.
+**Entregue:** base comum `comandos.tsx` (`useComandos`: manda o pedido pelo servidor, mostra os pendentes da rodada com desfazer, erro do motor; só no planejamento) e `pendentes.ts`. `financas` (caixa, folha, empréstimo com limite e juros, extrato da temporada; pegar/devolver 500 mil) e `estadio` (setores com teto, obra com orçamento ao vivo, ingressos automáticos ou por setor com o padrão da liga). Motor: `limiteEmprestimo` e `PARCELA_EMPRESTIMO` exportados.
 
 ## U7 — Mercado
 Contrato: procura com chips de filtro, proposta com prévia de aceite (`precoVendaIA`, `aceitaIr`) e aviso de disputa com amigo, leilões e lance, juniores, treino, emprestados, renovação. Lista à venda = `jogadores.filter(j => j.aVenda)`.
+**Entregue:** `procura` (chips de posição, força, idade, preço, à venda, empréstimo; ficha com proposta e prévia do que a IA faria — `aceitaIr`/`precoVendaIA`; jogador de amigo vai para a caixa dele), `leiloes` (lance por lote), `propostas` (recebidas de amigos com aceitar/recusar, enviadas esperando, pedidos da rodada e o resultado da última com "aceitar contraproposta"), `juniores` (promover/dispensar), `treino` e, na ficha do seu jogador no elenco, "Negociar" (lista, vender agora, empréstimo, devolver/comprar emprestado, renovação, aposentadoria). Disputa com amigo: o motor resolve compras da IA pela maior oferta; a tela avisa (as propostas dos outros são secretas). E2E `e2e/mercado.e2e.ts`.
