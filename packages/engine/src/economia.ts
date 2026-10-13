@@ -14,7 +14,7 @@ export interface Financas {
   /** juros do mês: 3% do saldo (C.dX) */
   juros: number
   /** extrato da temporada (C: dN, dM, dL, dO, dP / dR, dT, dQ, dV, dS, dU) */
-  receitas: { bilheteria: number; premios: number; vendas: number; patrocinio: number; juniores: number }
+  receitas: { bilheteria: number; premios: number; vendas: number; patrocinio: number; multas: number }
   despesas: { compras: number; juros: number; obras: number; comissoes: number; salarios: number; outras: number }
   /** obra em andamento: lugares a mais por setor e dia em que termina */
   obra: { setores: [number, number, number, number]; fim: number } | null
@@ -108,7 +108,7 @@ export function abrirCaixa(mundo: Mundo, timeId: number): Financas {
     caixa,
     emprestimo: 0,
     juros: 0,
-    receitas: { bilheteria: 0, premios: 0, vendas: 0, patrocinio: PATROCINIO[div(t)]!, juniores: 0 },
+    receitas: { bilheteria: 0, premios: 0, vendas: 0, patrocinio: PATROCINIO[div(t)]!, multas: 0 },
     despesas: { compras: 0, juros: 0, obras: 0, comissoes: 0, salarios: 0, outras: 0 },
     obra: null,
   }

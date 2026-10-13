@@ -4,6 +4,7 @@ import { ANO_INICIAL, criarCalendario, primeiroDomingo, type Calendario } from '
 import { criarCompeticoesBR, type ColocacaoEstadual } from './brasil.ts'
 import type { Competicao } from './competicoes.ts'
 import { atualizarValores, type Financas } from './economia.ts'
+import { listarIA, type Emprestimo, type Leilao, type Transferencia } from './mercado.ts'
 import { derivar, type Rng } from './rng.ts'
 
 export const BRA = 29
@@ -48,6 +49,17 @@ export interface JogadorM extends Jogador {
   salario: number
   /** F.eJ: dia em que o contrato acaba */
   contratoAte: number
+  /** F.eY: na lista de transferências, pelo `preco` (F.ev) */
+  aVenda: boolean
+  preco: number
+  /** F.eW: disponível para empréstimo */
+  paraEmprestimo: boolean
+  /** F.eX: está emprestado (o dono está em Mundo.emprestimos) */
+  emprestado: boolean
+  /** F.eZ: time de onde veio (a IA não o recompra); -1 = nenhum */
+  timeAnterior: number
+  /** F.fd: progresso do junior, 0..100 (sobe na evolução semanal, W5) */
+  progresso: number
 }
 
 export interface Tatica {
@@ -111,6 +123,14 @@ export interface Mundo {
   opcoes: OpcoesJogo
   times: TimeM[]
   jogadores: JogadorM[]
+  /** continente de cada país (ac.gg()), por índice de país */
+  continentes: number[]
+  /** empréstimos em curso (components.t_0) */
+  emprestimos: Emprestimo[]
+  /** histórico de transferências (best.ap) */
+  transferencias: Transferencia[]
+  /** leilões abertos depois da rodada, resolvidos no próximo avancarDia (best.N, a/dz_0) */
+  leiloes: Leilao[]
 }
 
 /** F.fG(): subperfil por posição e características. Fonte: best/F.java:513-525 */
@@ -271,7 +291,7 @@ export function setoresEstadio(capacidade: number): Estadio['setores'] {
 }
 
 /** Batedor de faltas padrão. Fonte: best/ah.java:1453 (kA; no construtor a força ainda é 0, vale a ordem do elenco) */
-function batedorFalta(js: JogadorM[]): number | null {
+export function batedorFalta(js: JogadorM[]): number | null {
   return (
     js.find((j) => j.titular && j.cr1 === 9) ??
     js.find((j) => j.titular && j.posicao !== 0) ??
@@ -290,7 +310,10 @@ export function novoJogo(base: Base, opcoes: OpcoesJogo, seed: string): Mundo {
   const rngForca = derivar(seed, 'novoJogo:forca')
   const calendario = criarCalendario(ANO_INICIAL)
   const dia = calendario.inicio + primeiroDomingo(calendario.inicio)
-  const mundo: Mundo = { seed, temporada: 1, dia, diaEventos: dia - 1, calendario, competicoes: [], colocacoesEstaduais: [], opcoes, times: [], jogadores: [] }
+  const mundo: Mundo = {
+    seed, temporada: 1, dia, diaEventos: dia - 1, calendario, competicoes: [], colocacoesEstaduais: [], opcoes, times: [], jogadores: [],
+    continentes: base.paises.map((p) => p.continente), emprestimos: [], transferencias: [], leiloes: [],
+  }
 
   // p_0.java:59 ordena por Nivel desc; p_0.java:110-128: país sem liga carrega só 15 times
   // ponytail: empate de Nivel segue a ordem do base.json (o original usa a ordem dos arquivos)
@@ -320,6 +343,12 @@ export function novoJogo(base: Base, opcoes: OpcoesJogo, seed: string): Mundo {
         valor: 0,
         salario: 0,
         contratoAte: 0,
+        aVenda: false,
+        preco: 0,
+        paraEmprestimo: false,
+        emprestado: false,
+        timeAnterior: -1,
+        progresso: 0,
       }
       mundo.jogadores.push(jm)
       return jm.id
@@ -357,14 +386,14 @@ export function novoJogo(base: Base, opcoes: OpcoesJogo, seed: string): Mundo {
     j.forca = forca
     if (opcoes.habilidadeIndividual) j.habilidades = habilidadesIniciais(j, n8, n6, rngForca)
   }
-  // ah.kp() (ah.java:1155, chamado no aU) embaralha o elenco: é o que desempata a escalação da IA
-  // entre jogadores de mesma força. A lista de transferências do kp() fica para a W4.
-  const rngElenco = derivar(seed, 'novoJogo:elenco')
-  for (const t of mundo.times) rngElenco.shuffle(t.jogadores)
   // F.fI (F.java:674-680): contrato de 210 a 239 dias, depois valor e salário
   const rngContrato = derivar(seed, 'novoJogo:contrato')
   for (const j of ordem) j.contratoAte = mundo.dia + rngContrato.int(30) + 210
-  atualizarValores(mundo, (pais) => base.paises[pais]?.continente ?? -1)
+  atualizarValores(mundo, (pais) => mundo.continentes[pais] ?? -1)
+  // ah.kp() (f_0.java:2022, depois do fI): embaralha o elenco, o que desempata a escalação da IA
+  // entre jogadores de mesma força, e põe as sobras na lista de transferências
+  const rngElenco = derivar(seed, 'novoJogo:elenco')
+  for (const t of mundo.times) listarIA(mundo, t, rngElenco)
   mundo.competicoes = criarCompeticoesBR(mundo, base, derivar(seed, 'temporada:1:competicoes'))
   return mundo
 }
