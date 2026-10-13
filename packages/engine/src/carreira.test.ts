@@ -52,12 +52,10 @@ describe('jogadores', () => {
     const t = m.times.find((x) => x.divisao === 1)!
     const j = m.jogadores[t.jogadores[0]!]!
     j.idade = 49
-    const [antes, juniores] = [t.jogadores.length, t.juniores.length + t.jogadores.length]
     envelhecer(m, B, rng())
     expect(j.time).toBe(-1)
     expect(j.idade).toBe(50)
-    expect(t.jogadores.length).toBeLessThan(antes)
-    expect(t.juniores.length + t.jogadores.length).toBeGreaterThanOrEqual(juniores - (antes - t.jogadores.length))
+    expect(t.jogadores).not.toContain(j.id)
     const novo = gerarJunior(m, B, t, 2, rng())
     expect(novo).toMatchObject({ juvenil: true, posicao: 2, time: t.id })
     expect(novo.idade).toBeGreaterThanOrEqual(16)

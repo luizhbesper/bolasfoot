@@ -265,14 +265,13 @@ function reporPosicao(m: Mundo, base: Base | null, t: TimeM, posicao: number, fo
     }
   }
   // sem vendedor: um junior novo da posição, promovido na hora (F.a + k_0.a)
-  // ponytail: proporCompra ainda não recebe a Base (fica sem o junior até os comandos da W8)
   if (base) promoverJunior(m, gerarJunior(m, base, t, posicao, rng).id, rng)
 }
 
 /** Depois de vender ao humano, a IA repõe as posições abaixo do mínimo (com a posição do vendido, como no original). Fonte: best/l.java:697 */
-function reporDepoisDeVender(m: Mundo, t: TimeM, vendido: JogadorM, rng: Rng): void {
+function reporDepoisDeVender(m: Mundo, base: Base | null, t: TimeM, vendido: JogadorM, rng: Rng): void {
   const n = porPosicao(m, t)
-  for (let p = 0; p <= 4; p++) if (n[p]! < [2, 3, 3, 5, 3][p]!) reporPosicao(m, null, t, vendido.posicao, vendido.forca, rng)
+  for (let p = 0; p <= 4; p++) if (n[p]! < [2, 3, 3, 5, 3][p]!) reporPosicao(m, base, t, vendido.posicao, vendido.forca, rng)
 }
 
 /** Completa as posições abaixo do mínimo. Fonte: best/ah.java:1245 (ku) */
@@ -289,7 +288,7 @@ function completarElenco(m: Mundo, base: Base, t: TimeM, rng: Rng): void {
  * salário dobrado), chame de novo com `aceitar` para fechar nos termos dela. Jogador listado com oferta ≥ preço pedido
  * sai pelo preço pedido. Fonte: a/iA.java:249 (sA), a/cz_0.java:93 (oL), best/l.java:567 (b), :578 (a(F, ah, int))
  */
-export function proporCompra(m: Mundo, compradorId: number, jogadorId: number, oferta: number, rng: Rng, aceitar = false): Proposta {
+export function proporCompra(m: Mundo, compradorId: number, jogadorId: number, oferta: number, rng: Rng, aceitar = false, base: Base | null = null): Proposta {
   const j = jog(m, jogadorId)
   const comp = m.times[compradorId]!
   const vend = m.times[j.time]
@@ -297,7 +296,7 @@ export function proporCompra(m: Mundo, compradorId: number, jogadorId: number, o
   if (!vend) return recusa('jogador sem time')
   if (!comp.financas) return recusa('time sem caixa')
   if (vend === comp) return recusa('jogador do seu time')
-  // ponytail: proposta entre humanos precisa da resposta do outro técnico (comando da W8)
+  // entre humanos, a proposta vai para a caixa do dono (rodada.ts)
   if (vend.humano) return recusa('o dono é humano')
   if (!Number.isInteger(oferta) || oferta <= 0) return recusa('valor inválido')
   if (comp.financas.caixa < oferta) return recusa('valor maior que o caixa')
@@ -310,7 +309,7 @@ export function proporCompra(m: Mundo, compradorId: number, jogadorId: number, o
     if (j.juvenil) transferirJunior(m, j, comp.id, valor)
     else {
       transferir(m, j, comp.id, valor)
-      reporDepoisDeVender(m, vend, j, rng)
+      reporDepoisDeVender(m, base, vend, j, rng)
     }
     return { tipo: 'fechada', valor }
   }

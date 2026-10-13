@@ -2,10 +2,10 @@
 // Fontes: f/s.java (liga e grupos), f/z.java + f/g_0.java (mata-mata), best/t.java:746 (tabela de jogos),
 // f/b_0.java (divisão nacional), best/Z.java:112 (Ar: divisões), best/f_0.java:1378-1694 (ap/at/ax: o dia).
 import { datas, domingo, TIPO } from './calendario.ts'
-import { escalarIA } from './escalacao.ts'
+import { disponivel, escalarIA, escolherParaSlot, porForca, type Escalacao } from './escalacao.ts'
 import { eventoCD, proximaRodadaCopa, registrarColocacoes } from './brasil.ts'
 import type { Mundo } from './mundo.ts'
-import { iniciarPartida, simularTempo, type ContextoPartida } from './partida.ts'
+import { iniciarPartida, simularTempo, type ContextoPartida, type Partida } from './partida.ts'
 import { eventosEconomicos, premioFase, receber } from './economia.ts'
 import { aplicarPosJogo, publico, recuperarEnergia } from './posjogo.ts'
 import { mercadoAntesDosJogos, mercadoDepoisDosJogos } from './mercado.ts'
@@ -391,23 +391,86 @@ export function proximoDiaDeJogo(mundo: Mundo): number | null {
   return min
 }
 
+/** Uma partida do dia em andamento: onde está o jogo (competição, fase, índice) e o estado da partida. */
+export interface PartidaDoDia {
+  comp: string
+  fase: number
+  jogo: number
+  rotulo: string
+  partida: Partida
+}
+
+/** O dia entre o 1º e o 2º tempo (serializável: o intervalo do modo live). */
+export interface DiaEmJogo {
+  dia: number
+  partidas: PartidaDoDia[]
+}
+
 /**
- * Joga o dia: escala a IA, simula, aplica o pós-jogo, atualiza tabelas e fases, recupera energia
- * e vai para o próximo dia de jogo. Devolve esse dia (ou null no fim da temporada).
- * Fonte: best/f_0.java:1378 (ap), :1486-1530 (as), :1531 (at), :1635 (ax)
+ * Escalação de quem joga: a IA escolhe (ah.a); o humano usa a que salvou, trocando quem não pode jogar pelo melhor
+ * disponível para o slot. Sem escalação salva, a IA escala por ele.
  */
-export function avancarDia(mundo: Mundo, seed = mundo.seed): number | null {
+function escalar(mundo: Mundo, timeId: number, comp: string, rng: Rng): Escalacao {
+  const t = mundo.times[timeId]!
+  if (!t.humano || !t.escalacao) return escalarIA(mundo, timeId, comp, rng)
+  const ok = (id: number) => t.jogadores.includes(id) && disponivel(mundo.jogadores[id]!, comp, mundo.dia)
+  const salvos = new Set(t.escalacao.titulares.map((x) => x.id).filter(ok))
+  const resto = t.jogadores.filter((id) => ok(id) && !salvos.has(id)).map((id) => mundo.jogadores[id]!).sort(porForca)
+  const titulares: Escalacao['titulares'] = []
+  for (const { id, slot } of t.escalacao.titulares) {
+    if (salvos.has(id)) titulares.push({ id, slot })
+    else {
+      const j = escolherParaSlot(resto, slot)
+      if (!j) continue
+      titulares.push({ id: j.id, slot })
+      resto.splice(resto.indexOf(j), 1)
+    }
+  }
+  const banco = t.escalacao.banco.filter((id) => ok(id) && resto.some((j) => j.id === id))
+  return { titulares, banco, tatica: { ...t.tatica } }
+}
+
+/** Fase e jogo de uma partida do dia, para achar o Jogo de volta. */
+function jogoDe(mundo: Mundo, x: Pick<PartidaDoDia, 'comp' | 'fase' | 'jogo'>): { comp: Competicao; fase: Fase; jogo: Jogo } {
+  const comp = mundo.competicoes.find((c) => c.id === x.comp)!
+  const fase = comp.fases[x.fase]!
+  const jogo = (fase.tipo === 'liga' ? fase.jogos : fase.rodadas.at(-1)!.jogos)[x.jogo]!
+  return { comp, fase, jogo }
+}
+
+/**
+ * Começa o dia: fecha os leilões, escala e simula o 1º tempo de todos os jogos. `pilotoAutomatico`: o humano joga
+ * com as regras da IA (substituições e pênaltis), como no modo sem intervalo. Fonte: best/f_0.java:1378 (ap)
+ */
+export function comecarDia(mundo: Mundo, seed = mundo.seed, pilotoAutomatico = true): DiaEmJogo {
   const hoje = mundo.dia
   mercadoAntesDosJogos(mundo, derivar(seed, `mercado:${hoje}:antes`))
-  const jogos = jogosDoDia(mundo)
-  const porFase = new Map<Fase, Jogo[]>()
-  for (const { comp, fase, jogo, ctx } of jogos) {
+  const partidas: PartidaDoDia[] = []
+  for (const { comp, fase, jogo, ctx } of jogosDoDia(mundo)) {
     const rotulo = `partida:${comp.id}:${hoje}:${jogo.casa}`
     const rng = derivar(seed, rotulo)
-    // ponytail: humano também escala pela IA até os comandos da W8
-    const esc = [escalarIA(mundo, jogo.casa, comp.id, rng), escalarIA(mundo, jogo.fora, comp.id, rng)] as const
+    // f_0.ay + ah.kh: o humano escala (ou a IA por ele); a IA escala os outros
+    const esc = [escalar(mundo, jogo.casa, comp.id, rng), escalar(mundo, jogo.fora, comp.id, rng)] as const
     const p = iniciarPartida(mundo, [jogo.casa, jogo.fora], [esc[0], esc[1]], ctx, rng)
+    if (pilotoAutomatico) for (const l of p.lados) l.humano = false
     simularTempo(p, 1, derivar(seed, `${rotulo}:1T`))
+    const lista = fase.tipo === 'liga' ? fase.jogos : fase.rodadas.at(-1)!.jogos
+    partidas.push({ comp: comp.id, fase: comp.fases.indexOf(fase), jogo: lista.indexOf(jogo), rotulo, partida: p })
+  }
+  return { dia: hoje, partidas }
+}
+
+/**
+ * Termina o dia: 2º tempo, pós-jogo, tabelas e fases, recuperação, eventos de dia e o próximo dia de jogo.
+ * Devolve esse dia (ou null no fim da temporada). Fonte: best/f_0.java:1486-1530 (as), :1531 (at), :1635 (ax)
+ */
+export function terminarDia(mundo: Mundo, emJogo: DiaEmJogo, seed = mundo.seed): number | null {
+  const hoje = emJogo.dia
+  const porFase = new Map<Fase, Jogo[]>()
+  for (const x of emJogo.partidas) {
+    const { comp, fase, jogo } = jogoDe(mundo, x)
+    const { rotulo, partida: p } = x
+    const ctx = p.ctx
     simularTempo(p, 2, derivar(seed, `${rotulo}:2T`))
     aplicarPosJogo(mundo, p, derivar(seed, `${rotulo}:pos`))
     // I.hf: bilheteria do mandante humano (nunca no Mundial nem em seleções)
@@ -422,12 +485,13 @@ export function avancarDia(mundo: Mundo, seed = mundo.seed): number | null {
     posJogoTecnicos(mundo, comp, jogo, ctx.mataMata !== undefined)
     porFase.set(fase, [...(porFase.get(fase) ?? []), jogo])
   }
+  const jogos = emJogo.partidas.map((x) => jogoDe(mundo, x).comp)
   if (jogos.length > 0) {
     // f_0.as(): recuperação de todos; juniores voltam a 100
     recuperarEnergia(mundo)
     for (const j of mundo.jogadores) if (j.juvenil) j.energia = 100
     // f_0.ax: empréstimos, propostas da IA e leilões
-    mercadoDepoisDosJogos(mundo, jogos.map((x) => x.comp.tipo), derivar(seed, `mercado:${hoje}`))
+    mercadoDepoisDosJogos(mundo, jogos.map((c) => c.tipo), derivar(seed, `mercado:${hoje}`))
   }
   const rngFase = derivar(seed, `fases:${hoje}`)
   for (const comp of mundo.competicoes) {
@@ -462,3 +526,6 @@ export function avancarDia(mundo: Mundo, seed = mundo.seed): number | null {
   if (prox !== null) mundo.dia = prox
   return prox
 }
+
+/** O dia inteiro, sem intervalo. */
+export const avancarDia = (mundo: Mundo, seed = mundo.seed): number | null => terminarDia(mundo, comecarDia(mundo, seed), seed)
