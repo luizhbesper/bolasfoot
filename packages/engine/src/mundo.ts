@@ -52,13 +52,14 @@ export interface Tatica {
 }
 
 export interface Estadio {
+  nome: string
   /** geral, arquibancada, cadeira, camarote (v_0.N) */
   setores: [number, number, number, number]
   precoAuto: boolean
   precos: [number, number, number, number] | null
 }
 
-export interface TimeM extends Omit<Time, 'jogadores' | 'juniores'> {
+export interface TimeM extends Omit<Time, 'jogadores' | 'juniores' | 'estadio'> {
   id: number
   /** 0 = fora das ligas; 1..3 = Série A..C (Série D vem dos estaduais, W2) */
   divisao: number
@@ -116,7 +117,8 @@ type JogadorForca = Pick<JogadorM, 'titular' | 'estrela' | 'craque' | 'juvenil'>
 /** Força inicial. Fonte: best/F.java:538-682 (fI). Contrato/valor/salário ficam para a W3. */
 export function forcaInicial(j: JogadorForca, time: TimeForca, paisNivel: number, rng: Rng): { forca: number; n8: number; n6: number } {
   const lvl = time.nivel
-  let [f, n6] = baseForca(time)
+  const [b0, n6] = baseForca(time)
+  let f = b0
   const n7 = lvl <= 15 ? lvl : (NIVEL_REMAP[lvl] ?? lvl)
   const n8 = n7 > 4 ? n7 - 4 : n7
   f = n7 + f + rng.int(3)
@@ -295,7 +297,7 @@ export function novoJogo(base: Base, opcoes: OpcoesJogo, seed: string): Mundo {
       mundo.jogadores.push(jm)
       return jm.id
     }
-    const { jogadores, juniores, ...resto } = t
+    const { jogadores, juniores, estadio, ...resto } = t
     const tm: TimeM = {
       ...resto,
       nivel: t.nivel >= 1 && t.nivel <= 25 ? t.nivel : 10, // ah.java:356
@@ -308,7 +310,7 @@ export function novoJogo(base: Base, opcoes: OpcoesJogo, seed: string): Mundo {
       juniores: juniores.map((j) => novo(j, true)),
       tatica: { formacao: 4, estilo: 0, marcacao: 0, jogada: 0 },
       batedores: { falta: null, escanteio: null },
-      estadio: { setores: setoresEstadio(t.capacidade), precoAuto: true, precos: null },
+      estadio: { nome: estadio, setores: setoresEstadio(t.capacidade), precoAuto: true, precos: null },
     }
     tm.batedores.falta = batedorFalta(tm.jogadores.map((i) => mundo.jogadores[i]!))
     mundo.times.push(tm)
