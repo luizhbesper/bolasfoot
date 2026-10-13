@@ -4,7 +4,7 @@ import baseJson from '@bolasfoot/data/base.json' with { type: 'json' }
 import { escalarIA, escolherParaSlot, FORMACOES } from './escalacao.ts'
 import { mundoSintetico } from './fixtures.ts'
 import { novoJogo } from './mundo.ts'
-import { ataque, defesa, goleiro, iniciarPartida, meio, simularTempo, valorJogo, type ContextoPartida, type Partida } from './partida.ts'
+import { ataque, confrontoEmpatado, defesa, duracaoLesao, goleiro, iniciarPartida, meio, simularTempo, substituir, valorJogo, type ContextoPartida, type Partida } from './partida.ts'
 import { criarRng, derivar, Rng } from './rng.ts'
 
 const liga: ContextoPartida = { competicao: 'serieA', tipoComp: 1, temporada: 1 }
@@ -83,4 +83,91 @@ test('determinismo e segmentação no intervalo', () => {
   expect(retomado).toEqual(continuo)
   expect(continuo.lados[0].chutes + continuo.lados[1].chutes).toBeGreaterThan(0)
   expect(() => simularTempo(continuo, 2, r1)).toThrow()
+})
+
+// ── M4 ──
+
+function rodada(n: number, ctx: ContextoPartida = liga, seed = 'm4') {
+  const base = baseJson as Base
+  const m = novoJogo(base, { habilidadeIndividual: false }, seed)
+  const serieA = m.times.filter((t) => t.divisao === 1)
+  const jogos: Partida[] = []
+  for (let i = 0; i < n; i++) {
+    const rng = derivar(seed, `pre${i}`)
+    const a = serieA[rng.int(20)]!
+    let b = serieA[rng.int(20)]!
+    if (b === a) b = serieA[(a.id + 1) % 20] ?? serieA[0]!
+    const p = iniciarPartida(m, [a.id, b.id], [escalarIA(m, a.id, ctx.competicao, rng), escalarIA(m, b.id, ctx.competicao, rng)], ctx, rng)
+    simularTempo(p, 1, derivar(seed, `${i}:1T`))
+    simularTempo(p, 2, derivar(seed, `${i}:2T`))
+    jogos.push(p)
+  }
+  return jogos
+}
+
+test('incidentes e tipos de gol em 3000 jogos só da IA', () => {
+  const jogos = rodada(3000)
+  const ev = jogos.flatMap((p) => p.eventos)
+  const conta = (f: (e: (typeof ev)[number]) => boolean) => ev.filter(f).length / jogos.length
+  expect(conta((e) => e.tipo === 2)).toBeGreaterThan(1)
+  expect(conta((e) => e.tipo === 2)).toBeLessThan(6)
+  expect(conta((e) => e.tipo === 3 || e.tipo === 4)).toBeLessThan(0.6)
+  expect(conta((e) => e.tipo === 5)).toBeGreaterThan(0.05)
+  expect(conta((e) => e.tipo === 5)).toBeLessThan(1.5)
+  expect(conta((e) => e.tipo === 6)).toBeGreaterThan(1)
+  expect(jogos.every((p) => p.lados.every((l) => l.subs >= 0 && l.emCampo.length <= 11))).toBe(true)
+  const golsEv = ev.filter((e) => e.tipo === 1)
+  const frac = (t: number) => golsEv.filter((e) => e.subtipo === t).length / golsEv.length
+  expect(frac(1)).toBeGreaterThan(0.88)
+  expect(frac(3)).toBeGreaterThan(0.04)
+  expect(frac(3)).toBeLessThan(0.06)
+  expect(frac(4)).toBeGreaterThan(0.02)
+  expect(frac(4)).toBeLessThan(0.04)
+  expect(frac(2)).toBeLessThan(0.016)
+  expect(frac(5)).toBeLessThan(0.009)
+  // placar = gols nos eventos
+  for (const p of jogos) expect(p.placar[0] + p.placar[1]).toBe(p.eventos.filter((e) => e.tipo === 1).length)
+})
+
+test('pênaltis só da IA: mandante vence ≈57% (28/49)', () => {
+  const jogos = rodada(1500, { ...liga, tipoComp: 2, mataMata: { penaltis: true, golFora: false } }, 'pen')
+  const disputas = jogos.filter((p) => p.penaltis)
+  expect(disputas.length).toBe(jogos.filter((p) => p.placar[0] === p.placar[1]).length)
+  const casa = disputas.filter((p) => p.penaltis!.vencedor === 0).length / disputas.length
+  expect(casa).toBeGreaterThan(0.5)
+  expect(casa).toBeLessThan(0.64)
+})
+
+test('confronto de ida e volta com gol fora', () => {
+  const p = partidaSintetica({ ...liga, mataMata: { ida: [1, 1], golFora: true, penaltis: true } }, 'cf')
+  p.placar = [1, 1]
+  expect(confrontoEmpatado(p)).toBe(true)
+  p.placar = [2, 2] // mandante de hoje fez 1 fora na ida; visitante faz 2 fora hoje
+  expect(confrontoEmpatado(p)).toBe(false)
+  p.placar = [0, 1]
+  p.ctx.mataMata!.ida = [1, 0]
+  expect(confrontoEmpatado(p)).toBe(true) // cada um venceu um jogo, agregado 1×1, gols fora 1×1
+})
+
+test('duração da lesão (F.java:2116)', () => {
+  const zeros = { int: () => 0 } as unknown as Rng
+  expect(duracaoLesao({ idade: 19, energia: 5, forca: 50 }, zeros)).toBe(40) // r==0 cai no +40
+  const j = { idade: 36, energia: 40, forca: 3 }
+  const max = { int: (n: number) => n - 1 } as Rng
+  expect(duracaoLesao(j, max)).toBe(1 + 13 + 5 + 19) // ≤45: e+a+5+rand(20); r=99 → nada
+  expect(j.forca).toBe(1)
+})
+
+test('substituição manual: válida e inválidas', () => {
+  const p = partidaSintetica(liga, 'sub')
+  simularTempo(p, 1, derivar('sub', '1T'))
+  const sai = p.lados[0].emCampo[1]!
+  const entra = p.lados[0].banco[0]!
+  const antes = p.lados[0].subs
+  expect(() => substituir(p, 0, entra, sai)).toThrow()
+  substituir(p, 0, sai, entra)
+  expect(p.lados[0].emCampo).toContain(entra)
+  expect(p.lados[0].subs).toBe(antes - 1)
+  expect(() => substituir(p, 0, sai, p.lados[0].banco[0]!)).toThrow()
+  expect(p.eventos.at(-1)).toMatchObject({ tipo: 6, tempo: 2, minuto: 0, jogador: sai, jogador2: entra })
 })
