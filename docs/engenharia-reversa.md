@@ -224,32 +224,141 @@ senão se 2ºT e minuto≥5: substituições da IA
 | 14 | Liga das Nações |
 | 15 | torneio de pré-temporada |
 
-### Calendário
+### Calendário (`best/a.java`, port em `packages/engine/src/calendario.ts`)
 
-- O ano tem um objeto por dia. Uma sequência fixa de chamadas `(diaDaSemana, tipo)` aloca os jogos: domingo é liga, quarta e quinta são copas.
-- Eventos de dia:
+- **Dia:** `best.a` é um objeto por data. Guarda `Calendar p`, o tipo `w` (0 = livre; 100/200 = amistoso de clube/seleção), o flag de jogado `v`, os jogos `s`, as fases `t`, as competições `u` e duas listas de eventos: `q` (antes dos jogos) e `r` (depois).
+- **Ano:** `f_0.r(ano)` (`f_0.java:1929`) cria um dia de 1/1 a 31/12. O dia corrente (`af`) começa no 1º domingo de janeiro. Ano-base `rM = 2022`, com setter `I(ano)` (`a/hU.java:199`). A temporada n usa `rM + n − 1` (`f_0.java:1215`), então o dia da semana de cada data muda de ano para ano.
+- **Alocação:** `a.b(dow, tipo)` (`a.java:222`) parte do último dia que já tem tipo (o laço não olha o índice 0) ou do dia corrente, o que vier depois. Dali pega o 1º dia livre com aquele dia da semana (1 = domingo, como no Java). A sequência fixa é `a.g()` (`a.java:249-499`, 272 chamadas). Em 2022 e 2026 o port bate data a data com o `a.u()` do original (gabarito: `tools/calendario.sh <ano>`).
+- **Datas por tipo (2026):**
 
-| Evento | Quando |
-|---|---|
-| Salário | dia 2 do mês (mensal) ou todo domingo |
-| Juros | dia 2 do mês |
-| Evolução dos jogadores | todo domingo |
-| Ofertas de emprego | — |
+| Tipo | Datas | Janela |
+|---|---|---|
+| liga | 54 | 29/03 a 24/12 (domingos; todo dia a partir de dezembro) |
+| copa | 14 | |
+| estadual | 23 | domingo, terça e quinta |
+| regionais | 12 | |
+| pré-temporada | 5 | |
+| continental 1 | 23 | |
+| continental 2 | 20 | |
+| conference | 23 | |
+| eliminatórias | 28 | |
+| Copa do Mundo | 8 | |
+| Mundial | 3 | |
 
+- **Rodada → data:** `a.a(tipo, pulaDuas)` (`a.java:171`) lista em ordem as datas ainda não jogadas de um tipo. A rodada k vai na k-ésima delas (`f/s.java:676-688`).
+- **Eventos de dia** (`f_0.aS`, `f_0.java:1951`):
+
+| Código | Evento | Quando |
+|---|---|---|
+| `ds` | salário | dia 2 de cada mês (salário mensal) ou todo domingo |
+| `dJ` | juros do empréstimo | dia 2 de cada mês |
+| `aj` | evolução semanal (`f_0.aT`) | domingo |
+
+- **Eventos pós-jogo** (`a.q()`, `a.java:735`):
+
+| Código | Evento | Quando |
+|---|---|---|
+| `cS` | convites de seleção | após a 4ª rodada do estadual, no 1º dia de seleções e nas rodadas 12 e 18 da liga |
+| `cSempregado` | convites de seleção para técnico empregado | após a rodada 1 da liga |
+| `cO` | convocação | 1º dia de seleções |
+| `cPromocao` | ofertas de emprego (`ay.zw`) | após a rodada 20 da liga |
+| `cD` | monta Copa do Brasil e Série D a partir de estaduais e regionais | 1º dia de liga |
+| `cw` | sorteio internacional | antes do último dia de continental 1 |
+
+- **Pendentes:** o jogo só para em dia de jogo. `q(n)` (`f_0.java:1867`) roda os eventos de todos os dias até `af`, então evento de dia sem jogo dispara no próximo dia de jogo.
 - Torneios de seleções seguem ciclos de 2 ou 4 anos.
 
-### Avançar o dia (`f.ap`)
+### Avançar o dia (`f_0.ap` → `at` → `ax`)
 
-- Se algum time humano que joga hoje ainda não confirmou a escalação, o jogo abre a escalação dele. **Esse é o hot-seat.**
-- Depois disso o dia é processado:
-  1. escalações da IA;
-  2. partidas;
-  3. eventos;
-  4. demissões e ofertas;
-  5. transferências pendentes (com 50% de chance, a IA faz propostas pelos jogadores que os humanos listaram);
-  6. obras do estádio.
+- **`ap()`** (`f_0.java:1378`):
+  - `ay()`: se um humano que joga hoje não escalou, abre a escalação dele (**esse é o hot-seat**).
+  - `ah.kh()`: escalações da IA.
+  - `I.he()`: prepara as partidas.
+  - `I.V()`: simula.
+- **`at()`** (1531):
+  - `as()`: pós-jogo por partida (`hg` contratos/empréstimos, `hi` suspensões, `hf` bilheteria do humano mandante, `hh` estatísticas).
+  - `an()`: avisa a associação (`Z.a(s)`).
+  - `aM()`: marca os dias jogados.
+  - `aC()`: `pO()` de cada fase jogada atualiza a tabela e abre a próxima fase.
+  - `aB()`: limpeza.
+  - `q(0)`: eventos de antes dos jogos.
+- **`ax()`** (1635):
+  - Em dia de liga ou estadual, `n(tipo)`: demissões da IA e ofertas a humanos desempregados.
+  - `az()`: avança para o próximo dia de jogo.
+  - `au()`: transferências pendentes.
+  - Com 50% de chance, `av()`: a IA faz propostas pelos jogadores que os humanos listaram.
+  - `aw()`: obras do estádio.
+  - `q(1)`: eventos pós-jogo.
+  - Sem próximo dia → `aa()`, fim de temporada.
 
-### Fim de temporada
+### Competições (modelo)
+
+- **Classes:** `best.at` (abstrata: tipo `tR`, país/estado `dz`, campeões `tT`), `best.l_0` (fase), `f.s` (liga/grupos), `f.z` (mata-mata), `f.b_0` (divisão nacional), `f.o` (divisão estadual), `f.f_0` (Copa do Brasil).
+- **Correção:** `f/B.java` é o helper de vagas internacionais por país, não a classe da competição. No macOS ele colide com `f/b.java`.
+- **`f.s`:** times `Zb` (é também a tabela), grupos `Za`, mata-mata seguinte `Zc`, quantos avançam `Zd`, nº de grupos `Zj`, `doisTurnos`, código de formato `var0`, rodada `Zf` / `Ze`.
+- **Tabela de jogos** (`t.a`, `t.java:746`): método do círculo.
+  - Embaralha os times; com número ímpar, um folga.
+  - Intercala rodadas pares e ímpares e inverte o mando na mesa 0 nas rodadas ímpares.
+  - O returno espelha o turno com o mando trocado.
+- **Turnos da liga (tipo 1)** (`s.java:632-663`):
+  - Sempre dois turnos, menos com 26, 28, 30 ou 36 times. O `doisTurnos` é ignorado em liga nacional.
+  - 20 times com `var0` 1020: turno único.
+  - 8 times: 4 turnos. 10 times: 4 (ou `numeroTurnos`). 12 ou 14 times: 3 (ou 2).
+- **Pontos e desempate:**
+  - Vitória 3, empate 1 (`ah.java:1101`).
+  - Linha da tabela `[pts, J, V, D, E, GP, GC, SG]` (`ak.java:47`).
+  - Desempate (`h/k_0`, `a_0.abn`): pontos → vitórias → saldo → gols pró. O `desempateEstadual` usa outro comparador (mapear na W2).
+
+### Formatos BR
+
+- **Divisões:** `Z.Ar()` (`Z.java:112`) monta até 4, a partir de `ligas.jsonl`.
+- **Série A e B:** 20 times, dois turnos (38 rodadas), 4 rebaixados.
+- **Série C** (`numeroTimesMataMata` 1020):
+  - 20 times em turno único (19 rodadas). Avançam 8 (`s.java:443`).
+  - 2 grupos de 4: {2º, 7º, 4º, 5º} e {1º, 8º, 3º, 6º}, em dois turnos (`b_0.java:76`, `var0` 1022).
+  - Os líderes dos grupos fazem a final.
+  - Sobem: campeão, vice e os melhores segundos (`s.java:1199`).
+- **Série D:**
+  - 64 times, 8 grupos de 8, dois turnos (14 rodadas).
+  - Os 4 primeiros de cada grupo (32) vão a um mata-mata de jogo único, chaveado por `Zy`.
+  - Os 4 promovidos vêm das últimas fases (na prática, os semifinalistas).
+  - Com estaduais ativos, começa vazia (`Z.java:177`). No `cD` é preenchida por `w.Q(n)` (`a.java:659`): as melhores colocações nos estaduais, na ordem de prioridade dos estados `aq.sb..sf` (`aq.java:559-569`).
+- **Copa do Brasil** (`f/f_0.java`):
+  - **Formato antigo** (`a`, :46): maior potência de 2 até 128 times; metade de cima contra a de baixo; ida e volta.
+  - **Formato novo** (`b`, :86; 91 ou mais times e `novoFormatoCopa`):
+    - 12 entram depois: os da Libertadores e os cabeças de chave, com prioridade aos campeões regionais (`Bg`).
+    - Fase 1: os outros 80, em 8 potes de 10, jogo único.
+    - Fase 2: os 40 vencedores, top 20 × bottom 20, jogo único.
+    - Fase 3: os 20 + os 12, em 32 times chaveados 16 × 16, ida e volta.
+    - Depois: 16, 8, 4 e 2 times, sorteio livre, ida e volta (:256-286).
+- **Estaduais** (`best/w.java`):
+  - Existe estadual em todo estado com 6 ou mais times (`w.java:170`), com até 4 divisões (`f.o`, tipo 3). A configuração por estado vem de `conf_estadual/*.ces` (`w.java:366`).
+  - Fórmulas 0–10 (`aq.sL`, `aq.java:776-836`):
+
+| Fórmula | Times | Grupos | Vão ao mata-mata | Dois turnos | Rebaixados |
+|---|---|---|---|---|---|
+| 0 | 6 | 0 | 2 | sim | 2 |
+| 1 | 8 | 0 | 4 | sim | 2 |
+| 2 | 10 | 0 | 4 | não | 2 |
+| 3 | 11 | 0 | 4 | não | 2 |
+| 4 | 12 | 0 | 4 | não | 2 |
+| 5 | 12 | 0 | 8 | não | 2 |
+| 6 | 14 | 0 | 8 | não | 2 |
+| 7 | 16 | 4 | 2 | não | 2 |
+| 8 | 16 | 0 | 4 | não | 2 |
+| 9 | 16 | 0 | 8 | não | 2 |
+| 10 | 20 | 4 | 2 | não | 4 |
+
+  - Nas fórmulas 7 e 10, os grupos jogam contra os outros grupos (`jogosDentroGrupo` falso).
+  - As colocações finais vão para `SR.bx()` (`s.java:1576-1627`), que alimenta Série D e Copa.
+- **Regionais** (`f/F.java`, tipo 10):
+  - Quatro regiões: RJ/SP; MG/PR/RS/SC; Nordeste; resto ("Verde") (`F.java:52`, `p_0.java:199`).
+  - Só existe com 16 ou mais times.
+  - 4 grupos de 4 (potes `a_0.ad(4,4)`), dois turnos; os 2 primeiros vão às quartas. Quartas, semi e final em ida e volta. São 12 datas, que batem com as 12 datas de regional.
+
+### Fim de temporada (`f_0.aa`, `f_0.java:524`)
+
+Acesso e rebaixamento: `am()` → `Z.ee()` (`Z.java:454`). Sobem tantos quantos a divisão de cima rebaixa (`s.ah`, `s.java:1351`). Caem os n últimos, ou os n últimos por grupo com `rebaixadoPeloGrupo` (`s.java:1303`). A última divisão troca times com o pool `dt` (`Z.java:540-585`). Com a Série D vinda dos estaduais, a Série D inteira volta ao pool (`Z.java:591`). Estaduais: `w.ee()` (`w.java:265`). Novo calendário: `ah()` (`f_0.java:1207`).
 
 1. Prêmios e resets.
 2. Novo calendário.
@@ -368,9 +477,7 @@ Números do original (20 mil partidas, Série A, temporada 1): 2,65 gols/jogo, m
 
 ## Lacunas ainda não mapeadas
 
-- Chaveamento da Copa do Brasil e da Série C (fórmula 1020): `best/Z.java`, `f/B.java`.
+- Detalhes finos da W2: comparador `desempateEstadual`, chaveamento `Zy` da Série D, como `g_0` distribui ida e volta nas datas, conteúdo de `conf_estadual/*.ces`.
 - Sorteio das continentais e dos grupos (cotas por país já mapeadas acima).
-- Fórmulas dos estaduais: `f/o.java`, `best/w.java`.
-- Sequência completa do calendário: `best/a.java:249`.
 - Como a IA monta propostas pelos jogadores humanos.
 - Tabelas exatas de confiança da diretoria e da torcida.

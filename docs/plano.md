@@ -277,6 +277,8 @@ Tickets detalhados e decisões da fase: `docs/fase1.md`.
 
 ### Fase 2 — Mundo, temporada e IA
 
+Tickets detalhados e decisões da fase: `docs/fase2.md`. Primeira temporada em **2026** (o original usa 2022).
+
 Começa fechando as **lacunas** listadas no fim de `engenharia-reversa.md`, cada uma como mini-tarefa de RE antes do port.
 
 | ID | Entrega |
@@ -291,6 +293,9 @@ Começa fechando as **lacunas** listadas no fim de `engenharia-reversa.md`, cada
 | W8 | `avançarRodada(mundo, comandos, seed)`: a função que a máquina de estados chama; comandos tipados e validados (`validar(mundo, técnico, comando)`) |
 
 **Notas vindas da F0:** W1 — ao criar um jogo, o original imprime no stdout o calendário inteiro da temporada (`Nacional:1) 27/03/2022 Dom 85` etc.); rodar `tools/capture-ref.sh` e guardar a saída dá o gabarito de datas sem decifrar `best/a.java:249` no escuro. W2 — `base.ligas` (só BR) e `base.estaduais` (por `uf`) já estão tipados. Pelas decisões da 3.5: estaduais e regionais sempre ativos; amistosos (tipo 0) e torneio de pré-temporada (tipo 15) ficam fora do calendário.
+
+**Notas da entrega (F2):**
+- **W1:** `calendario.ts`, com datas absolutas (dias desde 1970) e a sequência `a.g()` inteira. Bate data a data com o original em 2022 e 2026 (`tools/calendario.sh <ano>` → `ref-calendario-<ano>.json`). `Mundo.dia` agora é absoluto e o `Mundo.calendario` é o da temporada corrente.
 
 **Gate:** CLI simula 5 temporadas só com IA sem erro, com invariantes e estatísticas plausíveis (campeões variados, times grandes no topo na média, caixa dos humanos-piloto não explode).
 
