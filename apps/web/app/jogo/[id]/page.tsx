@@ -1,51 +1,39 @@
 import { and, desc, eq, gte } from 'drizzle-orm'
-import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { membroAtual } from '../../../lib/auth/sessao.ts'
 import { db } from '../../../lib/db/index.ts'
-import { gameMembers, games, roundLogs, rounds, users } from '../../../lib/db/schema.ts'
+import { games, roundLogs, rounds, type ConfigJogo } from '../../../lib/db/schema.ts'
 import type { ResumoRodada } from '../../../lib/game/rodada.ts'
 import { catalogo, permitido } from '../../../lib/game/escolha.ts'
-import { escolherAcao, readyAcao } from './acoes.ts'
+import { Escolha } from './escolha.tsx'
 
-type Busca = { q?: string; uf?: string; div?: string; erro?: string }
+/** A regra de escolha do admin, em uma frase. */
+function regra(cfg: ConfigJogo): string {
+  const divs = cfg.divisoes.length ? cfg.divisoes.map((d) => d ? `Série ${'ABC'[d - 1]}` : 'fora das séries').join(', ') : ''
+  const partes = [divs && `só ${divs}`, cfg.proibidos.length && `${cfg.proibidos.length} time(s) proibido(s)`].filter(Boolean)
+  return partes.length ? `Regra do admin: ${partes.join('; ')}.` : 'Qualquer time brasileiro.'
+}
 
-export default async function Jogo({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Busca> }) {
+export default async function Jogo({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ erro?: string }> }) {
   const gid = Number((await params).id)
-  const busca = await searchParams
+  const { erro } = await searchParams
   const ctx = await membroAtual(gid)
   if (!ctx) redirect('/')
   const [g] = await db().select().from(games).where(eq(games.id, gid))
+  if (g!.status === 'lobby' || g!.status === 'picking')
+    return <Escolha nomeJogo={g!.name} regra={regra(g!.config)} erro={erro} times={g!.status === 'picking' ? catalogo(g!.gameSeed).filter((t) => permitido(g!.config, t)) : []} />
+
   const [r] = await db().select().from(rounds).where(and(eq(rounds.gameId, gid), eq(rounds.n, g!.round)))
-  const membros = await db().select({ id: gameMembers.id, username: users.username, teamRef: gameMembers.teamRef, ready: gameMembers.ready, tecnicoId: gameMembers.tecnicoId })
-    .from(gameMembers).innerJoin(users, eq(users.id, gameMembers.userId)).where(eq(gameMembers.gameId, gid)).orderBy(gameMembers.id)
   const logs = (await db().select().from(roundLogs).where(and(eq(roundLogs.gameId, gid), gte(roundLogs.n, g!.round - 1)))
     .orderBy(desc(roundLogs.n), desc(roundLogs.etapa)))
     // o que ainda está tocando ao vivo não aparece pronto
     .filter((l) => !(l.n === g!.round && ((l.etapa === 0 && r?.phase === 'ao_vivo_1t') || (l.etapa === 1 && r?.phase === 'ao_vivo_2t'))))
   const eu = ctx.membro
-  // com o mundo criado, fase, prazo, prontos e o botão de pronto ficam na barra da casca
-  const antes = g!.status === 'lobby' || g!.status === 'picking'
 
+  // ponytail: lista crua de resultados até o hub (U3) e a partida (U4)
   return (
     <main>
-      {antes && <h1>{g!.name}</h1>}
-      {antes && <p><Link href="/">seus jogos</Link> · {g!.status}</p>}
-
-      {busca.erro && <p role="alert">{busca.erro}</p>}
-      {g!.status === 'lobby' && <p>Esperando o admin abrir a escolha de times.</p>}
-      {g!.status === 'picking' && <Escolha jogo={gid} gameSeed={g!.gameSeed} config={g!.config} busca={busca} ocupados={new Map(membros.filter((m) => m.teamRef).map((m) => [m.teamRef!, m.username]))} />}
-
-      {antes && <h2>Técnicos</h2>}
-      {antes && <ul>{membros.map((m) => <li key={m.id}>{m.username} {m.teamRef && `(${m.teamRef})`} {m.ready ? '✔ pronto' : ''}</li>)}</ul>}
-      {g!.status === 'picking' && eu.teamRef !== null && (
-        <form action={readyAcao}>
-          <input type="hidden" name="jogo" value={gid} />
-          <input type="hidden" name="ready" value={eu.ready ? '0' : '1'} />
-          <button>{eu.ready ? 'Não estou pronto' : 'Pronto'}</button>
-        </form>
-      )}
-
+      {erro && <p role="alert">{erro}</p>}
       <h2>Resultados</h2>
       {logs.map((l) => {
         const d = l.data as ResumoRodada
@@ -68,43 +56,5 @@ export default async function Jogo({ params, searchParams }: { params: Promise<{
         )
       })}
     </main>
-  )
-}
-
-function Escolha({ jogo, gameSeed, config, busca, ocupados }: {
-  jogo: number; gameSeed: string; config: Parameters<typeof permitido>[0]; busca: Busca; ocupados: Map<string, string>
-}) {
-  const q = (busca.q ?? '').trim().toLowerCase()
-  const times = catalogo(gameSeed).filter((t) => permitido(config, t))
-  const achados = times.filter((t) =>
-    (!q || t.nome.toLowerCase().includes(q)) && (!busca.uf || t.uf === busca.uf) && (!busca.div || t.divisao === Number(busca.div)))
-  const ufs = [...new Set(times.map((t) => t.uf))].sort()
-  return (
-    <section>
-      <h2>Escolha seu time</h2>
-      <form>
-        <label>Nome <input name="q" defaultValue={busca.q} /></label>
-        <label>Estado <select name="uf" defaultValue={busca.uf ?? ''}><option value="">todos</option>{ufs.map((u) => <option key={u}>{u}</option>)}</select></label>
-        <label>Divisão <select name="div" defaultValue={busca.div ?? ''}>
-          <option value="">todas</option>
-          {[...new Set(times.map((t) => t.divisao))].sort().map((d) => <option key={d} value={d}>{d ? `Série ${'ABC'[d - 1]}` : 'fora das séries'}</option>)}
-        </select></label>
-        <button>Buscar</button>
-      </form>
-      <ul>
-        {achados.slice(0, 50).map((t) => (
-          <li key={t.fileRef}>
-            {t.nome} ({t.uf}, {t.divisao ? `Série ${'ABC'[t.divisao - 1]}` : 'fora das séries'}){' '}
-            {ocupados.has(t.fileRef) ? `— ${ocupados.get(t.fileRef)}` : (
-              <form action={escolherAcao} style={{ display: 'inline' }}>
-                <input type="hidden" name="jogo" value={jogo} /><input type="hidden" name="time" value={t.fileRef} />
-                <button>Escolher</button>
-              </form>
-            )}
-          </li>
-        ))}
-      </ul>
-      {achados.length > 50 && <p>… e mais {achados.length - 50}; refine a busca.</p>}
-    </section>
   )
 }

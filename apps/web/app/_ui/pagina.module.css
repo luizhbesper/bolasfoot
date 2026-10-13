@@ -1,0 +1,89 @@
+.pagina {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.topo {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--raised);
+}
+
+.marca {
+  font-family: var(--font-bricolage), sans-serif;
+  font-weight: 700;
+  font-size: 20px;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.marca:hover {
+  color: var(--text);
+}
+
+.usuario {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.usuario a {
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.usuario a:hover {
+  color: var(--text);
+}
+
+.sair {
+  height: 32px;
+  padding: 0 12px;
+  background: transparent;
+  color: var(--muted);
+}
+
+.larga {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 32px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.estreita {
+  width: 100%;
+  max-width: 420px;
+  margin: auto;
+  padding: 32px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.erro {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: var(--raio);
+  background: rgba(240, 168, 168, 0.1);
+  border: 1px solid rgba(240, 168, 168, 0.3);
+  color: var(--rosa);
+}
+
+@media (max-width: 600px) {
+  .topo {
+    padding: 12px 16px;
+  }
+
+  .larga {
+    padding: 20px 16px;
+  }
+}

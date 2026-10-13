@@ -98,7 +98,7 @@ function Barra({ titulo }: { titulo: string }) {
 }
 
 /** Prazo da fase em pêssego; durante o jogo, o minuto. */
-function Relogio() {
+export function Relogio() {
   const { fase, msPorMinuto } = useJogo()
   const agora = useRelogio()
   if (fase.status === 'paused') return <span className={s.pilula}>Pausado</span>

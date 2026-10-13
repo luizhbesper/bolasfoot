@@ -1,0 +1,38 @@
+.grade {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.jogo {
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  color: var(--text);
+  text-decoration: none;
+  transition: border-color 0.15s;
+}
+
+.jogo:hover {
+  color: var(--text);
+  border-color: var(--lavanda);
+}
+
+.cabeca {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+}
+
+.nome {
+  font-family: var(--font-bricolage), sans-serif;
+  font-size: 20px;
+}
+
+.time {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
