@@ -331,7 +331,7 @@ Começa fechando as **lacunas** listadas no fim de `engenharia-reversa.md`, cada
   - Acesso e rebaixamento nas séries e nos estaduais. O "quem sobe" (`s.l`) foi lido do bytecode, porque o decompilador perdia o ramo do mata-mata. Os rebaixados da C entram primeiro na D seguinte.
   - Os 12 reservados da próxima Copa, o calendário novo, as reputações, a lista da IA, o patrocínio, o envelhecimento com juniores novos, a janela da IA e as demissões.
   - Em 5 temporadas de teste: cerca de 0,6 s por temporada e campeões variados (Série A: Flamengo, Palmeiras ×2, Flamengo, Corinthians). Os juniores sobem ~2,5 por time ao ano até o teto de 15–20 e os elencos ficam em ~21. O piloto da Série A foi de 15M para 200M, quase tudo em prêmios de títulos.
-  - **Ficou para depois:** Supercopa, continentais, seleções e torneio amistoso (Fase 6). As séries do ano novo saem pelo Nivel, não pela ordem da tabela velha (só muda o desempate de quem fica entre os 16 dos regionais). Estatísticas de temporada (artilharia, notas): U-fase, quando houver tela.
+  - **Ficou para depois:** Supercopa, continentais, seleções e torneio amistoso (Fase 6). As séries do ano novo saem pelo Nivel, não pela ordem da tabela velha (só muda o desempate de quem fica entre os 16 dos regionais). Estatísticas de temporada (artilharia, notas): Fase 4, junto com a tela que as mostra.
 
 **Gate:** CLI simula 5 temporadas só com IA sem erro, com invariantes e estatísticas plausíveis (campeões variados, times grandes no topo na média, caixa dos humanos-piloto não explode).
 
