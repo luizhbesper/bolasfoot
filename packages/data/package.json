@@ -1,0 +1,13 @@
+{
+  "name": "@bolasfoot/data",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/types.ts",
+    "./base.json": "./base.json"
+  },
+  "scripts": {
+    "build": "node src/build.ts",
+    "typecheck": "tsc -p ."
+  }
+}

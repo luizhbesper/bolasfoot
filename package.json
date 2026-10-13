@@ -13,7 +13,8 @@
     "lint": "eslint .",
     "test": "vitest run",
     "check": "pnpm typecheck && pnpm lint && pnpm test",
-    "e2e": "pnpm --filter web e2e"
+    "e2e": "pnpm --filter web e2e",
+    "data:build": "pnpm --filter @bolasfoot/data build"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.0",
