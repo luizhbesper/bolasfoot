@@ -1,4 +1,5 @@
 // Mundos de teste (usado só pelos testes e pelo sim).
+import { criarCalendario } from './calendario.ts'
 import type { JogadorM, Mundo, TimeM } from './mundo.ts'
 
 // posições do elenco sintético: 2 GOL, 4 LAT, 5 ZAG, 6 MEI, 5 ATA
@@ -6,7 +7,7 @@ const POSICOES = [0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4,
 
 /** Dois times idênticos (força fixa, sem características especiais). */
 export function mundoSintetico(forca = 50, reputacao = 5): Mundo {
-  const mundo: Mundo = { seed: 'sintetico', temporada: 1, dia: 0, opcoes: { habilidadeIndividual: false }, times: [], jogadores: [] }
+  const mundo: Mundo = { seed: 'sintetico', temporada: 1, dia: 0, calendario: criarCalendario(2026), opcoes: { habilidadeIndividual: false }, times: [], jogadores: [] }
   for (const id of [0, 1]) {
     const ids = POSICOES.map((posicao, k) => {
       const j: JogadorM = {
