@@ -41,3 +41,9 @@ test('ligas, estaduais e nomes', () => {
   expect(nomes.BRA!.nomes.length).toBeGreaterThan(1000)
   for (const t of times) expect(nomes[paises[t.pais]!.codigo], t.fileRef).toBeDefined()
 })
+
+test('todo time tem escudo em public/assets (pnpm assets)', async () => {
+  const { readdirSync } = await import('node:fs')
+  const escudos = new Set(readdirSync(new URL('../../../apps/web/public/assets/escudos/', import.meta.url)))
+  expect(times.filter((t) => !escudos.has(`${t.fileRef}.png`)).map((t) => t.fileRef)).toEqual([])
+})
