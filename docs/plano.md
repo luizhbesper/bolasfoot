@@ -145,7 +145,7 @@ Tudo configurado por env var, mesmo código nos três:
 ```
 # .env.example
 APP_ENV=local                 # local | staging | prod
-DATABASE_URL=postgres://bolasfoot:bolasfoot@localhost:5432/bolasfoot
+DATABASE_URL=postgres://bolasfoot:bolasfoot@localhost:5434/bolasfoot   # 5434: evita conflito com outros Postgres locais
 SESSION_SECRET=troque-isto
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=admin
@@ -218,7 +218,7 @@ O cliente calcula `minutoAtual = (agora + offset − startAt) / msPorMinuto` e m
 
 Cada fase termina jogável ou testável. Os IDs servem para abrir sessões ("vamos fazer o M2").
 
-### Fase 0 — Fundação
+### Fase 0 — Fundação — COMPLETE (2026-10-13)
 
 | ID | Entrega |
 |---|---|
@@ -228,6 +228,14 @@ Cada fase termina jogável ou testável. Os IDs servem para abrir sessões ("vam
 | F0-4 | `packages/data`: ETL `teams/ligas/estaduais/options.jsonl` → `base.json` tipado (times BR + sul-americanos/estrangeiros usados nas continentais e no Mundial; espanhóis fora). Nomes/sobrenomes por país. Validação com contagens (196 BR etc.) |
 | F0-5 | Script de assets: `original/game` + `original/res` → `apps/web/public/assets` com nomes estáveis |
 | F0-6 | Referência visual: rodar o jar original (Java 8, `java -jar original/game.jar`) e capturar cada tela em `docs/ref/*.png`. É o gabarito da UI |
+
+**Notas da entrega (F0):**
+- **Base (`packages/data/base.json`, tipos em `packages/data/src/types.ts`):** 657 times = todos menos os espanhóis (não só os sul-americanos), porque o Mundial (`f/a_0.java:41-79`) só existe com os campeões das 6 confederações. Chave do time = `fileRef` (o `Id` do original repete). Países (224) vêm do enum `best/ac.java` com `nivel` (o `paisNivel` do `F.fI()`) e continente; UFs de `best/aq.java:555`. `potencial` = `Hash`, `craque` = `TopMundial` (falso em todos os dados), `estrela` em 20 jogadores. Juniores vêm em 85 times (1175).
+- **Divisão BR não está nos dados:** é derivada no `novoJogo` ordenando por `Nivel` com desempate aleatório (`best/Z.java:112-228`). Hoje dá A = Nivel ≥ 16, B = 12–15, C = 10–11, D = 64 (empate sorteado no Nivel 7), resto divisão 0.
+- **Postgres local na porta 5434.** O CI ainda não sobe Postgres (não há código de banco); entra como `services:` no job na S1 — o job `e2e` já aponta `DATABASE_URL` para `bolasfoot_test`.
+- **Next 16 + TypeScript 6.0** (o typescript-eslint ainda não suporta o TS 7). `.env` fica na raiz e o `next.config.ts` carrega com `process.loadEnvFile`. Node 24 no CI.
+- **Assets:** 4 nomes com acento vinham corrompidos pelo 7-Zip (bytes Latin-1 em U+EFxx); o `pnpm assets` corrige. 365 times não têm camisa própria (usar as genéricas por matiz da `cor1`); `audaxrj_bra` não tem escudo mini.
+- **F0-6:** `tools/capture-ref.sh` roda o jar *dentro* de `tools/RefShots.java` (Java 17 com `--add-opens`), pilota a UI por um roteiro e desenha as janelas em PNG. 34 telas; faltam as que a versão grátis bloqueia ou que dependem de sorte/tempo (proposta, leilão, fim de temporada, demissão) — ver `docs/ref/README.md`.
 
 ### Fase 1 — Motor de partida (`packages/engine`)
 
@@ -241,6 +249,8 @@ Cada fase termina jogável ou testável. Os IDs servem para abrir sessões ("vam
 | M6 | CLI `pnpm sim` que roda N partidas e imprime estatísticas (gols/jogo, % mandante, cartões, lesões) |
 
 **Gate:** testes estatísticos batendo com o original (ver 6.2).
+
+**Notas vindas da F0:** o motor lê `Base` de `@bolasfoot/data` (não do jsonl). M2 implementa a derivação da divisão BR por `Nivel` (nota da F0). O `tools/RefShots.java` prova que o jogo original roda em processo, sem UI manual, no Java 17: isso torna o `tools/Oracle.java` da M6 (6.2) viável — chamar `c/b.java` direto ou rodar rodadas e ler o resultado.
 
 ### Fase 2 — Mundo, temporada e IA
 
@@ -257,6 +267,8 @@ Começa fechando as **lacunas** listadas no fim de `engenharia-reversa.md`, cada
 | W7 | Fim de temporada: prêmios, acesso/rebaixamento, novo calendário, envelhecimento, histórico |
 | W8 | `avançarRodada(mundo, comandos, seed)`: a função que a máquina de estados chama; comandos tipados e validados (`validar(mundo, técnico, comando)`) |
 
+**Notas vindas da F0:** W1 — ao criar um jogo, o original imprime no stdout o calendário inteiro da temporada (`Nacional:1) 27/03/2022 Dom 85` etc.); rodar `tools/capture-ref.sh` e guardar a saída dá o gabarito de datas sem decifrar `best/a.java:249` no escuro. W2 — `base.ligas` (só BR) e `base.estaduais` (por `uf`) já estão tipados.
+
 **Gate:** CLI simula 5 temporadas só com IA sem erro, com invariantes e estatísticas plausíveis (campeões variados, times grandes no topo na média, caixa dos humanos-piloto não explode).
 
 ### Fase 3 — Servidor, contas e jogos
@@ -270,6 +282,8 @@ Começa fechando as **lacunas** listadas no fim de `engenharia-reversa.md`, cada
 | S5 | Máquina de estados no servidor (`lib/game`): planejamento, ready, prazo, resolução transacional, commit-reveal, snapshots, agendador |
 | S6 | SSE: canal por jogo (fase, prontos, prazo, eventos, relógio); reconexão com estado atual |
 | S7 | Deploy no Railway: environments `staging` e `production`, Postgres por ambiente, migrations no start, assets servidos pelo próprio Next |
+
+**Notas vindas da F0:** S1 adiciona o Postgres como `services:` no CI. A validação de env já existe (`apps/web/lib/env.ts`, chamada no `instrumentation.ts`); S7 só precisa setar as vars no Railway.
 
 **Gate:** dois usuários criados por convite no staging avançam rodadas com uma UI crua (botão "pronto" + lista de resultados).
 
@@ -288,6 +302,8 @@ UI idêntica ao original, guiada por `docs/ref/*.png`, sobre o servidor da fase 
 | U7 | Mercado: procura, proposta, leilão, juniores, treino (regras da seção 3.4) |
 | U8 | Caixa de entrada (substitui os modais), fim de temporada, demissão/ofertas; barra de "quem está pronto" + contagem regressiva |
 
+**Notas vindas da F0:** gabarito em `docs/ref/` (34 telas). Antes da U7/U8, capturar as que faltam (proposta, leilão, fim de temporada, demissão/emprego) estendendo `tools/capture-ref.txt`; a versão grátis bloqueia proposta. Assets em `apps/web/public/assets/` (nomes em `tools/assets.mjs`).
+
 **Responsividade mínima:** layout desktop fixo (~1024 px) como o original; abaixo disso, tabelas com rolagem horizontal, barra de ícones vira barra inferior rolável, campo da escalação escala por `aspect-ratio`. Nada de redesenhar para mobile.
 
 **Gate:** vocês jogam uma noite inteira no modo live, no prod, sem dessincronizar e sem abrir o console.
@@ -304,9 +320,11 @@ UI idêntica ao original, guiada por `docs/ref/*.png`, sobre o servidor da fase 
 
 Libertadores, Sul-Americana, Recopa, Mundial de Clubes, Supercopa; ofertas de seleção, eliminatórias e Copa do Mundo. Times estrangeiros só como IA. Entra depois porque o jogo já é jogável sem elas e tem sorteios próprios a mapear.
 
+**Notas vindas da F0:** todos os estrangeiros (menos ESP) já estão no `base.json`. A seleção dos participantes é por cota de país, não por flag no time (ver `engenharia-reversa.md`, "Dados e seleção de times").
+
 ### Fase 7 — Atualização de elencos por API
 
-- `packages/data` ganha um importador que gera o **mesmo** `base.json`, então o motor não muda. Vale para jogos novos; jogos em andamento não mudam.
+- `packages/data` ganha um importador que gera o **mesmo** `base.json` (contrato: `packages/data/src/types.ts`; `base.test.ts` valida contagens), então o motor não muda. Vale para jogos novos; jogos em andamento não mudam.
 - Fonte: SofaScore não tem API oficial (instável, contra os termos); avaliar **API-Football** (tier grátis, ~100 req/dia, com cache local) ou dumps do Transfermarkt. Decidir no ticket.
 - Mapear o que o Brasfoot precisa e a API não tem:
   - `Nivel` e `Reputacao` do time ← valor de mercado / ranking;

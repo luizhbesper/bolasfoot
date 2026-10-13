@@ -34,6 +34,19 @@ Referência para portar o jogo para o navegador com fidelidade. Para gerar `orig
 
 A semântica de `doisTurnos` ainda não foi confirmada.
 
+### Dados e seleção de times
+
+- **Um time por linha** em `teams.jsonl` (703). O `Id` repete (282 times com Id 0); a chave é o `FileRef`, que também nomeia o `.ban`, o escudo e a camisa. O loader só aceita `Vid == 185` e `Valid` (`best/U.java:59`).
+- **Campos de jogador sem nome óbvio:** `Hash` = potencial 0–10 (`F.java:531`; estrela com hash > 8 vira 10); `TopMundial` = craque (`F.java:2064`).
+- **Juniores** ficam na lista `Juniores` do time (85 times, 1.175 jogadores), mesma classe `e.g`.
+- **Países:** enum `best/ac.java:13-236` → `(P<idx>, CÓDIGO, idx, continente, nívelPaís, cores)`. Nome em `default_lang.xml` (`P<idx>`); continente 0 Europa, 1 Am. Sul, 2 África, 3 Ásia, 4 CONCACAF, 5 Oceania. `ac.fn(pais)` é o `paisNivel` do `F.fI()` e usa o país do **time**. Nomes/sobrenomes por código (`names/BRA.txt`).
+- **Carga do mundo** (`best/p_0.java:51-128`): todos os `.ban` entram, ordenados por Nivel. Liga jogável exige ≥ 10 times no país (≥ 16 para ALE, ARG, ING, ITA, FRA) — só BRA e ESP. Países sem liga selecionada carregam os 15 primeiros por Nivel.
+- **Divisão BR** não está nos dados: `Z.Ar()` (`best/Z.java:112-228`) ordena por Nivel com desempate aleatório (1..1000) e corta em blocos de `nTimes` (20/20/20/64). Sem estaduais, a Série D sai do Nivel 9, 8 e 1 sorteado do 7; o resto fica na divisão 0.
+- **Continentais por cota de país** (`f/b.java:14-25` → `Z.a()`): Libertadores `f/r.java` (28 da fase de grupos + 19 da preliminar; BR 5+campeão da copa, ARG 5+1, outros 2 cada), Sul-Americana `f/H.java` (BR 6, ARG 6, outros 4 cada, sem repetir quem está na Libertadores). Faltando time, completa com outros países (`f/b.java:27-39`). O modo de grupos fixos (`aq.sP/sQ`) nunca é usado: cita FileRefs que não existem.
+- **Recopa** só a partir da 2ª temporada (`best/f_0.java:1019-1023`). **Mundial** (`f/a_0.java:41-79`) só é criado se houver campeão das 6 confederações, por isso o port mantém todos os estrangeiros.
+- **Extração:** o 7-Zip grava os bytes Latin-1 dos nomes de arquivo em U+EFxx (`puskás` → `pusks`); o `tools/assets.mjs` desfaz.
+- **Rodando o original:** no Java 17 precisa de `--add-exports/--add-opens` de `java.desktop` (o jogo acessa `sun.java2d`); ver `tools/capture-ref.sh`. Ao criar um jogo ele imprime o calendário inteiro no stdout.
+
 **Estaduais:** 25 UFs com até 4 divisões cada. Campos: `formula`, `nRebaixados`, `finaisIdaVolta`. As fórmulas estão implementadas em `f.o` e `best.w`, ainda não mapeadas.
 
 **Outros recursos:**
@@ -335,6 +348,7 @@ p = minuto<15?0 : <30?1 : 2 ; marc = {30,10,0}[marcação]
 ## Lacunas ainda não mapeadas
 
 - Chaveamento da Copa do Brasil e da Série C (fórmula 1020): `best/Z.java`, `f/B.java`.
+- Sorteio das continentais e dos grupos (cotas por país já mapeadas acima).
 - Fórmulas dos estaduais: `f/o.java`, `best/w.java`.
 - Sequência completa do calendário: `best/a.java:249`.
 - Como a IA monta propostas pelos jogadores humanos.
