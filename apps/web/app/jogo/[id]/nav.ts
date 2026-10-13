@@ -12,8 +12,8 @@ export const GRUPOS: { titulo: string; itens: ItemNav[] }[] = [
       { chave: 'hub', rotulo: 'Visão geral', rota: '' },
       { chave: 'elenco', rotulo: 'Elenco', rota: 'elenco' },
       { chave: 'escalacao', rotulo: 'Escalação', rota: 'escalacao' },
-      { chave: 'treino', rotulo: 'Treino', rota: null },
-      { chave: 'juniores', rotulo: 'Juniores', rota: null },
+      { chave: 'treino', rotulo: 'Treino', rota: 'treino' },
+      { chave: 'juniores', rotulo: 'Juniores', rota: 'juniores' },
     ],
   },
   {
@@ -27,16 +27,16 @@ export const GRUPOS: { titulo: string; itens: ItemNav[] }[] = [
   {
     titulo: 'Mercado',
     itens: [
-      { chave: 'procura', rotulo: 'Procurar jogadores', rota: null },
-      { chave: 'leiloes', rotulo: 'Leilões', rota: null },
-      { chave: 'propostas', rotulo: 'Minhas propostas', rota: null },
+      { chave: 'procura', rotulo: 'Procurar jogadores', rota: 'procura' },
+      { chave: 'leiloes', rotulo: 'Leilões', rota: 'leiloes' },
+      { chave: 'propostas', rotulo: 'Minhas propostas', rota: 'propostas' },
     ],
   },
   {
     titulo: 'Gestão',
     itens: [
-      { chave: 'financas', rotulo: 'Finanças', rota: null },
-      { chave: 'estadio', rotulo: 'Estádio', rota: null },
+      { chave: 'financas', rotulo: 'Finanças', rota: 'financas' },
+      { chave: 'estadio', rotulo: 'Estádio', rota: 'estadio' },
     ],
   },
   {

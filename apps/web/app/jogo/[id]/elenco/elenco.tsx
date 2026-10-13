@@ -1,13 +1,15 @@
 'use client'
 // Elenco: tabela densa ordenável, filtro por posição e a ficha do jogador numa gaveta.
-import type { JogadorM, Mundo } from '@bolasfoot/engine'
+import type { Comando, JogadorM, Mundo } from '@bolasfoot/engine'
 import { useState } from 'react'
 import { Gaveta } from '../../../_ui/gaveta.tsx'
 import { Bandeira, ChipPosicao, Energia, Forca, POSICOES, tomForca } from '../../../_ui/ui.tsx'
 import { alerta, CARACTERISTICAS, dataLonga, dinheiro, jogadoresDe, NOMES_CARACTERISTICAS } from '../consultas.ts'
+import { useComandos } from '../comandos.tsx'
 import { useJogo } from '../contexto.tsx'
 import { Carregando, SemClube } from '../hub.tsx'
 import s from './elenco.module.css'
+import { Negociar } from './negociar.tsx'
 
 type Coluna = 'posicao' | 'nome' | 'idade' | 'forca' | 'energia' | 'salario' | 'valor' | 'contratoAte' | 'gols'
 const COLUNAS: { chave: Coluna; rotulo: string; num?: boolean }[] = [
@@ -18,8 +20,9 @@ const COLUNAS: { chave: Coluna; rotulo: string; num?: boolean }[] = [
 export const lado = (j: JogadorM) => (j.lado === 1 ? 'E' : 'D')
 export const caracteristicas = (j: JogadorM) => `${CARACTERISTICAS[j.cr1]}/${CARACTERISTICAS[j.cr2]}`
 
-export function Elenco({ paises }: { paises: string[] }) {
+export function Elenco({ paises, pendentes }: { paises: string[]; pendentes: Comando[] }) {
   const { mundo: m, meuTime: t } = useJogo()
+  const k = useComandos(pendentes)
   const [ordem, setOrdem] = useState<{ col: Coluna; desc: boolean }>({ col: 'posicao', desc: false })
   const [pos, setPos] = useState<number | null>(null)
   const [aberto, setAberto] = useState<number | null>(null)
@@ -87,7 +90,7 @@ export function Elenco({ paises }: { paises: string[] }) {
         </table>
       </div>
       <Gaveta aberta={sel !== null} titulo={sel?.nome ?? ''} aoFechar={() => setAberto(null)}>
-        {sel && <Ficha m={m} j={sel} pais={paises[sel.pais] ?? ''} forcas={forcas} />}
+        {sel && <><Ficha m={m} j={sel} pais={paises[sel.pais] ?? ''} forcas={forcas} /><Negociar key={sel.id} m={m} j={sel} k={k} /></>}
       </Gaveta>
     </>
   )
