@@ -65,6 +65,8 @@ export interface TimeM extends Omit<Time, 'jogadores' | 'juniores' | 'estadio'> 
   divisao: number
   /** ah.kn(): país com liga nacional (só BRA) */
   ligaNacional: boolean
+  /** continente do país (ac.gg(): 0 Europa, 1 Am. Sul, ...) */
+  continente: number
   /** ah.hr: desempate aleatório 1..1000 */
   desempate: number
   humano: boolean
@@ -304,6 +306,7 @@ export function novoJogo(base: Base, opcoes: OpcoesJogo, seed: string): Mundo {
       id,
       divisao: 0,
       ligaNacional: t.pais === BRA,
+      continente: base.paises[t.pais]!.continente,
       desempate: rngDesempate.int(1000) + 1,
       humano: false,
       jogadores: jogadores.map((j) => novo(j, false)),
