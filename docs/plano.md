@@ -348,7 +348,7 @@ Começa fechando as **lacunas** listadas no fim de `engenharia-reversa.md`, cada
 - Em 50 temporadas: 13 campeões diferentes da Série A (Palmeiras 13), 19 da Copa, 2,8 gols por jogo, mandante ~38%, Spearman (colocação × Nivel inicial) ~0,5.
 - O piloto no automático é demitido com frequência e acha outro emprego; o caixa fica entre 10M e 90M.
 
-### Fase 3 — Servidor, contas e jogos
+### Fase 3 — Servidor, contas e jogos — COMPLETE (2026-10-13)
 
 | ID | Entrega |
 |---|---|
@@ -371,6 +371,7 @@ Começa fechando as **lacunas** listadas no fim de `engenharia-reversa.md`, cada
 - **S5:** `lib/game/rodada.ts`: `comecarJogo` (o mundo nasce com `sha256(gameSeed:mundo)`, para a seed do jogo não ir ao cliente no snapshot), `enviarComandos` (valida com o `validar` do motor; com erro, nada grava), `marcarReady`, `transicionar` (única que muda fase; `FOR UPDATE`), `pausar`/`retomar`. A seed só é revelada depois do 2º tempo: revelar no intervalo deixaria prever o resto da rodada. Sem humano em campo (proposta de emprego, virada), a rodada abre a próxima direto. Prazo vencido com `auto_ready_on_timeout` desligado zera o prazo e espera todos (ou o admin). O `validar` do motor passou a recusar tipo desconhecido e não-objeto (antes aceitava). Snapshot: 0,78 MB com gzip. Agendador em `lib/game/agendador.ts`; `POST /api/teste/prazo?jogo=` com `TEST_ENDPOINTS=1`.
 - **S6:** `GET /api/games/[id]/eventos` (SSE só para membro: `ola` com `serverNow` também a cada 15 s como batida, `fase`, `ready`; canal em `globalThis`, porque o agendador e as rotas são bundles diferentes) e `GET /api/games/[id]/snapshot` (o gzip do banco direto, nunca além da rodada corrente). Tela crua `/jogo/[id]`: fase, prazo e minuto pelo relógio do servidor, prontos, botão "Pronto" e resultados (o log ganha os nomes dos times e de quem fez o gol; o que ainda toca ao vivo fica escondido). O cliente recarrega a tela (`router.refresh`) a cada evento.
 - **S4:** `lib/game/escolha.ts`: `catalogo` (os times BR com a divisão do mundo que vai nascer: o mesmo `novoJogo` com a mesma seed, guardado em memória por jogo), `iniciarEscolha`, `escolherTime` (o `UNIQUE (game_id, team_ref)` decide quem pegou primeiro). O `transicionar` cuida da escolha: todos com time e prontos, ou prazo (quem não escolheu fica de fora; ninguém escolheu, espera). A Série D não existe na escolha: sai dos estaduais no meio do ano, então o filtro do admin é A, B, C ou fora das séries. Buscador cru em `/jogo/[id]` (nome, estado, divisão; 50 por vez). Testado ponta a ponta com dois navegadores no local: convite, escolha ao vivo, prontos, 1º tempo, intervalo, 2º tempo e resultados iguais nos dois.
+- **S7:** projeto `bolasfoot` no Railway com `staging` (branch `dev`, `web-staging-5e5c.up.railway.app`, `TEST_ENDPOINTS=1`) e `production` (branch `main`, `web-production-389835.up.railway.app`), um Postgres 18 em cada. `railway.json`: build `pnpm build`, start com `db:migrate` e `db:seed` antes do `next start`, healthcheck em `/entrar`. O Railway avisa que o `railway.json` (config as code) para de valer em 2026-12-01: migrar para `.railway/railway.ts` antes disso. **Gate ✔** no staging: dois usuários por convite avançaram rodadas com a UI crua, com o mesmo resultado nos dois.
 
 ### Fase 4 — Front-end
 
