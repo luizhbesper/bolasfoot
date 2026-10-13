@@ -54,6 +54,7 @@ Testes: nenhum novo (visual).
 ## U2 — Fora do jogo
 Objetivo: entrar, convite, seus jogos, admin, lobby e escolha de times no visual novo.
 Contrato: as telas existentes reestilizadas; escolha com busca ao vivo e picks pelo SSE (`lib/game/escolha.ts` sem mudar).
+**Entregue:** `app/_ui/pagina.tsx` (moldura com marca e conta, `Erro`); classes `.form`, `.etiqueta`, `.secao`, `.linha` no `globals.css`. Seus jogos em cards (fase da rodada e time). Admin com tabela de jogos, técnicos e convites (com o link pronto para mandar). Lobby e escolha em `app/jogo/[id]/escolha.tsx`: busca e filtros no cliente sobre o catálogo do admin (40 por vez), times dos outros ocupados na hora, confirmar = pronto. Testado com dois navegadores: a escolha de um aparece no outro sem recarregar.
 
 ## U3 — Clube e escalação
 Objetivo: hub, elenco e escalação jogáveis.

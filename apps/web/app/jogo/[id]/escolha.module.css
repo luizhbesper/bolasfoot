@@ -1,0 +1,146 @@
+.tela {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.topo {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--raised);
+}
+
+.marca {
+  font-family: var(--font-bricolage), sans-serif;
+  font-weight: 700;
+  font-size: 20px;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.corpo {
+  padding: 24px;
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.principal {
+  flex: 999 1 640px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.titulo {
+  font-size: 32px;
+}
+
+.filtros {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.filtros > * {
+  height: 44px;
+  background: var(--surface);
+}
+
+.busca {
+  flex: 1;
+  min-width: 220px;
+  font-size: 15px;
+}
+
+.grade {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 12px;
+}
+
+.time {
+  width: 100%;
+  height: auto;
+  padding: 18px 12px 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  border-radius: 14px;
+  background: var(--surface);
+  border: 1px solid var(--raised);
+  font-weight: 400;
+  text-align: center;
+}
+
+.time:hover:not(:disabled) {
+  border-color: var(--lavanda);
+}
+
+.time:disabled {
+  opacity: 1;
+}
+
+.minha {
+  background: rgba(195, 188, 245, 0.12);
+  border: 1.5px solid var(--lavanda);
+}
+
+.ocupado {
+  background: #161a21;
+  opacity: 0.6 !important;
+}
+
+.ocupado img {
+  filter: grayscale(1);
+}
+
+.sua {
+  background: var(--lavanda) !important;
+  color: var(--sobre-lavanda) !important;
+}
+
+.lado {
+  flex: 1 1 280px;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.membro {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  border-top: 1px solid var(--raised);
+}
+
+.quem {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+}
+
+@media (max-width: 700px) {
+  .corpo,
+  .topo {
+    padding: 16px;
+  }
+
+  .lado {
+    max-width: none;
+  }
+
+  .grade {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
