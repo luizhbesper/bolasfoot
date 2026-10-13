@@ -1,0 +1,15 @@
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: bolasfoot
+      POSTGRES_PASSWORD: bolasfoot
+      POSTGRES_DB: bolasfoot
+    ports:
+      - "5434:5432"   # 5434 para não brigar com outros Postgres locais
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+
+volumes:
+  pgdata:
