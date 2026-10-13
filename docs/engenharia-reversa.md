@@ -457,16 +457,28 @@ Campos do `F`: `ff()` estrela, `gm()` craque, `status == 1` titular, `gl()` empr
 - **Janela da IA** (`ag.jO`, fim da temporada): cada time vende de 1 a 4 sobras (mais quanto pior a colocação), completa as posições em falta e os grandes da Europa levam estrelas (força > 50, < 31 anos) dos médios.
 
 
-## Evolução e carreira
+## Evolução e carreira (W5)
 
-- **Evolução semanal:**
-  - abaixo de 32 anos: ganho de 1 a 8/50 por semana, conforme o nível do clube, a idade e o potencial; teto de força por divisão e país;
-  - 32 anos ou mais: declínio de `(idade−31)×k/50` por semana.
-- **Aposentadoria:** a chance sobe com a idade (32 anos: 1%, 35: 45%, 37: 85%, 40: 97%). Craques, ídolos e goleiros têm a idade efetiva reduzida.
-- **Juniores:** de 16 a 19 anos, com potencial de 1 a 10. Posições: GOL 10%, LAT 20%, ZAG 20%, MEI 30%, ATA 20%. Há 1% de chance de sair um craque. O nome vem dos arquivos do país.
-- **Técnico:** reputação de 0 a 5 por pontos de carreira (>10, >100, >1k, >10k, >22k).
-  - Pontos por título: liga 500, copa 300, Libertadores 5000, Mundial 40000.
-  - Pode receber ofertas de clubes e de seleções.
+- **Evolução semanal** (todo domingo, `f_0.aT` → `F.fV`), acumulada em `eM`: a força sobe ou cai 1 a cada 1,0 acumulado.
+  - **Até 31 anos** (`fW`): ganho de 1/50 a 8/50 por semana, pelo Nivel do clube (fora das ligas, pela reputação, +0,03) e pela idade. +0,04 se jogou na semana; −0,02 a −0,05 pela força; ex-junior ganha ou perde conforme progresso e potencial; craque +0,02, estrela +0,01; ajuste por continente/país.
+  - **Teto** (`b`, `fW`): tabela [divisão][reputação] (Série A: 80–100) ou só reputação fora das ligas, limitado pelo país do clube (Brasil 90, Argentina 90, Inglaterra/Espanha/Itália/Alemanha/França 95…). O ex-junior com progresso ≥ 60 ganha +5 a +34 pelo potencial 7–10.
+  - **32 anos ou mais** (`fX`): queda de `(idade − 31) × 0,7/1,0/1,2 ÷ 50` por semana (pela força; Nivel ≥ 20 conta 2 anos a menos), sem passar do piso da divisão (35/25/10).
+  - **Habilidades** (opção habilidade individual): o mesmo ganho vai para a habilidade principal da posição (100%) e duas secundárias (40% e 30%); gol e desarme valem 1,2×. A cada 4 semanas, e sempre para o humano que escolhe "secundárias" sem o auxiliar, o ganho dobrado vai para uma habilidade sorteada (vel/tec/pas) por posição — é o treino (`a/iQ`).
+  - **Juniores** (`fY`, até 20 anos): progresso 0–100 sobe ~0,5/semana aos 17 anos (+0,03 a +0,11 pelo potencial). Na criação, começa em 15/35/55/70/75 pela idade + potencial (`ga`); o olheiro mostra o potencial ±1 (`fZ`).
+- **Virada do ano** (`f_0.af`): todos fazem aniversário.
+  - **Aposentadoria** (`ge`), pela idade efetiva (estrela −1, craque −3, goleiro −3): 33–34 anos 10%, 35: 45%, 36: 70%, 37–38: 85%, 39: 95%, 40: 97%, 41–42: 98%, até 48: 99%, depois sempre. Na IA o jogador sai e entra um junior da mesma posição (promovido na hora se a posição fica curta ou o elenco < 16); às vezes vira técnico (1 em 25 na Série A, 1 em 5 se estrela, 1 em 2 se craque). No humano só há um aviso.
+  - **Juniores de 20 anos** (`gf`): sobem se o potencial atinge o mínimo da reputação (1/4/5/6) e a posição tem menos de 3/5/5/8/6; senão, na IA, viram outro junior.
+  - **Junior novo** (`F.a`): 16–19 anos; potencial por faixa de porte do clube; posição GOL 10%, LAT 20%, ZAG 20%, MEI 30%, ATA 20%; 1% sai estrela. O nome vem do arquivo do país (nome + sobrenome, `m_0.au`).
+  - **Junior promovido** (`k_0`): o valor fica em 18% na temporada em que sobe (no máximo o preço pedido), 35% na seguinte e 65% na outra (`F.fK`).
+- **Técnico** (`best/al`):
+  - **Diretoria** (começa em 95) e **torcida** (85), 0–100, mudam a cada jogo oficial (`al.a`): empate ou derrota em casa contra mais fraco tira; o resultado vale pela faixa na tabela (líder, topo, meio, perto da degola, rebaixamento) com tabelas de liga, estadual/regional e continental; o confronto de mata-mata vale como um resultado inteiro no jogo decisivo. Goleada mexe mais com a torcida; torcida < 20 tira 3 da diretoria; caixa negativo tira 5–10. Título: +30 a +40 na torcida e +15 a +30 na diretoria.
+  - O público do mandante cai com a torcida do técnico (`v_0.java:172`).
+  - **Pontos de carreira** (`oc`): por vitória (1–8 por tipo de competição; +1 fora) e empate, e pela colocação final até o 10º.
+  - **Reputação** 0–5 por pontos de reputação (`nu`): título/vice somam (liga 600/150, copa 500/150, Libertadores 6000/1000, Mundial 10000/1000; liga abaixo da A vale 50). Sobe com > 10, > 100, > 1 mil, > 10 mil, > 22 mil; no começo de cada temporada desconta 6000/600/50/5 (rep. 5/4/3/2), e cai um nível abaixo de −20 mil/−3 mil/−500/−50.
+  - O time tem a sua reputação, igual: títulos 500/300/5000/40000, vice 90/50/1000/1000; sobe com > 100 mil para 5; cai com −90 mil/−9 mil/−1000 (de 2 não cai, bug mantido).
+  - **Demissão** (`s.A`, depois de cada dia de liga ou estadual): diretoria < 10 derruba o humano (motivo: caixa negativo, torcida ou resultados) e o técnico da IA do 7º lugar para baixo. No fim da temporada a IA demite com chance `1 − vitórias%/90` (`ag.jQ`).
+  - **Substituto** (`ah.kE`): técnico livre do país, de reputação igual, depois −1, depois −2/+1; no time de humano, qualquer um. Sem livres, o técnico da IA troca de time com o de um clube que lhe faria proposta. Sem substituto, o humano não sai (pedido recusado; demitido, fica um interino).
+  - **Propostas** (`ay.b`, `Z.a`, `s.b`): dos times da liga BR, nas divisões da dele e vizinhas (tabelas por sorteio); empregado recebe na 20ª rodada da liga, de times do 3º ao 6º; desempregado, a cada dia de liga/estadual, dos 6 últimos.
 - **Multi-humano já existe (hot-seat):** `ah.b(nome, nac)` cria um técnico humano, e todo o loop itera sobre a lista de humanos.
 
 ## UI (Swing, Nimbus)

@@ -18,6 +18,9 @@ describe('jogador', () => {
     expect(valorJogador({ ...meia, estrela: true, posicao: 4, idade: 33, titular: false }, timeA, 1)).toBe(100 * 100 * (Math.round(1.3 * Math.round(1.7 * 600)) + 10))
     // juvenil: 3% × potencial
     expect(valorJogador({ ...meia, juvenil: true, titular: false, idade: 18 }, timeA, 1)).toBe(Math.round(100 * 100 * (600 + 14 * 27) * 0.03) * 5)
+    // recém-promovido: 18% (até o preço pedido) na temporada, 35% na seguinte
+    expect(valorJogador({ ...meia, promovidoEm: 3, preco: 1_000_000 }, timeA, 1, 3)).toBe(1_000_000)
+    expect(valorJogador({ ...meia, promovidoEm: 3 }, timeA, 1, 4)).toBe(Math.round(8_740_000 * 0.35))
   })
 
   it('salário (F.fJ)', () => {

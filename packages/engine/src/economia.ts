@@ -22,7 +22,8 @@ export interface Financas {
 
 // ── Jogador ───────────────────────────────────────────────────────────────
 
-type JogadorEco = Pick<JogadorM, 'forca' | 'idade' | 'posicao' | 'estrela' | 'craque' | 'titular' | 'juvenil' | 'potencial'>
+type JogadorEco = Pick<JogadorM, 'forca' | 'idade' | 'posicao' | 'estrela' | 'craque' | 'titular' | 'juvenil' | 'potencial'> &
+  Partial<Pick<JogadorM, 'promovidoEm' | 'preco'>>
 type TimeEco = Pick<TimeM, 'nivel' | 'divisao' | 'pais'>
 
 /** Países "ricos" (aq.rW, best/aq.java:553): salário-base maior. */
@@ -30,10 +31,10 @@ const RICOS = [3, 72, 104, 97, 65]
 
 /**
  * Valor de mercado. `continentePais` = continente do país do jogador (ac.gg(): 0 Europa).
+ * O junior promovido vale 18% na temporada em que subiu (no máximo o preço pedido), 35% na seguinte e 65% na outra.
  * Fonte: best/F.java:975-1022 (fK).
- * ponytail: o desconto do juvenil recém-promovido (F.ff, ×0.18/0.35/0.65) entra com os juniores (W5)
  */
-export function valorJogador(j: JogadorEco, time: TimeEco | null, continentePais: number): number {
+export function valorJogador(j: JogadorEco, time: TimeEco | null, continentePais: number, temporada = 0): number {
   const nivel = time?.nivel ?? 10
   const europa = continentePais === 0
   let mult = nivel >= 21 ? 750 : nivel >= 20 ? 600 : nivel >= 18 ? 500 : nivel >= 12 ? 400 : 366
@@ -45,7 +46,13 @@ export function valorJogador(j: JogadorEco, time: TimeEco | null, continentePais
   mult += i < 20 ? (32 - i) * 27 : i <= 25 ? (32 - i) * 22 : i < 32 ? (32 - i) * 15 : i < 34 ? (34 - i) * 10 : -(i - 34) * 50
   if (mult <= 0) mult = 60
   let v = 2 * j.forca * (2 * j.forca) * mult
+  const p = j.promovidoEm ?? 0
   if (j.juvenil) v = Math.round(v * 0.03) * j.potencial
+  else if (p > 0 && temporada === p) {
+    v = Math.round(v * 0.18)
+    if (v > (j.preco ?? 0) && (j.preco ?? 0) > 0) v = j.preco!
+  } else if (p > 0 && temporada - 1 === p) v = Math.round(v * 0.35)
+  else if (p > 0 && temporada - 2 === p) v = Math.round(v * 0.65)
   if (j.juvenil && j.potencial === 10) v = Math.round(v * 1.5)
   return v
 }
@@ -74,7 +81,7 @@ export function salarioJogador(j: JogadorEco, time: TimeEco | null, mensal: bool
 export function atualizarValores(mundo: Mundo, continentes: (pais: number) => number): void {
   for (const j of mundo.jogadores) {
     const t = mundo.times[j.time] ?? null
-    j.valor = valorJogador(j, t, continentes(j.pais))
+    j.valor = valorJogador(j, t, continentes(j.pais), mundo.temporada)
     j.salario = salarioJogador(j, t, mundo.opcoes.salarioMensal ?? true)
   }
 }

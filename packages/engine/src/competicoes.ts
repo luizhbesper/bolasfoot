@@ -1,7 +1,7 @@
 // Competições: fases de liga/grupos e de mata-mata, tabela, avanço de fase e o dia de jogos.
 // Fontes: f/s.java (liga e grupos), f/z.java + f/g_0.java (mata-mata), best/t.java:746 (tabela de jogos),
 // f/b_0.java (divisão nacional), best/Z.java:112 (Ar: divisões), best/f_0.java:1378-1694 (ap/at/ax: o dia).
-import { datas, TIPO } from './calendario.ts'
+import { datas, domingo, TIPO } from './calendario.ts'
 import { escalarIA } from './escalacao.ts'
 import { eventoCD, proximaRodadaCopa, registrarColocacoes } from './brasil.ts'
 import type { Mundo } from './mundo.ts'
@@ -9,6 +9,7 @@ import { iniciarPartida, simularTempo, type ContextoPartida } from './partida.ts
 import { eventosEconomicos, premioFase, receber } from './economia.ts'
 import { aplicarPosJogo, publico, recuperarEnergia } from './posjogo.ts'
 import { mercadoAntesDosJogos, mercadoDepoisDosJogos } from './mercado.ts'
+import { confrontoTecnicos, demissoesDoDia, diaDasPropostas, evolucaoSemanal, ofertasPromocao, posJogoTecnicos } from './carreira.ts'
 import { derivar, type Rng } from './rng.ts'
 
 export interface Jogo {
@@ -86,6 +87,8 @@ export interface Competicao {
   uf?: number
   /** opções guardadas para criar a fase depois (Série D, no evento cD) */
   opcoes?: OpcoesLiga
+  /** quantos caem (s.getnRebaixados): define a faixa da tabela para a diretoria */
+  rebaixados?: number
 }
 
 const linhaVazia = (): Linha => ({ pts: 0, j: 0, v: 0, e: 0, d: 0, gp: 0, gc: 0 })
@@ -337,6 +340,9 @@ function avancarFase(mundo: Mundo, c: Competicao, desde: number, rng: Rng): void
   r.vencedores = r.confrontos.map((_, k) => vencedor(r, k))
   const nRodadas = Math.round(Math.log2(f.rodadas[0]!.confrontos.length * 2))
   for (const v of r.vencedores) premioFase(mundo.times[v]!, c, f.rodadas.length - 1, nRodadas)
+  // g_0: o confronto vale para diretoria e torcida, avaliado no jogo decisivo
+  const n = r.confrontos.length
+  r.vencedores.forEach((v, k) => confrontoTecnicos(mundo, c, r.jogos[r.idaVolta ? k + n : k]!, v))
   if (r.vencedores.length === 1) {
     const [a, b] = r.confrontos[0]!
     c.campeao = r.vencedores[0]!
@@ -405,11 +411,15 @@ export function avancarDia(mundo: Mundo, seed = mundo.seed): number | null {
     simularTempo(p, 2, derivar(seed, `${rotulo}:2T`))
     aplicarPosJogo(mundo, p, derivar(seed, `${rotulo}:pos`))
     // I.hf: bilheteria do mandante humano (nunca no Mundial nem em seleções)
+    // (v_0.java:172: o público cai com a torcida do técnico; 80 sem técnico)
     const casa = mundo.times[jogo.casa]!
+    const torcida = mundo.tecnicos[casa.tecnico]?.time === casa.id ? mundo.tecnicos[casa.tecnico]!.torcida : 80
     if (casa.financas && comp.tipo !== 5 && comp.tipo !== 7)
-      receber(casa, publico(casa, mundo.times[jogo.fora]!, ctx, derivar(seed, `${rotulo}:publico`)).renda, 'bilheteria')
+      receber(casa, publico(casa, mundo.times[jogo.fora]!, ctx, derivar(seed, `${rotulo}:publico`), torcida).renda, 'bilheteria')
     jogo.gols = [...p.placar]
     if (p.penaltis) jogo.penaltis = p.penaltis.vencedor
+    // I.java:407-421: campanha, pontos, diretoria e torcida dos técnicos
+    posJogoTecnicos(mundo, comp, jogo, ctx.mataMata !== undefined)
     porFase.set(fase, [...(porFase.get(fase) ?? []), jogo])
   }
   if (jogos.length > 0) {
@@ -428,8 +438,18 @@ export function avancarDia(mundo: Mundo, seed = mundo.seed): number | null {
     if (fase.tipo === 'liga') atualizarTabela(fase, hojeDaFase)
     avancarFase(mundo, comp, hoje + 1, rngFase)
   }
+  if (jogos.length > 0) {
+    // f_0.ax → n(tipo do dia): demissões e propostas para desempregados; a.java:761: propostas na 20ª rodada da liga
+    const rngCarreira = derivar(seed, `carreira:${hoje}`)
+    demissoesDoDia(mundo, mundo.calendario.tipos[hoje - mundo.calendario.inicio] ?? 0, rngCarreira)
+    if (hoje === diaDasPropostas(mundo)) ofertasPromocao(mundo, rngCarreira)
+  }
   // f_0.at → q(0): eventos de dia (salário, juros, obras) de todos os dias até hoje
-  for (let d = mundo.diaEventos + 1; d <= hoje; d++) eventosEconomicos(mundo, d)
+  // e, aos domingos (aj), a evolução semanal
+  for (let d = mundo.diaEventos + 1; d <= hoje; d++) {
+    eventosEconomicos(mundo, d)
+    if (domingo(d)) evolucaoSemanal(mundo, derivar(seed, `semana:${d}`))
+  }
   mundo.diaEventos = Math.max(mundo.diaEventos, hoje)
   // f_0.ax → az() + q(1): eventos pós-jogo dos dias até o próximo dia de jogo. O cD (a.java:649-697)
   // está no 1º dia de liga, então a Série D e a Copa nascem antes da 1ª rodada, com a tabela ainda zerada.

@@ -8,6 +8,7 @@ import {
   type Competicao, type FaseMataMata, type OpcoesLiga, type RodadaMataMata,
 } from './competicoes.ts'
 import { premioColocacao } from './economia.ts'
+import { colocacaoTecnico } from './carreira.ts'
 import { BRA, type Mundo, type TimeM } from './mundo.ts'
 import type { Rng } from './rng.ts'
 
@@ -90,7 +91,7 @@ function criarEstaduais(mundo: Mundo, base: Base, rng: Rng): Competicao[] {
         }
       }
       const nome = base.ufs[uf]!.gentilico + (div > 1 ? ` - ${div}ª divisão` : '')
-      const c: Competicao = { id: `EST-${base.ufs[uf]!.sigla}-${div}`, nome, tipo: TIPO.estadual, divisao: div, uf, fases: [], campeao: null, vice: null }
+      const c: Competicao = { id: `EST-${base.ufs[uf]!.sigla}-${div}`, nome, tipo: TIPO.estadual, divisao: div, uf, fases: [], campeao: null, vice: null, rebaixados: f === null ? 0 : cfg!.nRebaixados }
       c.fases.push(criarFaseLiga(mundo, c, times, opcoes, mundo.dia, rng))
       comps.push(c)
       for (const t of times) resto.splice(resto.indexOf(t), 1)
@@ -150,7 +151,7 @@ function criarRegionais(mundo: Mundo, base: Base, rng: Rng): Competicao[] {
 export function criarCompeticoesBR(mundo: Mundo, base: Base, rng: Rng): Competicao[] {
   const comps: Competicao[] = []
   for (const cfg of base.ligas) {
-    const c: Competicao = { id: `BR-${cfg.divisao}`, nome: `${cfg.nome} ${cfg.nomeDivisao}`, tipo: TIPO.liga, divisao: cfg.divisao, fases: [], campeao: null, vice: null }
+    const c: Competicao = { id: `BR-${cfg.divisao}`, nome: `${cfg.nome} ${cfg.nomeDivisao}`, tipo: TIPO.liga, divisao: cfg.divisao, fases: [], campeao: null, vice: null, rebaixados: cfg.nRebaixados }
     if (cfg.divisao === 4) c.opcoes = opcoesDaConfig(cfg)
     else {
       const times = timesBR(mundo).filter((t) => t.divisao === cfg.divisao).map((t) => t.id).sort(porNivel(mundo))
@@ -172,6 +173,8 @@ export function registrarColocacoes(mundo: Mundo, c: Competicao): void {
     const t = mundo.times[time]!
     // ah.a → c (ah.java:803): prêmio de colocação de liga e estadual para humanos
     if (t.financas) premioColocacao(t, c, i + 1)
+    // ah.a → b + al.b: reputação, pontos de carreira e títulos
+    colocacaoTecnico(mundo, c, time, i + 1)
     if (c.tipo === TIPO.estadual && t.divisao === 0) mundo.colocacoesEstaduais.push({ uf: c.uf!, divisao: c.divisao, time, pos: i + 1 })
   })
 }
