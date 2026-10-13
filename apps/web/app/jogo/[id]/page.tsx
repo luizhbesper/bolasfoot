@@ -6,6 +6,7 @@ import { games, roundLogs, rounds, type ConfigJogo } from '../../../lib/db/schem
 import type { ResumoRodada } from '../../../lib/game/rodada.ts'
 import { catalogo, permitido } from '../../../lib/game/escolha.ts'
 import { Escolha } from './escolha.tsx'
+import { Hub } from './hub.tsx'
 
 /** A regra de escolha do admin, em uma frase. */
 function regra(cfg: ConfigJogo): string {
@@ -24,37 +25,9 @@ export default async function Jogo({ params, searchParams }: { params: Promise<{
     return <Escolha nomeJogo={g!.name} regra={regra(g!.config)} erro={erro} times={g!.status === 'picking' ? catalogo(g!.gameSeed).filter((t) => permitido(g!.config, t)) : []} />
 
   const [r] = await db().select().from(rounds).where(and(eq(rounds.gameId, gid), eq(rounds.n, g!.round)))
-  const logs = (await db().select().from(roundLogs).where(and(eq(roundLogs.gameId, gid), gte(roundLogs.n, g!.round - 1)))
+  // a última rodada já vista por todos: o que ainda toca ao vivo não entra
+  const [ultima] = (await db().select().from(roundLogs).where(and(eq(roundLogs.gameId, gid), gte(roundLogs.n, g!.round - 1)))
     .orderBy(desc(roundLogs.n), desc(roundLogs.etapa)))
-    // o que ainda está tocando ao vivo não aparece pronto
     .filter((l) => !(l.n === g!.round && ((l.etapa === 0 && r?.phase === 'ao_vivo_1t') || (l.etapa === 1 && r?.phase === 'ao_vivo_2t'))))
-  const eu = ctx.membro
-
-  // ponytail: lista crua de resultados até o hub (U3) e a partida (U4)
-  return (
-    <main>
-      {erro && <p role="alert">{erro}</p>}
-      <h2>Resultados</h2>
-      {logs.map((l) => {
-        const d = l.data as ResumoRodada
-        const meus = d.resultados.filter((x) => x.tecnico === eu.tecnicoId)
-        return (
-          <section key={`${l.n}.${l.etapa}`}>
-            <h3>Rodada {l.n}{l.etapa ? ' (2º tempo)' : ''}{d.virou && ' — fim de temporada'}</h3>
-            <ul>
-              {d.partidas.map((p, i) => (
-                <li key={i}>
-                  {p.nomes[0]} {p.placar[0]} × {p.placar[1]} {p.nomes[1]}
-                  {p.penaltis && ` (pênaltis ${p.penaltis.placar[0]}–${p.penaltis.placar[1]})`}
-                  {' — '}
-                  {p.eventos.filter((e) => e.tipo === 1).map((e) => `${e.nome ?? '?'} ${e.minuto + (e.tempo === 2 ? 45 : 0)}'`).join(', ')}
-                </li>
-              ))}
-            </ul>
-            {meus.length > 0 && <ul>{meus.map((x, i) => <li key={i}>{x.comando.tipo}: {x.erro ?? 'ok'}</li>)}</ul>}
-          </section>
-        )
-      })}
-    </main>
-  )
+  return <Hub ultima={ultima ? { n: ultima.n, resumo: ultima.data as ResumoRodada } : null} erro={erro} />
 }

@@ -1,0 +1,147 @@
+.grade {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.grade > [role='alert'] {
+  grid-column: 1 / -1;
+}
+
+.principal,
+.lado {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
+.proximo {
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.confronto {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.x {
+  font-family: var(--font-bricolage), sans-serif;
+  font-size: 22px;
+  color: var(--faint);
+}
+
+.time {
+  flex: 1;
+  min-width: 200px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.time > div {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.direita {
+  flex-direction: row-reverse;
+  text-align: right;
+}
+
+.direita > div {
+  align-items: flex-end;
+}
+
+.nome {
+  font-family: var(--font-bricolage), sans-serif;
+  font-weight: 700;
+  font-size: 26px;
+}
+
+.botao {
+  height: 40px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  border-radius: var(--raio);
+  background: var(--raised);
+  border: 1px solid var(--line);
+  color: var(--text);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.botao:hover {
+  color: var(--text);
+  border-color: var(--lavanda);
+}
+
+.link {
+  color: var(--muted);
+  text-decoration: none;
+  padding: 0 8px;
+}
+
+.barra {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.barra > div:first-child {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+}
+
+.trilho {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--line);
+}
+
+.trilho > div {
+  height: 100%;
+  border-radius: 3px;
+}
+
+.numeros {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.numeros > div {
+  padding: 10px 12px;
+  border-radius: var(--raio);
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.numeros span {
+  font-size: 12px;
+  color: var(--faint);
+}
+
+.feed {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13px;
+}
+
+@media (max-width: 900px) {
+  .grade {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

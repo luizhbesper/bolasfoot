@@ -277,3 +277,16 @@ button.perigo {
   border-color: rgba(240, 168, 168, 0.35);
   background: transparent;
 }
+
+/* Título de card com ação à direita (lista logo abaixo). */
+.cabecalho {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 20px 10px;
+}
+
+.cabecalho > h2 {
+  flex: 1;
+  font-size: 16px;
+}
