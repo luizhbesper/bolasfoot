@@ -1,0 +1,178 @@
+/* Tokens e base do Bolasfoot. Tema escuro suave, fixo; cada acento tem uma função só (docs/fase4.md). */
+:root {
+  color-scheme: dark;
+
+  --bg: #13161c;
+  --menu: #0f1217;
+  --surface: #1a1e26;
+  --raised: #222733;
+  --line: #2c3240;
+
+  --text: #ebe7df;
+  --muted: #a3a9b8;
+  --faint: #6f7686;
+
+  --lavanda: #c3bcf5; /* ação principal, seleção */
+  --menta: #a8dcc0; /* vitória, pronto, positivo */
+  --pessego: #f3c49b; /* prazo, alerta */
+  --rosa: #f0a8a8; /* derrota, lesão, vermelho */
+  --ceu: #a6cdef; /* informação, links */
+  --manteiga: #eedd9c; /* amarelo, destaque */
+  --empate: #4a5162;
+
+  /* texto escuro sobre cada acento */
+  --sobre-lavanda: #1b1838;
+  --sobre-menta: #12251b;
+  --sobre-pessego: #3a2410;
+  --sobre-rosa: #3a1515;
+  --sobre-ceu: #102233;
+  --sobre-manteiga: #2a2410;
+
+  --raio: 10px;
+  --raio-card: 16px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-geist), system-ui, sans-serif;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  font-weight: 600;
+}
+
+h1 {
+  font-family: var(--font-bricolage), var(--font-geist), sans-serif;
+  font-weight: 700;
+  font-size: 26px;
+  letter-spacing: -0.01em;
+}
+
+a {
+  color: var(--ceu);
+}
+
+a:hover {
+  color: #cfe3f6;
+}
+
+:focus-visible {
+  outline: 2px solid var(--lavanda);
+  outline-offset: 2px;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  height: 40px;
+  padding: 0 16px;
+  border-radius: var(--raio);
+  border: 1px solid var(--line);
+  background: var(--raised);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+input,
+select,
+textarea {
+  height: 40px;
+  padding: 0 12px;
+  border-radius: var(--raio);
+  border: 1px solid var(--line);
+  background: var(--bg);
+}
+
+/* Botão da ação principal da tela (uma por tela). */
+.primario {
+  border: 0;
+  background: var(--lavanda);
+  color: var(--sobre-lavanda);
+  font-weight: 600;
+}
+
+/* Card de conteúdo. */
+.card {
+  border-radius: var(--raio-card);
+  background: var(--surface);
+  border: 1px solid var(--raised);
+}
+
+/* Tabela densa: envolver em .rolagem para rolar na horizontal no celular. */
+.rolagem {
+  overflow-x: auto;
+}
+
+.tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.tabela th {
+  padding: 8px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--faint);
+  white-space: nowrap;
+}
+
+.tabela td {
+  padding: 7px 8px;
+  border-top: 1px solid var(--raised);
+}
+
+.tabela th:first-child,
+.tabela td:first-child {
+  padding-left: 20px;
+}
+
+.tabela th:last-child,
+.tabela td:last-child {
+  padding-right: 20px;
+}
+
+.tabela .num {
+  text-align: right;
+}
+
+.tabela tr.eu {
+  background: rgba(195, 188, 245, 0.1);
+}
+
+.mudo {
+  color: var(--muted);
+}
+
+.fraco {
+  color: var(--faint);
+}
