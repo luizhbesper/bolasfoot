@@ -73,7 +73,7 @@ export interface LadoPartida {
   titulares: number[]
   entraram: number[]
   subs: number
-  /** minutos de substituição da IA (I.gn, I.gm; 0 = vazio, como no original) */
+  /** minutos de substituição da IA (I.gn, I.gm; -1 = vazio, I.java:113-114) */
   minTatica: [number, number, number]
   minCansaco: [number, number, number, number]
   posse: number
@@ -176,8 +176,8 @@ export function iniciarPartida(mundo: Mundo, times: [number, number], escalacoes
       titulares,
       entraram: [],
       subs: 5,
-      minTatica: [0, 0, 0],
-      minCansaco: [0, 0, 0, 0],
+      minTatica: [-1, -1, -1],
+      minCansaco: [-1, -1, -1, -1],
       posse: 0,
       chutes: 0,
       noAlvo: 0,
@@ -606,8 +606,9 @@ function registrar(p: Partida, tipo: 2 | 3 | 4 | 5, l: 0 | 1, j: JogadorPartida,
   if (tipo === 3 || tipo === 4) {
     remover(lado.emCampo, j.id)
     if (j.slot <= 13 && !lado.humano && lado.subs > 0) repor(p, l, j, true, false, tempo, minuto, rng)
-  } else {
+  } else if (tipo === 5) {
     ev.dias = j.lesao = duracaoLesao(j, rng)
+    // ponytail: humano lesionado segue em campo até ele trocar no intervalo; piloto automático na D2
     if (!lado.humano) {
       remover(lado.emCampo, j.id)
       if (lado.subs > 0) repor(p, l, j, false, true, tempo, minuto, rng)
