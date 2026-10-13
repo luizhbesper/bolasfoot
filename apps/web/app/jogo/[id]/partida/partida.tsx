@@ -23,7 +23,7 @@ interface Ponto { tempo: 1 | 2; min: number }
 function pontoAtual(fase: EstadoFase, log: Log, agora: number | null, msPorMinuto: number): Ponto {
   if (log.n !== fase.rodada) return { tempo: 2, min: Infinity }
   // sem relógio (render do servidor) não mostra nada do tempo em curso, para não vazar o placar
-  const decorrido = agora === null || fase.inicio === null ? 0 : (agora - fase.inicio) / msPorMinuto
+  const decorrido = agora === null || fase.inicio === null ? 0 : Math.max(0, (agora - fase.inicio) / msPorMinuto)
   if (fase.fase === 'ao_vivo_1t') return { tempo: 1, min: decorrido }
   if (fase.fase === 'intervalo') return { tempo: 1, min: Infinity }
   if (fase.fase === 'ao_vivo_2t') return { tempo: 2, min: decorrido }
@@ -127,15 +127,19 @@ export function Partida({ log, pendentes }: { log: Log | null; pendentes: Comand
 
   const aoVivo = log?.n === fase.rodada && (fase.fase === 'ao_vivo_1t' || fase.fase === 'ao_vivo_2t')
   const noIntervalo = log?.n === fase.rodada && fase.fase === 'intervalo'
-  const titulo = !log ? 'Partida' : fase.status === 'paused' ? 'Pausado'
+  // a fase chega pelo SSE antes do log novo (refresh do servidor): sem isso aparecia "Encerrada" com o relógio correndo
+  const atrasado = fase.fase !== null && fase.fase !== 'planejamento' && (log?.n ?? 0) < fase.rodada
+  const titulo = atrasado ? 'Carregando…' : !log ? 'Partida' : fase.status === 'paused' ? 'Pausado'
     : aoVivo ? `AO VIVO · ${fase.fase === 'ao_vivo_1t' ? '1º' : '2º'} tempo` : noIntervalo ? 'Intervalo' : 'Encerrada'
   const maiorAcr = Math.max(0, ...partidas.map((p) => p.acrescimos[pt.tempo - 1]!))
   const progresso = aoVivo ? Math.min(1, pt.min / (45 + maiorAcr)) : 1
 
   const humanos = new Map(membros.filter((x) => x.teamRef).map((x) => [m?.times.find((t) => t.fileRef === x.teamRef)?.id, x.nome]))
   const amigos = partidas.filter((p) => p !== minha && p.times.some((t) => humanos.has(t)))
+  // a competição do seu jogo primeiro, depois as dos amigos, depois o resto na ordem do motor
+  const peso = (p: PartidaLog) => (p.comp === minha?.comp ? 0 : amigos.some((a) => a.comp === p.comp) ? 1 : 2)
   const grupos = new Map<string, PartidaLog[]>()
-  for (const p of partidas) grupos.set(p.compNome, [...(grupos.get(p.compNome) ?? []), p])
+  for (const p of [...partidas].sort((a, b) => peso(a) - peso(b))) grupos.set(p.compNome, [...(grupos.get(p.compNome) ?? []), p])
 
   return (
     <div className={s.tela}>
@@ -147,9 +151,9 @@ export function Partida({ log, pendentes }: { log: Log | null; pendentes: Comand
           <div className={s.trilho}><div style={{ width: `${progresso * 100}%` }} /></div>
           {aoVivo && <strong>{rotuloMinuto(pt.tempo, Math.min(pt.min, 44 + maiorAcr))}</strong>}
         </div>
-        {!aoVivo && <Relogio />}
+        {!aoVivo && !atrasado && <Relogio />}
         {noIntervalo && eu.tecnicoId !== null && <BotaoPronto />}
-        {!aoVivo && !noIntervalo && <Link href={`/jogo/${jogo}`} className={`${s.cta} primario`}>Continuar <Icone nome="seta" /></Link>}
+        {!aoVivo && !noIntervalo && !atrasado && <Link href={`/jogo/${jogo}`} className={`${s.cta} primario`}>Continuar <Icone nome="seta" /></Link>}
         <button className={s.som} onClick={() => setSom(!somLigado)} aria-pressed={somLigado} aria-label={somLigado ? 'Desligar som' : 'Ligar som'}
           title={somLigado ? 'Som ligado' : 'Som desligado'}>
           <Icone nome={somLigado ? 'som' : 'mudo'} />
@@ -161,7 +165,7 @@ export function Partida({ log, pendentes }: { log: Log | null; pendentes: Comand
       ) : (
         <div className={s.grade}>
           <section className={s.principal}>
-            {minha && <Destaque p={minha} pt={pt} m={m} />}
+            {minha && <Destaque p={minha} pt={pt} m={m} esconderLances={noIntervalo} />}
             {noIntervalo && m && meuTime && <PainelIntervalo key={log.n} m={m} timeId={meuTime.id} pendentes={pendentes} />}
             {amigos.length > 0 && (
               <div className={s.amigos}>
@@ -171,12 +175,14 @@ export function Partida({ log, pendentes }: { log: Log | null; pendentes: Comand
           </section>
           <aside className={`card ${s.todos}`}>
             <div className="cabecalho"><h2>Todos os jogos</h2><span className="fraco" style={{ fontSize: 12 }}>{partidas.length} partidas</span></div>
-            {[...grupos].map(([nome, ps]) => (
-              <div key={nome}>
-                <div className={s.comp}>{nome}</div>
-                {ps.map((p, i) => <LinhaJogo key={i} p={p} pt={pt} m={m} minha={p === minha} />)}
-              </div>
-            ))}
+            <div className={s.rolagem}>
+              {[...grupos].map(([nome, ps]) => (
+                <div key={nome}>
+                  <div className={s.comp}>{nome}</div>
+                  {ps.map((p, i) => <LinhaJogo key={i} p={p} pt={pt} m={m} minha={p === minha} />)}
+                </div>
+              ))}
+            </div>
           </aside>
         </div>
       )}
@@ -190,7 +196,7 @@ function Faixa({ m, id, nome }: { m: Mundo | null; id: number; nome: string }) {
   return <span className={s.faixa} style={t ? { background: t.cor1, color: t.cor2 } : undefined}>{nome}</span>
 }
 
-function Destaque({ p, pt, m }: { p: PartidaLog; pt: Ponto; m: Mundo | null }) {
+function Destaque({ p, pt, m, esconderLances }: { p: PartidaLog; pt: Ponto; m: Mundo | null; esconderLances: boolean }) {
   const g = placar(p, pt)
   const st = situacao(p, pt)
   const eventos = p.eventos.filter((e) => visivel(e, pt)).map((e) => ({ e, d: descrever(e, p.nomes) })).filter((x) => x.d)
@@ -200,9 +206,9 @@ function Destaque({ p, pt, m }: { p: PartidaLog; pt: Ponto; m: Mundo | null }) {
     <div className={`card ${s.destaque}`}>
       <div className={s.cabeca}>{p.compNome} · <strong>{st.texto}</strong></div>
       <div className={s.placarGrande}>
-        <div className={s.lado}><Faixa m={m} id={p.times[0]!} nome={p.nomes[0]!} />{m && <Escudo fileRef={m.times[p.times[0]!]!.fileRef} tamanho={64} />}</div>
+        <div className={s.lado}><Faixa m={m} id={p.times[0]!} nome={p.nomes[0]!} />{m && <Escudo fileRef={m.times[p.times[0]!]!.fileRef} tamanho={44} />}</div>
         <div className={s.gols}>{g[0]} <span>×</span> {g[1]}</div>
-        <div className={s.lado}>{m && <Escudo fileRef={m.times[p.times[1]!]!.fileRef} tamanho={64} />}<Faixa m={m} id={p.times[1]!} nome={p.nomes[1]!} /></div>
+        <div className={s.lado}>{m && <Escudo fileRef={m.times[p.times[1]!]!.fileRef} tamanho={44} />}<Faixa m={m} id={p.times[1]!} nome={p.nomes[1]!} /></div>
       </div>
       {st.acabou && p.penaltis && <div className={s.cabeca}>Pênaltis: {p.penaltis.placar[0]} × {p.penaltis.placar[1]}</div>}
       {n && (
@@ -220,7 +226,7 @@ function Destaque({ p, pt, m }: { p: PartidaLog; pt: Ponto; m: Mundo | null }) {
             })}
         </div>
       )}
-      {eventos.length > 0 && (
+      {eventos.length > 0 && !esconderLances && (
         <ol className={s.eventos}>
           {eventos.map(({ e, d }, i) => (
             <li key={i}>
@@ -256,12 +262,16 @@ function Amigo({ p, pt, m, quem }: { p: PartidaLog; pt: Ponto; m: Mundo | null; 
 function LinhaJogo({ p, pt, m, minha }: { p: PartidaLog; pt: Ponto; m: Mundo | null; minha: boolean }) {
   const g = placar(p, pt)
   const st = situacao(p, pt)
-  const ultimo = p.eventos.filter((e) => e.tipo === 1 && visivel(e, pt)).at(-1)
+  // o último lance que importa (gol ou expulsão), como na tela do original
+  const ultimo = p.eventos.filter((e) => (e.tipo === 1 || e.tipo === 3 || e.tipo === 4) && visivel(e, pt)).at(-1)
   return (
-    <div className={`${s.jogo} ${minha ? s.meu : ''}`} title={ultimo ? `${rotuloMinuto(ultimo.tempo, ultimo.minuto)} ${ultimo.nome ?? ''}` : undefined}>
+    <div className={`${s.jogo} ${minha ? s.meu : ''}`}>
       <Faixa m={m} id={p.times[0]!} nome={p.nomes[0]!} />
       <span className={s.placarJogo}>{g[0]} × {g[1]}{st.acabou && p.penaltis ? <small> ({p.penaltis.placar[0]}–{p.penaltis.placar[1]})</small> : null}</span>
       <Faixa m={m} id={p.times[1]!} nome={p.nomes[1]!} />
+      <span className={s.ultimo}>
+        {ultimo && <><span className={`${s.ic} ${ultimo.tipo === 1 ? s.menta : s.rosa}`}>{ultimo.tipo === 1 ? 'G' : 'V'}</span>{ultimo.nome ?? p.nomes[ultimo.lado]} {rotuloMinuto(ultimo.tempo, ultimo.minuto)}</>}
+      </span>
     </div>
   )
 }

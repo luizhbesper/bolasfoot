@@ -20,12 +20,11 @@ export function Treino({ pendentes }: { pendentes: Comando[] }) {
   if (!t) return <SemClube />
   const p = pendentes.findLast((c) => c.tipo === 'treino')
   const atual = p?.tipo === 'treino' ? p : t.treino
+  if (!m.opcoes.habilidadeIndividual)
+    return <div className="card secao"><p className="mudo" style={{ margin: 0 }}>Este jogo foi criado sem habilidade individual: não há treino.</p></div>
   return (
     <div className="grade2">
       <section className="coluna">
-        {!m.opcoes.habilidadeIndividual && (
-          <div className="card secao"><p className="mudo" style={{ margin: 0 }}>Este jogo foi criado sem habilidade individual: o treino não muda nada.</p></div>
-        )}
         <div className="card secao" role="radiogroup" aria-label="Foco do treino">
           {OPCOES.map((o) => {
             const sel = atual.auxiliar ? o.auxiliar : !o.auxiliar && o.foco === atual.foco
@@ -42,14 +41,12 @@ export function Treino({ pendentes }: { pendentes: Comando[] }) {
         </div>
       </section>
       <aside className="coluna">
-        {m.opcoes.habilidadeIndividual && (
-          <div className="card secao">
-            <h2>Habilidade da vez</h2>
-            {['GOL', 'LAT', 'ZAG', 'MEI', 'ATA'].map((pos, i) => (
-              <div key={pos} className="linha" style={{ justifyContent: 'space-between' }}><span className="mudo">{pos}</span><span>{HAB[t.treino.habilidade[i] ?? -1] ?? '—'}</span></div>
-            ))}
-          </div>
-        )}
+        <div className="card secao">
+          <h2>Habilidade da vez</h2>
+          {['GOL', 'LAT', 'ZAG', 'MEI', 'ATA'].map((pos, i) => (
+            <div key={pos} className="linha" style={{ justifyContent: 'space-between' }}><span className="mudo">{pos}</span><span>{HAB[t.treino.habilidade[i] ?? -1] ?? '—'}</span></div>
+          ))}
+        </div>
         <Pendentes k={k} tipos={['treino']} />
       </aside>
     </div>

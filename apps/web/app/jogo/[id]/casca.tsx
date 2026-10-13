@@ -41,8 +41,10 @@ export function Casca({ nomeJogo, usuario, timeInicial, children }: {
 function Menu({ base, sufixo, nomeJogo, usuario, timeInicial }: {
   base: string; sufixo: string; nomeJogo: string; usuario: string; timeInicial: { fileRef: string; nome: string } | null
 }) {
-  const { meuTime, eu, prontos } = useJogo()
+  const { meuTime, eu, prontos, mundo } = useJogo()
   const naoLidos = useNaoLidos()
+  // sem habilidade individual o treino não muda nada: some do menu
+  const visivel = (i: ItemNav) => i.chave !== 'treino' || mundo?.opcoes.habilidadeIndividual !== false
   const time = meuTime ?? timeInicial
   const item = (i: ItemNav) => i.rota === null
     ? <span key={i.chave} className={s.item} aria-disabled="true" title="Em breve"><Icone nome={i.chave} /><span>{i.rotulo}</span></span>
@@ -71,7 +73,7 @@ function Menu({ base, sufixo, nomeJogo, usuario, timeInicial }: {
       {GRUPOS.map((g) => (
         <div key={g.titulo} className={s.grupo}>
           <div className={s.tituloGrupo}>{g.titulo}</div>
-          {g.itens.map(item)}
+          {g.itens.filter(visivel).map(item)}
         </div>
       ))}
       <div className={s.usuario}>

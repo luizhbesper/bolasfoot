@@ -1,12 +1,13 @@
 'use client'
-// Escalação: campo com as camisas do original, banco e reservas. Toque num jogador e depois num lugar (posição do campo,
-// vaga do banco, outro jogador para trocar ou "tirar do time"): serve para mouse e celular, sem drag-and-drop.
+// Escalação: campo com as camisas do original, banco e reservas. Arraste um jogador (drag-and-drop nativo do HTML) ou
+// toque nele e depois num lugar (posição do campo, vaga do banco, outro jogador para trocar ou "tirar do time"); o toque
+// é o caminho do celular, onde o arraste nativo não existe.
 // Cada mudança é salva sozinha (escalar + tática + batedores) e validada pelo motor no servidor.
 import {
   derivar, disponivel, escalarIA, escolherParaSlot, foraDePosicao, FORMACOES, NOMES_FORMACAO, porForca,
   type Comando, type JogadorM, type Mundo, type TimeM,
 } from '@bolasfoot/engine'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type HTMLAttributes } from 'react'
 import { Camisa } from '../../../_ui/camisa.tsx'
 import { ChipPosicao, Energia, Forca, tomForca } from '../../../_ui/ui.tsx'
 import { definirComandosAcao } from '../acoes.ts'
@@ -135,11 +136,51 @@ function Editor({ m, t, pendentes, editavel }: { m: Mundo; t: TimeM; pendentes: 
     return { ...x, titulares, banco }
   })
 
+  /** `a` vai para onde `b` está. Se `b` está fora do time, é ele quem entra no lugar de `a` (substituição). */
+  const trocar = (a: number, b: number) => {
+    const la = lugar(e, a), lb = lugar(e, b)
+    if (lb === null && la !== null) mover(b, la)
+    else mover(a, lb)
+  }
   const tocarJogador = (id: number) => {
     if (sel === null) return setSel(id)
-    if (sel !== id) mover(sel, lugar(e, id))
+    if (sel !== id) trocar(sel, id)
     setSel(null)
   }
+
+  // arrastar: o jogador vai para o slot/vaga/jogador onde soltar, como o toque
+  const [arrastando, setArrastando] = useState<number | null>(null)
+  const [sobre, setSobre] = useState<string | null>(null)
+  const arrastavel = (id: number): HTMLAttributes<HTMLElement> & { draggable?: boolean } => !editavel ? {} : {
+    draggable: true,
+    onDragStart: (ev) => {
+      ev.dataTransfer.setData('text/plain', String(id))
+      ev.dataTransfer.effectAllowed = 'move'
+      setArrastando(id)
+      setSel(null)
+    },
+    onDragEnd: () => {
+      setArrastando(null)
+      setSobre(null)
+    },
+  }
+  const soltavel = (chave: string, soltar: (id: number) => void): HTMLAttributes<HTMLElement> => !editavel ? {} : {
+    onDragOver: (ev) => {
+      if (arrastando === null) return
+      ev.preventDefault()
+      ev.stopPropagation()
+      setSobre(chave)
+    },
+    onDragLeave: () => setSobre((x) => (x === chave ? null : x)),
+    onDrop: (ev) => {
+      ev.preventDefault()
+      ev.stopPropagation()
+      if (arrastando !== null) soltar(arrastando)
+      setArrastando(null)
+      setSobre(null)
+    },
+  }
+  const dnd = (id: number) => ({ ...arrastavel(id), ...soltavel(`j${id}`, (a) => a !== id && trocar(a, id)) })
   const tocarVazio = (alvo: Lugar) => {
     if (sel === null) return
     mover(sel, alvo)
@@ -203,7 +244,8 @@ function Editor({ m, t, pendentes, editavel }: { m: Mundo; t: TimeM; pendentes: 
             const j = id === undefined ? null : m.jogadores[id]!
             const [x, y] = POS[slot] ?? [50, 50]
             return (
-              <button key={slot} className={`${s.slot} ${j && sel === j.id ? s.selecionado : ''}`} style={{ left: `${x}%`, top: `${y}%` }}
+              <button key={slot} className={`${s.slot} ${j && sel === j.id ? s.selecionado : ''} ${sobre === (j ? `j${j.id}` : `s${slot}`) ? s.sobre : ''}`}
+                style={{ left: `${x}%`, top: `${y}%` }} {...(j ? dnd(j.id) : soltavel(`s${slot}`, (a) => mover(a, { slot })))}
                 onClick={() => (j ? tocarJogador(j.id) : tocarVazio({ slot }))} disabled={!editavel && !j}
                 aria-label={j ? `${j.nome}, força ${j.forca}` : 'Posição vazia'} aria-pressed={j ? sel === j.id : undefined}>
                 {j ? (
@@ -221,7 +263,7 @@ function Editor({ m, t, pendentes, editavel }: { m: Mundo; t: TimeM; pendentes: 
           })}
         </div>
         <p className="mudo" style={{ margin: 0, fontSize: 13 }}>
-          {editavel ? (sel === null ? 'Toque num jogador, depois numa posição, numa vaga do banco ou noutro jogador.' : `${m.jogadores[sel]!.nome} selecionado: escolha para onde ele vai.`)
+          {editavel ? (sel === null ? 'Arraste um jogador (ou toque nele e depois no destino) para uma posição, o banco ou outro jogador.' : `${m.jogadores[sel]!.nome} selecionado: escolha para onde ele vai.`)
             : 'A escalação só muda no planejamento.'}
           {' '}Força <strong style={{ color: 'var(--text)' }}>{total}</strong>
           {fora > 0 && <> · <span style={{ color: 'var(--pessego)' }}>{fora} fora de posição</span></>}
@@ -230,24 +272,26 @@ function Editor({ m, t, pendentes, editavel }: { m: Mundo; t: TimeM; pendentes: 
       </section>
 
       <section className={s.listas}>
-        <div className="card" style={{ overflow: 'hidden' }}>
+        <div className={`card ${s.lista} ${sobre === 'banco' ? s.sobreLista : ''}`}
+          {...soltavel('banco', (a) => !('banco' in (lugar(e, a) ?? {})) && e.banco.length < MAX_BANCO && mover(a, { banco: e.banco.length }))}>
           <div className="cabecalho">
             <h2 style={{ flex: 1 }}>Banco <span className="fraco" style={{ fontWeight: 400 }}>{e.banco.length} de {MAX_BANCO}</span></h2>
           </div>
           {e.banco.map((id, i) => (
-            <Linha key={id} j={m.jogadores[id]!} t={t} m={m} forcas={forcas} sel={sel === id} onClick={() => tocarJogador(id)} rotulo={`banco ${i + 1}`} />
+            <Linha key={id} j={m.jogadores[id]!} t={t} m={m} forcas={forcas} sel={sel === id} onClick={() => tocarJogador(id)} rotulo={`banco ${i + 1}`}
+              dnd={dnd(id)} sobre={sobre === `j${id}`} />
           ))}
           {editavel && sel !== null && e.banco.length < MAX_BANCO && lugar(e, sel) && !('banco' in lugar(e, sel)!) && (
             <button className={s.alvo} onClick={() => tocarVazio({ banco: e.banco.length })}>Pôr no banco</button>
           )}
         </div>
 
-        <div className="card" style={{ overflow: 'hidden' }}>
+        <div className={`card ${s.lista} ${sobre === 'fora' ? s.sobreLista : ''}`} {...soltavel('fora', (a) => lugar(e, a) !== null && mover(a, null))}>
           <div className="cabecalho">
             <h2 style={{ flex: 1 }}>Fora do jogo <span className="fraco" style={{ fontWeight: 400 }}>{reservas.length}</span></h2>
           </div>
           {reservas.map((j) => (
-            <Linha key={j.id} j={j} t={t} m={m} forcas={forcas} sel={sel === j.id} onClick={() => tocarJogador(j.id)} />
+            <Linha key={j.id} j={j} t={t} m={m} forcas={forcas} sel={sel === j.id} onClick={() => tocarJogador(j.id)} dnd={dnd(j.id)} sobre={sobre === `j${j.id}`} />
           ))}
           {editavel && sel !== null && lugar(e, sel) !== null && (
             <button className={s.alvo} onClick={() => tocarVazio(null)}>Tirar do time</button>
@@ -276,12 +320,13 @@ function Editor({ m, t, pendentes, editavel }: { m: Mundo; t: TimeM; pendentes: 
   )
 }
 
-function Linha({ j, t, m, forcas, sel, onClick, rotulo }: {
+function Linha({ j, t, m, forcas, sel, onClick, rotulo, dnd, sobre }: {
   j: JogadorM; t: TimeM; m: Mundo; forcas: number[]; sel: boolean; onClick: () => void; rotulo?: string
+  dnd: HTMLAttributes<HTMLElement>; sobre: boolean
 }) {
   const a = alerta(m, j)
   return (
-    <button className={`${s.linha} ${sel ? s.selecionadoLinha : ''}`} onClick={onClick} aria-pressed={sel} aria-label={rotulo ? `${j.nome}, ${rotulo}` : j.nome}>
+    <button className={`${s.linha} ${sel ? s.selecionadoLinha : ''} ${sobre ? s.sobre : ''}`} onClick={onClick} {...dnd} aria-pressed={sel} aria-label={rotulo ? `${j.nome}, ${rotulo}` : j.nome}>
       <Camisa fileRef={t.fileRef} cor1={t.cor1} goleiro={j.posicao === 0} tamanho={26} />
       <ChipPosicao posicao={j.posicao} />
       <span className={s.nomeLinha}>{j.nome}</span>

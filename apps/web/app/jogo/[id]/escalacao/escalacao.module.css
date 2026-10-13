@@ -5,26 +5,50 @@
   align-items: flex-start;
 }
 
+/* desktop: tela única. O campo se mede pela altura da janela (barra, padding, táticas e legenda ≈ 350px) e as listas
+   rolam por dentro */
 .campoCol {
-  flex: 1 1 380px;
-  max-width: 500px;
+  flex: 0 0 auto;
+  width: clamp(300px, calc((100vh - 350px) * 434 / 650), 500px);
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
 }
 
 .listas {
-  flex: 999 1 420px;
+  flex: 1 1 420px;
   min-width: 0;
+  height: calc(100vh - 64px - 48px);
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
+}
+
+@media (max-width: 900px) {
+  .campoCol { width: 100%; max-width: 500px; }
+  .listas { height: auto; overflow: visible; }
+}
+
+.lista {
+  flex: none;
+  overflow: hidden;
+}
+
+.sobre {
+  outline: 2px dashed var(--lavanda);
+  outline-offset: -2px;
+  background: rgba(195, 188, 245, 0.14);
+}
+
+.sobreLista {
+  border-color: var(--lavanda);
 }
 
 .taticas {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
 }
 
 .taticas label {
@@ -64,6 +88,7 @@
 
 .slot {
   position: absolute;
+  cursor: grab;
   transform: translate(-50%, -50%);
   height: auto;
   padding: 2px;
@@ -153,8 +178,8 @@
 .linha {
   width: 100%;
   height: auto;
-  min-height: 44px;
-  padding: 6px 20px;
+  min-height: 38px;
+  padding: 4px 20px;
   display: flex;
   align-items: center;
   gap: 12px;

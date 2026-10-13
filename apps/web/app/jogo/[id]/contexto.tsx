@@ -53,42 +53,48 @@ export function JogoProvider({ children, ...p }: {
   const [fase, setFase] = useState(p.fase)
   const [prontos, setProntos] = useState(p.prontos)
   const [mundo, setMundo] = useState<Mundo | null>(null)
-  const [offset, setOffset] = useState(0)
+  const [offset, setOffset] = useState<number | null>(null)
   const versao = useRef<string | null>(null)
 
   useEffect(() => {
     const es = new EventSource(`/api/games/${p.jogo}/eventos`)
     es.onmessage = (m) => {
       const e = JSON.parse(m.data) as EventoJogo | { tipo: 'ola'; serverNow: number }
-      if (e.tipo === 'ola') return setOffset(e.serverNow - Date.now())
+      // o atraso da entrega só diminui a amostra (o motor rodando segura o SSE): fica a maior, a mais próxima da real
+      if (e.tipo === 'ola') return setOffset((o) => Math.max(o ?? -Infinity, e.serverNow - Date.now()))
+      if (e.tipo === 'ready') return setProntos(e.prontos)
       if (e.tipo === 'fase') setFase(e)
-      if (e.tipo === 'ready') setProntos(e.prontos)
-      // as telas ainda vêm do servidor: a fase pode ter mudado entre renderizar e conectar (ou na reconexão)
-      router.refresh()
+      // as telas ainda vêm do servidor: a fase pode ter mudado entre renderizar e conectar (ou na reconexão). Um refresh
+      // por rajada: a virada manda fase + prontos juntos e refreshes sobrepostos travavam a tela em "Rendering…".
+      clearTimeout(adiado)
+      adiado = setTimeout(() => router.refresh(), 150)
     }
-    return () => es.close()
+    let adiado: ReturnType<typeof setTimeout> | undefined
+    return () => {
+      clearTimeout(adiado)
+      es.close()
+    }
   }, [p.jogo, router])
 
   const temMundo = fase.status !== 'lobby' && fase.status !== 'picking'
   useEffect(() => {
     if (!temMundo) return
-    let vivo = true
-    fetch(`/api/games/${p.jogo}/snapshot`).then(async (r) => {
+    // corpo não lido segura a conexão: com o SSE aberto, 5 snapshots esquecidos esgotam as 6 conexões HTTP/1.1 do
+    // navegador e toda navegação fica na fila ("Rendering…" para sempre). Por isso aborta ao sair e cancela o que sobra.
+    const ctl = new AbortController()
+    fetch(`/api/games/${p.jogo}/snapshot`, { signal: ctl.signal }).then(async (r) => {
       const v = r.headers.get('X-Rodada')
-      if (!r.ok || !vivo || v === versao.current) return
+      if (!r.ok || v === versao.current) return void r.body?.cancel()
       const m = (await r.json()) as Mundo
-      if (!vivo) return
       versao.current = v
       setMundo(m)
-    })
-    return () => {
-      vivo = false
-    }
+    }).catch(() => {}) // abortado
+    return () => ctl.abort()
   }, [p.jogo, temMundo, fase.rodada, fase.fase])
 
   const meuTime = mundo && p.eu.tecnicoId !== null ? mundo.times.find((t) => t.tecnico === p.eu.tecnicoId) ?? null : null
   return (
-    <Ctx.Provider value={{ jogo: p.jogo, msPorMinuto: p.msPorMinuto, eu: p.eu, membros: p.membros, fase, prontos, mundo, meuTime, offset }}>
+    <Ctx.Provider value={{ jogo: p.jogo, msPorMinuto: p.msPorMinuto, eu: p.eu, membros: p.membros, fase, prontos, mundo, meuTime, offset: offset ?? 0 }}>
       {children}
     </Ctx.Provider>
   )
