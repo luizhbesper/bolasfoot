@@ -2,7 +2,7 @@ import { expect, test } from 'vitest'
 import { escalarIA } from './escalacao.ts'
 import { mundoSintetico } from './fixtures.ts'
 import type { TimeM } from './mundo.ts'
-import { iniciarPartida, type ContextoPartida, type Partida } from './partida.ts'
+import { iniciarPartida, type ContextoPartida, type JogadorPartida, type Partida } from './partida.ts'
 import { aplicarPosJogo, ganchoVermelho, nota, publico, recuperarEnergia } from './posjogo.ts'
 import { criarRng, derivar, type Rng } from './rng.ts'
 
@@ -81,4 +81,17 @@ test('aplicarPosJogo cumpre a suspensão antes de lançar os cartões desta part
   expect(Object.keys(notas)).toHaveLength(22)
   recuperarEnergia(m)
   expect(m.jogadores[c!]!.energia).toBe(100) // 26 anos, jogou, IA: +50
+})
+
+test('aplicarPosJogo soma as estatísticas da temporada na competição', () => {
+  const { p, m } = preparar()
+  const [at, meia] = p.lados[0].emCampo.slice(-2).map((id) => p.jogadores[id]!) as [JogadorPartida, JogadorPartida]
+  p.eventos.push({ tipo: 1, tempo: 1, minuto: 10, lado: 0, jogador: at.id, subtipo: 1, jogador2: meia.id })
+  p.eventos.push({ tipo: 8, tempo: 1, minuto: 10, lado: 0, jogador: meia.id })
+  p.eventos.push({ tipo: 3, tempo: 2, minuto: 20, lado: 0, jogador: meia.id })
+  const { notas } = aplicarPosJogo(m, p, criarRng('e'))
+  const [j, g, a, ca, cv, n] = m.jogadores[at.id]!.estatisticas!.serieA!
+  expect([j, g, a, ca, cv]).toEqual([1, 1, 0, 0, 0])
+  expect(n).toBeCloseTo(notas[at.id]!)
+  expect(m.jogadores[meia.id]!.estatisticas!.serieA!.slice(0, 5)).toEqual([1, 0, 1, 1, 1])
 })

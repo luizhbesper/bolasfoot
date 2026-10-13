@@ -78,6 +78,7 @@ Contrato: lista com filtros e detalhe; propostas humanas (`responderProposta`), 
 
 ## U5 — Competições e mundo
 Contrato: tabelas (de `FaseLiga.linhas`), agenda, história, times e técnicos, transferências. **Motor:** estatísticas de temporada por jogador (gols, assistências, jogos, notas) acumuladas no pós-jogo, para artilharia e a ficha do jogador.
+**Entregue (falta conferir no navegador):** motor com `JogadorM.estatisticas` por competição (`[jogos, gols, assistências, amarelos, vermelhos, soma das notas]`, somadas no `aplicarPosJogo`, zeradas na virada) e `Historico.artilheiro` (golden atualizado de propósito). Telas `tabelas` (chips das suas competições + séries, fases, liga/grupos com zonas, chaves do mata-mata, artilharia, próximos jogos), `agenda`, `historia` (campeões, vice, artilheiro; hall da fama), `times` (elenco de qualquer time com a ficha; ranking de técnicos; trocas de técnico), `transferencias` (busca, só amigos). A ficha do jogador ganhou a temporada por competição.
 
 ## U6 — Gestão
 Contrato: finanças (`financas`), estádio, ingresso, obras (`orcamentoObra`), empréstimo.

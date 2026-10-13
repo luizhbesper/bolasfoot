@@ -141,6 +141,20 @@ export function fimDeTemporada(m: Mundo, base: Base, seed = m.seed): void {
     hist.set(c, h)
     m.historico.push(h)
   }
+  // artilheiro de cada competição; as estatísticas da temporada zeram
+  const artilheiros = new Map<string, NonNullable<Historico['artilheiro']> & { jogos: number }>()
+  for (const j of m.jogadores) {
+    for (const [comp, [jogos, gols]] of Object.entries(j.estatisticas ?? {})) {
+      const a = artilheiros.get(comp)
+      if (gols > 0 && (!a || gols > a.gols || (gols === a.gols && jogos < a.jogos)))
+        artilheiros.set(comp, { jogador: j.id, nome: j.nome, time: j.time, gols, jogos })
+    }
+    delete j.estatisticas
+  }
+  for (const h of hist.values()) {
+    const a = artilheiros.get(h.competicao)
+    if (a) h.artilheiro = { jogador: a.jogador, nome: a.nome, time: a.time, gols: a.gols }
+  }
   // ah.kI: extrato da temporada zerado
   for (const t of m.times) if (t.humano) zerarExtrato(t)
 

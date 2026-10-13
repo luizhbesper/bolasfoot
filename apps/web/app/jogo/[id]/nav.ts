@@ -20,8 +20,8 @@ export const GRUPOS: { titulo: string; itens: ItemNav[] }[] = [
     titulo: 'Competições',
     itens: [
       { chave: 'partida', rotulo: 'Partida', rota: 'partida' },
-      { chave: 'tabelas', rotulo: 'Tabelas', rota: null },
-      { chave: 'agenda', rotulo: 'Agenda', rota: null },
+      { chave: 'tabelas', rotulo: 'Tabelas', rota: 'tabelas' },
+      { chave: 'agenda', rotulo: 'Agenda', rota: 'agenda' },
     ],
   },
   {
@@ -42,9 +42,9 @@ export const GRUPOS: { titulo: string; itens: ItemNav[] }[] = [
   {
     titulo: 'Mundo',
     itens: [
-      { chave: 'times', rotulo: 'Times e técnicos', rota: null },
-      { chave: 'historia', rotulo: 'História', rota: null },
-      { chave: 'transferencias', rotulo: 'Transferências', rota: null },
+      { chave: 'times', rotulo: 'Times e técnicos', rota: 'times' },
+      { chave: 'historia', rotulo: 'História', rota: 'historia' },
+      { chave: 'transferencias', rotulo: 'Transferências', rota: 'transferencias' },
     ],
   },
 ]

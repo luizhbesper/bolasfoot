@@ -74,7 +74,12 @@ export interface JogadorM extends Jogador {
   /** F.fh / F.fi: gols e jogos na carreira (o hall da fama olha os gols) */
   gols: number
   jogos: number
+  /** estatísticas da temporada por competição (zeradas na virada); ausente = não jogou */
+  estatisticas?: Record<string, EstatTemporada>
 }
+
+/** [jogos, gols, assistências, amarelos, vermelhos, soma das notas] numa competição (tupla: vai no snapshot) */
+export type EstatTemporada = [number, number, number, number, number, number]
 
 export interface Tatica {
   /** linha de FORMACOES (aq.sJ) */
@@ -207,6 +212,8 @@ export interface Historico {
   /** acesso e rebaixamento aplicados na virada (ah.b(at, 0|1)) */
   subiram: number[]
   cairam: number[]
+  /** quem mais fez gols na competição (empate: menos jogos) */
+  artilheiro?: { jogador: number; nome: string; time: number; gols: number }
 }
 
 /** Técnico novo, sem histórico. Fonte: best/al.java:41 (construtor), :38 (diretoria 95, torcida 85) */

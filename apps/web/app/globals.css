@@ -290,3 +290,61 @@ button.perigo {
   flex: 1;
   font-size: 16px;
 }
+
+/* Fileira de chips de filtro: botões com aria-pressed. */
+.chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.chips > button {
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+}
+
+.chips > button[aria-pressed='true'] {
+  border-color: var(--lavanda);
+  background: rgba(195, 188, 245, 0.14);
+  color: var(--text);
+}
+
+.chips > select {
+  height: 34px;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+}
+
+/* Duas colunas: conteúdo e lateral; empilha no celular. */
+.grade2 {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .grade2 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.coluna {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
+/* Escudo + nome numa célula de tabela, sem quebrar. */
+.clube {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
