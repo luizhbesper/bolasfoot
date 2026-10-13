@@ -7,6 +7,8 @@
 //
 // Mapa dos campos do F: ff() = estrela, gm() = craque, status 1 = titular, gl() = emprestado, ft() = à venda,
 // fz() = para empréstimo, fk() = valor, fl() = preço pedido, fj() = salário, fi() = força.
+import type { Base } from '@bolasfoot/data'
+import { gerarJunior } from './carreira.ts'
 import { classificacaoFinal } from './competicoes.ts'
 import { pagar, receber, salarioJogador, valorJogador } from './economia.ts'
 import { BRA, batedorFalta, habilidadesIniciais, type JogadorM, type Mundo, type TimeM } from './mundo.ts'
@@ -247,7 +249,7 @@ export function precoVendaIA(m: Mundo, j: JogadorM): number {
 }
 
 /** Compra um jogador de força parecida de um time com sobra na posição. Fonte: best/l.java:710-790 (a(ah, int[]), a(lista, int[])) */
-function reporPosicao(m: Mundo, t: TimeM, posicao: number, forca: number, rng: Rng): void {
+function reporPosicao(m: Mundo, base: Base | null, t: TimeM, posicao: number, forca: number, rng: Rng): void {
   const rep = t.reputacao
   const lista = t.ligaNacional
     ? m.times.filter((o) => o.pais === t.pais && !o.humano && o !== t && o.reputacao >= Math.max(rep - 2, 0) && o.reputacao <= rep + 1)
@@ -262,21 +264,22 @@ function reporPosicao(m: Mundo, t: TimeM, posicao: number, forca: number, rng: R
       return
     }
   }
-  // ponytail: sem vendedor o original gera um junior e o promove (F.a + k_0.a): gerarJunior precisa da Base, que
-  // chega aqui quando a W7/W8 passarem a base para janelaIA e proporCompra
+  // sem vendedor: um junior novo da posição, promovido na hora (F.a + k_0.a)
+  // ponytail: proporCompra ainda não recebe a Base (fica sem o junior até os comandos da W8)
+  if (base) promoverJunior(m, gerarJunior(m, base, t, posicao, rng).id, rng)
 }
 
 /** Depois de vender ao humano, a IA repõe as posições abaixo do mínimo (com a posição do vendido, como no original). Fonte: best/l.java:697 */
 function reporDepoisDeVender(m: Mundo, t: TimeM, vendido: JogadorM, rng: Rng): void {
   const n = porPosicao(m, t)
-  for (let p = 0; p <= 4; p++) if (n[p]! < [2, 3, 3, 5, 3][p]!) reporPosicao(m, t, vendido.posicao, vendido.forca, rng)
+  for (let p = 0; p <= 4; p++) if (n[p]! < [2, 3, 3, 5, 3][p]!) reporPosicao(m, null, t, vendido.posicao, vendido.forca, rng)
 }
 
 /** Completa as posições abaixo do mínimo. Fonte: best/ah.java:1245 (ku) */
-function completarElenco(m: Mundo, t: TimeM, rng: Rng): void {
+function completarElenco(m: Mundo, base: Base, t: TimeM, rng: Rng): void {
   const n = porPosicao(m, t)
   const forca = t.ligaNacional ? FORCA_MIN_DIV[t.divisao] ?? 5 : FORCA_MIN_REP[t.reputacao] ?? 5
-  for (let p = 0; p <= 4; p++) if (n[p]! < [2, 3, 3, 5, 3][p]!) reporPosicao(m, t, p, forca, rng)
+  for (let p = 0; p <= 4; p++) if (n[p]! < [2, 3, 3, 5, 3][p]!) reporPosicao(m, base, t, p, forca, rng)
 }
 
 // ── Humano compra ─────────────────────────────────────────────────────────
@@ -587,14 +590,14 @@ export function mercadoDepoisDosJogos(m: Mundo, tiposDoDia: readonly number[], r
  * as posições em falta, e os grandes da Europa levam estrelas dos outros. Fonte: best/ag.java:22 (jO: jS, jU, jR, jT)
  * ponytail: jP (elencos das seleções) entra com a Fase 6
  */
-export function janelaIA(m: Mundo, rng: Rng): void {
+export function janelaIA(m: Mundo, base: Base, rng: Rng): void {
   // jS: liga BR, em ordem de classificação de cada divisão
   for (const c of m.competicoes)
     if (c.tipo === 1) classificacaoFinal(c).forEach((id, pos) => !m.times[id]!.humano && negociarSobras(m, m.times[id]!, pos, true, rng))
   // jU: times de fora das ligas nacionais, pela posição na lista geral
   m.times.forEach((t, i) => !t.ligaNacional && !t.humano && negociarSobras(m, t, i, false, rng))
   // jR
-  for (const t of m.times) if (!t.humano) completarElenco(m, t, rng)
+  for (const t of m.times) if (!t.humano) completarElenco(m, base, t, rng)
   // jT: estrelas fortes de times médios vão para os grandes da Europa
   const alvos: JogadorM[] = []
   for (const t of m.times) {

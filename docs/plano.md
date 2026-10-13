@@ -321,6 +321,10 @@ Começa fechando as **lacunas** listadas no fim de `engenharia-reversa.md`, cada
   - Depois de dia de liga/estadual: demissões (diretoria < 10) e propostas aos humanos desempregados; na 20ª rodada da liga, propostas aos empregados. O humano pede demissão e aceita propostas.
   - Prontos para a W7: `envelhecer` (aniversário, aposentadoria, juniores de 20 anos, valores), `atualizarReputacoes`, `demissoesFimDeTemporada`. Numa virada de teste, ~750 jogadores se aposentam, ~900 juniores nascem e ~150 técnicos da IA caem.
   - **Ficou para depois:** avisos ao humano ("quer se aposentar", demissão, propostas) na caixa de entrada (W8); hall da fama e pontos de história do time (W7); seleções (Fase 6); nomes de países sem arquivo usam os do Brasil.
+- **W6:** quase toda a IA dos técnicos já tinha vindo antes.
+  - Escalação, formação e tática (`ah.kh` → `ah.a`): `escalarIA` (F1). Substituições e trocas táticas no jogo: `partida.ts` (M4). Rodízio de técnicos: W5. Lista, venda, compra, leilão e janela: W4.
+  - Fechado aqui: sem vendedor para repor uma posição, a IA gera um junior da posição e o promove na hora (`l.java:727`). `janelaIA` agora recebe a `Base`.
+  - **Ficou para depois:** a reposição depois de uma compra do humano (`proporCompra`) segue sem o junior até a W8 passar a `Base`.
 
 **Gate:** CLI simula 5 temporadas só com IA sem erro, com invariantes e estatísticas plausíveis (campeões variados, times grandes no topo na média, caixa dos humanos-piloto não explode).
 
