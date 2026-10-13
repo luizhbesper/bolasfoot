@@ -14,7 +14,8 @@ Detalhe dos tickets W1–W8 do `plano.md`. Fórmulas e mapeamento do Java em `en
 ```
 packages/engine/src/
   calendario.ts   W1
-  competicoes.ts  W2
+  competicoes.ts  W2 (genérico: fases, tabela, mata-mata, avancarDia)
+  brasil.ts       W2 (Séries, estaduais, regionais, Copa do Brasil, evento cD)
   economia.ts     W3
   mercado.ts      W4
   carreira.ts     W5
@@ -36,7 +37,7 @@ Testes: golden contra `tools/calendario.sh 2022` e `2026` (todas as datas de tod
 ## W2 — Competições nacionais + `avancarDia`
 Objetivo: uma temporada BR completa jogada só pela IA.
 Fonte original: `f/t.java:746` (round-robin pelo círculo); `f/s.java:37-63, 632-663, 1199, 1303, 1351` (liga/grupos, turnos, acesso e rebaixamento); `f/z.java` (mata-mata); `f/b_0.java:76` (divisão nacional, Série C 1020); `f/f_0.java:46-286` (Copa do Brasil); `best/w.java` + `aq.java:776-836` (estaduais, fórmulas 0–10); `f/F.java` (regionais); `best/a.java:649-697` (`cD`); `h/k_0.java` (desempate); `best/f_0.java:1378-1694` (`ap/at/ax`: o dia).
-Contrato: `Competicao` serializável (fases, tabela, jogos com dia), `criarCompeticoesBR(mundo, rng)`, `jogosDoDia(mundo)`, `avancarDia(mundo)` (escala a IA → partidas → pós-jogo → tabelas e próxima fase → eventos do dia).
+Contrato: `Competicao` serializável (`fases`: `FaseLiga` | `FaseMataMata`, com os jogos já datados), `criarCompeticoesBR(mundo, base, rng)` (chamada no `novoJogo`), `jogosDoDia(mundo)`, `avancarDia(mundo, seed?)` (escala a IA → partidas → pós-jogo → recuperação → tabelas e próxima fase → evento cD → próximo dia de jogo), `classificacaoFinal(c)`.
 Fora de escopo: dinheiro (W3), demissões (W5), acesso/rebaixamento aplicado (W7; aqui só a classificação final).
 Testes: nº de rodadas e jogos por formato (A/B 38; C 19 + grupos + final; D 14 + mata-mata de 32; Copa); tabela e desempate com casos fixos; temporada inteira sem erro, determinística.
 
