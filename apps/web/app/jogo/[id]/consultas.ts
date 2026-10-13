@@ -1,5 +1,5 @@
 // Leituras do mundo e formatos usados pelas telas (só cliente/servidor web; o motor não formata).
-import type { JogadorM, Linha, Mundo } from '@bolasfoot/engine'
+import type { Competicao, JogadorM, Jogo, Linha, Mundo } from '@bolasfoot/engine'
 
 const DIA_MS = 86_400_000
 const SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
@@ -76,3 +76,36 @@ export function alerta(m: Mundo, j: JogadorM): { texto: string; cor: 'rosa' | 'p
 export const CARACTERISTICAS = ['Col', 'DPe', 'Ref', 'SGo', 'Arm', 'Cab', 'Cru', 'Des', 'Dri', 'Fin', 'Mar', 'Pas', 'Res', 'Vel']
 export const NOMES_CARACTERISTICAS = ['Colocação', 'Defesa de pênalti', 'Reflexo', 'Saída do gol', 'Armação', 'Cabeceio', 'Cruzamento',
   'Desarme', 'Drible', 'Finalização', 'Marcação', 'Passe', 'Resistência', 'Velocidade']
+
+export const NOME_DIVISAO_CURTO = ['Fora', 'A', 'B', 'C']
+
+/** Todos os jogos de uma competição (liga e mata-mata), com a fase. */
+export function jogosDaComp(c: Competicao): { fase: number; jogo: Jogo }[] {
+  return c.fases.flatMap((f, fase) => (f.tipo === 'liga' ? f.jogos : f.rodadas.flatMap((r) => r.jogos)).map((jogo) => ({ fase, jogo })))
+}
+
+export const participa = (c: Competicao, time: number) =>
+  c.fases.some((f) => (f.tipo === 'liga' ? f.times.includes(time) : f.rodadas.some((r) => r.confrontos.some((x) => x.includes(time)))))
+
+/** Os jogos do time na temporada, em ordem de data. */
+export function agendaDoTime(m: Mundo, time: number): { comp: Competicao; jogo: Jogo }[] {
+  return m.competicoes.flatMap((comp) => jogosDaComp(comp).filter(({ jogo }) => jogo.casa === time || jogo.fora === time).map(({ jogo }) => ({ comp, jogo })))
+    .sort((a, b) => a.jogo.dia - b.jogo.dia)
+}
+
+/** Os que mais fizeram gols na competição nesta temporada (desempate: menos jogos). */
+export function artilharia(m: Mundo, compId: string, n = 10): { j: JogadorM; gols: number; jogos: number }[] {
+  const lista: { j: JogadorM; gols: number; jogos: number }[] = []
+  for (const j of m.jogadores) {
+    const e = j.estatisticas?.[compId]
+    if (e && e[1] > 0) lista.push({ j, gols: e[1], jogos: e[0] })
+  }
+  return lista.sort((a, b) => b.gols - a.gols || a.jogos - b.jogos).slice(0, n)
+}
+
+/** Resultado do jogo visto pelo time: V/E/D (pênaltis contam como no original: empate). */
+export function resultadoPara(j: Jogo, time: number): Resultado | null {
+  if (!j.gols) return null
+  const [a, b] = j.casa === time ? j.gols : [j.gols[1], j.gols[0]]
+  return a > b ? 'V' : a < b ? 'D' : 'E'
+}

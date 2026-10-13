@@ -128,6 +128,20 @@ export function aplicarPosJogo(mundo: Mundo, p: Partida, rng: Rng): { notas: Rec
     }
   // I.hh → F.a: gol (não contra) na carreira
   for (const e of p.eventos) if (e.tipo === 1 && e.subtipo !== 2 && e.jogador !== null && !mundo.jogadores[e.jogador]!.juvenil) mundo.jogadores[e.jogador]!.gols++
+  // estatísticas da temporada (artilharia e ficha do jogador). Fonte: n/a (o original guarda por jogo, ver ref 25/31)
+  const est = (id: number) => ((mundo.jogadores[id]!.estatisticas ??= {})[comp] ??= [0, 0, 0, 0, 0, 0])
+  for (const [id, n] of Object.entries(notas)) {
+    const x = est(Number(id))
+    x[0]++
+    x[5] = Math.round((x[5] + n) * 10) / 10
+  }
+  for (const e of p.eventos) {
+    if (e.jogador === null) continue
+    if (e.tipo === 1 && e.subtipo !== 2) est(e.jogador)[1]++
+    else if (e.tipo === 8) est(e.jogador)[2]++
+    if (e.tipo === 2 || e.tipo === 3) est(e.jogador)[3]++
+    if (e.tipo === 3 || e.tipo === 4) est(e.jogador)[4]++
+  }
   if (p.ctx.tipoComp !== 0)
     for (const e of p.eventos) {
       if ((e.tipo !== 2 && e.tipo !== 3 && e.tipo !== 4) || e.jogador === null) continue

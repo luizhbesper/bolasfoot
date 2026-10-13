@@ -123,6 +123,24 @@ export function Ficha({ m, j, pais, forcas }: { m: Mundo; j: JogadorM; pais: str
           ))}
         </div>
       )}
+      {j.estatisticas && Object.keys(j.estatisticas).length > 0 && (
+        <div>
+          <div className="mudo" style={{ fontSize: 13, marginBottom: 6 }}>Temporada</div>
+          <table className="tabela">
+            <thead><tr><th>Competição</th><th className="num">J</th><th className="num">G</th><th className="num">A</th><th className="num">CA</th><th className="num">CV</th><th className="num">Nota</th></tr></thead>
+            <tbody>
+              {Object.entries(j.estatisticas).map(([c, [jogos, g, as, ca, cv, notas]]) => (
+                <tr key={c}>
+                  <td>{m.competicoes.find((x) => x.id === c)?.nome ?? c}</td>
+                  <td className="num">{jogos}</td><td className="num">{g}</td><td className="num">{as}</td>
+                  <td className="num mudo">{ca}</td><td className="num mudo">{cv}</td>
+                  <td className="num">{jogos ? (notas / jogos).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
       {(j.aVenda || j.emprestado) && <p className="mudo" style={{ margin: 0 }}>{j.aVenda ? `À venda por ${dinheiro(j.preco)}` : 'Emprestado'}</p>}
     </>
   )
