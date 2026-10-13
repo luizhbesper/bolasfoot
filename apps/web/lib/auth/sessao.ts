@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation'
 import { createHash, randomBytes } from 'node:crypto'
 import { cache } from 'react'
 import { db } from '../db/index.ts'
-import { sessions, users } from '../db/schema.ts'
+import { gameMembers, sessions, users } from '../db/schema.ts'
 import { env } from '../env.ts'
 
 const COOKIE = 'sessao'
@@ -45,4 +45,12 @@ export async function exigirAdmin(): Promise<Usuario> {
   const u = await exigirUsuario()
   if (!u.isAdmin) redirect('/')
   return u
+}
+
+/** Membro do jogo logado, ou null. */
+export async function membroAtual(gameId: number) {
+  const u = await usuarioAtual()
+  if (!u || !Number.isInteger(gameId)) return null
+  const [m] = await db().select().from(gameMembers).where(and(eq(gameMembers.gameId, gameId), eq(gameMembers.userId, u.id)))
+  return m ? { usuario: u, membro: m } : null
 }

@@ -108,11 +108,13 @@ async function mudarFase(tx: Tx, g: Jogo, n: number, phase: FaseRodada, deadline
 const fimDoTempo = (inicio: Date, partidas: Partida[], tempo: 1 | 2, msPorMinuto: number) =>
   new Date(inicio.getTime() + (45 + Math.max(0, ...partidas.map((p) => p.acrescimos[tempo - 1]!))) * msPorMinuto)
 
-/** O que o log da rodada guarda: placar e eventos (o resto o cliente acha no snapshot). */
-const resumo = (r: Rodada) => ({
+/** O que o log da rodada guarda: placar e eventos com os nomes (o resto o cliente acha no snapshot). */
+const resumo = (m: Mundo, r: Rodada) => ({
   resultados: r.resultados, dias: r.dias, virou: r.virou,
   partidas: r.partidas.map((p) => ({
-    times: [p.lados[0].time, p.lados[1].time], placar: p.placar, acrescimos: p.acrescimos, eventos: p.eventos,
+    times: [p.lados[0].time, p.lados[1].time], nomes: [m.times[p.lados[0].time]!.nome, m.times[p.lados[1].time]!.nome],
+    placar: p.placar, acrescimos: p.acrescimos,
+    eventos: p.eventos.map((e) => ({ ...e, nome: e.jogador === null ? null : p.jogadores[e.jogador]?.nome ?? null })),
     penaltis: p.penaltis && { placar: p.penaltis.placar, vencedor: p.penaltis.vencedor },
   })),
 })
@@ -131,7 +133,7 @@ async function resolver(tx: Tx, g: Jogo, n: number, etapa: 0 | 1, s: Settings) {
   })
 
   const r = etapa ? continuarRodada(m, base, comandos, seed) : avancarRodada(m, base, comandos, seed, g.mode === 'live')
-  await tx.insert(roundLogs).values({ gameId: g.id, n, etapa, data: resumo(r) })
+  await tx.insert(roundLogs).values({ gameId: g.id, n, etapa, data: resumo(m, r) })
   const agora = new Date()
   if (r.fase === 'intervalo') {
     await salvarMundo(tx, g.id, n, 1, m)
