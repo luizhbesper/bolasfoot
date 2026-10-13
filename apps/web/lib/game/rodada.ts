@@ -230,6 +230,30 @@ export async function enviarComandos(d: Db, gameId: number, userId: number, list
   })
 }
 
+/** Comandos já guardados pelo membro na fase corrente (vazio fora do planejamento/intervalo). */
+export async function comandosPendentes(q: Q, gameId: number, userId: number): Promise<Comando[]> {
+  const [g] = await q.select().from(games).where(eq(games.id, gameId))
+  if (g?.status !== 'running') return []
+  const etapa = etapaDa((await rodadaDe(q, gameId, g.round))?.phase)
+  if (etapa === null) return []
+  const [c] = await q.select({ list: commands.list }).from(commands).innerJoin(gameMembers, eq(gameMembers.id, commands.memberId))
+    .where(and(eq(commands.gameId, gameId), eq(commands.n, g.round), eq(commands.etapa, etapa), eq(gameMembers.userId, userId)))
+  return (c?.list as Comando[] | undefined) ?? []
+}
+
+/** Tipos que valem uma vez por fase: o novo substitui o anterior; os outros (compras, propostas…) se somam. */
+const UNICOS = new Set<Comando['tipo']>(['escalar', 'tatica', 'batedores', 'treino', 'ingresso', 'mudarTatica'])
+
+export function juntarComandos(atuais: Comando[], novos: Comando[]): Comando[] {
+  const trocados = new Set(novos.map((c) => c.tipo).filter((t) => UNICOS.has(t)))
+  return [...atuais.filter((c) => !trocados.has(c.tipo)), ...novos]
+}
+
+/** Soma `novos` aos comandos já guardados da fase (ver `juntarComandos`) e grava tudo com `enviarComandos`. */
+export async function definirComandos(d: Db, gameId: number, userId: number, novos: Comando[]) {
+  return enviarComandos(d, gameId, userId, juntarComandos(await comandosPendentes(d, gameId, userId), novos))
+}
+
 /** Pronto / não pronto na fase corrente (ou na escolha de times); o último pronto resolve. */
 export async function marcarReady(d: Db, gameId: number, userId: number, ready: boolean): Promise<void> {
   const [g] = await d.select().from(games).where(eq(games.id, gameId))

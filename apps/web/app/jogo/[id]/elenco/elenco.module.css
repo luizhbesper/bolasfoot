@@ -1,0 +1,101 @@
+.filtros {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.filtros > button {
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+}
+
+.filtros > .ativo {
+  border-color: var(--lavanda);
+  background: rgba(195, 188, 245, 0.14);
+  color: var(--text);
+}
+
+.ordenar {
+  height: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
+}
+
+.linha {
+  cursor: pointer;
+}
+
+.linha:hover {
+  background: var(--raised);
+}
+
+.nome {
+  height: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-weight: 500;
+  text-align: left;
+}
+
+.titulo {
+  font-family: var(--font-bricolage), sans-serif;
+  font-weight: 700;
+  font-size: 26px;
+}
+
+.numeros {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.numeros > div {
+  padding: 10px 12px;
+  border-radius: var(--raio);
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.numeros span {
+  font-size: 12px;
+  color: var(--faint);
+}
+
+.habilidades {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.habilidades > div {
+  display: grid;
+  grid-template-columns: 40px 1fr 32px;
+  align-items: center;
+  gap: 10px;
+}
+
+.trilho {
+  height: 5px;
+  border-radius: 3px;
+  background: var(--line);
+}
+
+.trilho > div {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--lavanda);
+}

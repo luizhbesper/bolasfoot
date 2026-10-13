@@ -10,8 +10,8 @@ export const GRUPOS: { titulo: string; itens: ItemNav[] }[] = [
     titulo: 'Clube',
     itens: [
       { chave: 'hub', rotulo: 'Visão geral', rota: '' },
-      { chave: 'elenco', rotulo: 'Elenco', rota: null },
-      { chave: 'escalacao', rotulo: 'Escalação', rota: null },
+      { chave: 'elenco', rotulo: 'Elenco', rota: 'elenco' },
+      { chave: 'escalacao', rotulo: 'Escalação', rota: 'escalacao' },
       { chave: 'treino', rotulo: 'Treino', rota: null },
       { chave: 'juniores', rotulo: 'Juniores', rota: null },
     ],

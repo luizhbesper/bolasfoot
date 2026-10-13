@@ -61,6 +61,8 @@ Objetivo: hub, elenco e escalação jogáveis.
 Fonte original: `docs/ref/04,05,10`.
 Contrato: hub (próximo jogo, confiança, mini-tabela, feed), elenco (tabela + drawer do jogador), escalação (toque-no-jogador → toque-no-slot; formação, estilo, marcação, jogada, banco, batedores). Valida com `validar` no cliente e envia `escalar`/`tatica`/`batedores` por server action.
 Testes: e2e mobile smoke (6.5 #3).
+**Entregue:** hub (`hub.tsx`: próximo jogo com forma dos dois, avisos do elenco, confiança, caixa e folha, tabela/grupo da competição do próximo jogo, resultados dos amigos na última rodada), elenco (`elenco/`: tabela ordenável, filtro por posição, ficha numa gaveta `<dialog>` em `_ui/gaveta.tsx`) e escalação (`escalacao/`: campo com as camisas, banco, "fora do jogo", formação/estilo/marcação/jogadas, batedores; salva sozinha 600 ms depois de cada mudança). Servidor: `comandosPendentes` e `definirComandos` em `lib/game/rodada.ts` — escalação, tática, batedores, treino e ingresso substituem o anterior da fase; o resto se soma. E2E `e2e/clube.e2e.ts` no celular.
+**Lacuna do motor achada aqui:** contratos vencem e ninguém sai do time (no jogo local, quase todo o elenco do humano está com "contrato vencido" desde agosto). O original trata no pós-jogo (`hg`, ver RE "as()"); o port não. Entra como ticket próprio do motor antes do gate da fase.
 
 ## U4 — Partida
 Objetivo: partida ao vivo sincronizada, intervalo e resultados.

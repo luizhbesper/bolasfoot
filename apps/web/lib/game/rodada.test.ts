@@ -5,7 +5,7 @@ import { gameMembers, games, roundLogs, rounds, snapshots, users, type FaseRodad
 import { limpar } from '../db/teste.ts'
 import { criarJogo } from './admin.ts'
 import { base } from './base.ts'
-import { carregarMundo, comecarJogo, enviarComandos, marcarReady, sha256, transicionar } from './rodada.ts'
+import { carregarMundo, comandosPendentes, comecarJogo, definirComandos, enviarComandos, marcarReady, sha256, transicionar } from './rodada.ts'
 
 let jogo: number, ana: number, bia: number
 const [t1, t2] = base.times.filter((t) => t.pais === 29).sort((a, b) => b.nivel - a.nivel)
@@ -41,6 +41,15 @@ test('comandos: inválido não grava; fora do jogo é recusado', async () => {
   expect(await enviarComandos(db(), jogo, ana!, 'x')).toEqual({ erro: 'lista de comandos inválida' })
   const [carlos] = await db().insert(users).values({ username: 'carlos', passwordHash: 'h' }).returning()
   expect(await enviarComandos(db(), jogo, carlos!.id, [])).toEqual({ erro: 'você não joga neste jogo' })
+})
+
+test('definirComandos troca os únicos (escalação, tática) e soma o resto', async () => {
+  await definirComandos(db(), jogo, ana!, [{ tipo: 'tatica', estilo: 1 }, { tipo: 'banco', acao: 'pegar' }])
+  await definirComandos(db(), jogo, ana!, [{ tipo: 'tatica', estilo: 2 }, { tipo: 'banco', acao: 'pagar' }])
+  expect(await comandosPendentes(db(), jogo, ana!)).toEqual([
+    { tipo: 'banco', acao: 'pegar' }, { tipo: 'tatica', estilo: 2 }, { tipo: 'banco', acao: 'pagar' },
+  ])
+  expect(await comandosPendentes(db(), jogo, bia!)).toEqual([])
 })
 
 test('todos prontos resolvem; concorrência resolve uma vez; seed revelada confere', async () => {
