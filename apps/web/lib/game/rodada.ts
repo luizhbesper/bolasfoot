@@ -27,7 +27,7 @@ export const sha256 = (s: string) => createHash('sha256').update(s).digest('hex'
 /** Seed da rodada n: secreta até os comandos travarem; o hash sai antes (commit-reveal, §2.5). */
 export const seedDaRodada = (gameSeed: string, n: number) => sha256(`${gameSeed}:${n}`)
 /** O mundo vai para o cliente: a seed dele não pode ser a do jogo, de onde saem as das rodadas. */
-const seedDoMundo = (gameSeed: string) => sha256(`${gameSeed}:mundo`)
+export const seedDoMundo = (gameSeed: string) => sha256(`${gameSeed}:mundo`)
 
 const daqui = (s: number) => new Date(Date.now() + s * 1000)
 
@@ -153,10 +153,21 @@ async function resolver(tx: Tx, g: Jogo, n: number, etapa: 0 | 1, s: Settings) {
 export async function transicionar(d: Db, gameId: number, forcar = false): Promise<boolean> {
   const mudou = await d.transaction(async (tx) => {
     const [g] = await tx.select().from(games).where(eq(games.id, gameId)).for('update')
+    const vencido = forcar || (g?.deadline != null && g.deadline <= new Date())
+    if (g?.status === 'picking') {
+      // escolha de times: todos com time e prontos, ou prazo (quem não escolheu fica de fora)
+      const membros = await tx.select().from(gameMembers).where(eq(gameMembers.gameId, gameId))
+      if (!(membros.length > 0 && membros.every((x) => x.teamRef && x.ready)) && !vencido) return false
+      if (!membros.some((x) => x.teamRef)) {
+        await tx.update(games).set({ deadline: null }).where(eq(games.id, gameId)) // ninguém escolheu: espera
+        return false
+      }
+      await comecarJogo(tx, gameId)
+      return true
+    }
     if (g?.status !== 'running') return false
     const r = (await rodadaDe(tx, gameId, g.round))!
     const s = await settingsDe(tx, gameId)
-    const vencido = forcar || (g.deadline !== null && g.deadline <= new Date())
     switch (r.phase) {
       case 'planejamento':
       case 'intervalo': {
@@ -219,11 +230,14 @@ export async function enviarComandos(d: Db, gameId: number, userId: number, list
   })
 }
 
-/** Pronto / não pronto na fase corrente; o último pronto resolve. */
+/** Pronto / não pronto na fase corrente (ou na escolha de times); o último pronto resolve. */
 export async function marcarReady(d: Db, gameId: number, userId: number, ready: boolean): Promise<void> {
   const [g] = await d.select().from(games).where(eq(games.id, gameId))
-  if (g?.status !== 'running' || etapaDa((await rodadaDe(d, gameId, g.round))?.phase) === null) return
-  await d.update(gameMembers).set({ ready }).where(and(eq(gameMembers.gameId, gameId), eq(gameMembers.userId, userId)))
+  const naEscolha = g?.status === 'picking'
+  if (!naEscolha && (g?.status !== 'running' || etapaDa((await rodadaDe(d, gameId, g.round))?.phase) === null)) return
+  const onde = and(eq(gameMembers.gameId, gameId), eq(gameMembers.userId, userId))
+  // na escolha, só fica pronto quem já tem time
+  await d.update(gameMembers).set({ ready }).where(naEscolha ? and(onde, isNotNull(gameMembers.teamRef)) : onde)
   publicar(gameId, await prontos(d, gameId))
   if (ready) await transicionar(d, gameId)
 }

@@ -13,14 +13,12 @@ export function AoVivo({ jogo, msPorMinuto, inicial }: { jogo: number; msPorMinu
 
   useEffect(() => {
     const es = new EventSource(`/api/games/${jogo}/eventos`)
-    let primeira = true
     es.onmessage = (m) => {
       const e = JSON.parse(m.data)
       if (e.tipo === 'ola') offset.current = e.serverNow - Date.now()
       if (e.tipo === 'fase') setFase(e)
-      // a primeira leva é o estado que a página já tem
-      if (e.tipo !== 'ola' && !primeira) router.refresh()
-      if (e.tipo === 'ready') primeira = false
+      // inclusive as boas-vindas: a fase pode ter mudado entre renderizar a página e conectar (ou na reconexão)
+      if (e.tipo !== 'ola') router.refresh()
     }
     const t = setInterval(() => setAgora(Date.now()), 250)
     return () => {
