@@ -175,7 +175,7 @@ export function fimDeTemporada(m: Mundo, base: Base, seed = m.seed): void {
   const estaduais = acessoEstadual(m, hist)
 
   // af(): aniversário, aposentadoria, juniores
-  envelhecer(m, base, rng('envelhecer'))
+  m.queremParar = envelhecer(m, base, rng('envelhecer')).queremParar
   // W(): transferências com mais de 10 anos saem do histórico
   const ano = ANO_INICIAL + m.temporada - 1
   if (m.temporada >= 5) m.transferencias = m.transferencias.filter((x) => data(x.dia).ano + 10 >= ano - 1)

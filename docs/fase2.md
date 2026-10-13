@@ -73,6 +73,12 @@ Testes: virada real (trocas 4 × 4, Série D de volta ao pool, sobem os semifina
 ## W8 — `avancarRodada`
 Objetivo: a função que a máquina de estados do servidor chama.
 Fonte original: n/a (multiplayer; o "pare quando um humano decide" vem de `f_0.ay()`).
-Contrato: `avancarRodada(mundo, comandos, seed)` avança dias até um humano ter jogo ou decisão; `validar(mundo, tecnico, comando)`.
+Contrato: `avancarRodada(mundo, base, comandos, seed, intervalo?)` → `Rodada` e `continuarRodada(mundo, base, comandosDoIntervalo, seed)`; `validar(mundo, tecnico, comando)`; `Comando` (escalação, tática, batedores, treino, ingresso, banco, obra, compra, resposta a proposta, lista, venda, empréstimos, lance, juniores, renovação, aposentadoria, emprego; substituição e tática no intervalo). `avancarDia` vira `comecarDia` (1º tempo) + `terminarDia` (2º tempo e o resto), bit a bit igual. `TimeM` ganha `escalacao`; `Mundo` ganha `avisos`, `propostasHumanas`, `queremParar`, `emJogo`.
+- O mundo fica parado no próximo dia de jogo. A rodada aplica os comandos (compras de jogadores da IA por último, da maior oferta para a menor; quem chega depois de o jogador mudar de time falha), joga o dia e segue sozinha até o próximo dia com humano em campo, uma proposta de emprego ou a virada (que ela faz, devolvendo as competições encerradas).
+- Com `intervalo` e humano em campo, para entre os tempos (`mundo.emJogo`, serializável). Sem intervalo, o humano joga no piloto automático: substituições e pênaltis da IA (plano §3.2).
+- Humano escala pela escalação salva; quem não pode jogar é trocado pelo melhor disponível do slot. Sem escalação salva, a IA escala por ele.
+- Proposta por jogador de outro humano vira aviso ao dono e é respondida na rodada seguinte; sem resposta, recusada. Avisos: vendas, chegadas, demissão, propostas de emprego, "quer se aposentar" (o técnico decide com o comando `aposentar`).
 
 **Gate:** `pnpm sim --temporadas 5` sem erro: campeões variados, posição média correlacionada com `Nivel`, caixa dos pilotos sob controle → `temporada.stats.test.ts`.
+
+**Gate (feito):** `pnpm sim --temporadas 10 --mundos 5` contra o original rodado igual (`tools/temporadas.sh`: o jogo original sem humanos, `f_0.bs = false`, um `ap()` por dia). Referência em `packages/engine/src/ref-temporadas.json`; `temporada.stats.test.ts` confere 3 temporadas.

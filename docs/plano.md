@@ -275,7 +275,7 @@ Tickets detalhados e decisões da fase: `docs/fase1.md`.
 
 **Notas vindas da F0:** o motor lê `Base` de `@bolasfoot/data` (não do jsonl). M2 implementa a derivação da divisão BR por `Nivel` (nota da F0). O `tools/RefShots.java` prova que o jogo original roda em processo, sem UI manual, no Java 17: isso torna o `tools/Oracle.java` da M6 (6.2) viável — chamar `c/b.java` direto ou rodar rodadas e ler o resultado.
 
-### Fase 2 — Mundo, temporada e IA
+### Fase 2 — Mundo, temporada e IA — COMPLETE (2026-10-13)
 
 Tickets detalhados e decisões da fase: `docs/fase2.md`. Primeira temporada em **2026** (o original usa 2022).
 
@@ -333,7 +333,20 @@ Começa fechando as **lacunas** listadas no fim de `engenharia-reversa.md`, cada
   - Em 5 temporadas de teste: cerca de 0,6 s por temporada e campeões variados (Série A: Flamengo, Palmeiras ×2, Flamengo, Corinthians). Os juniores sobem ~2,5 por time ao ano até o teto de 15–20 e os elencos ficam em ~21. O piloto da Série A foi de 15M para 200M, quase tudo em prêmios de títulos.
   - **Ficou para depois:** Supercopa, continentais, seleções e torneio amistoso (Fase 6). As séries do ano novo saem pelo Nivel, não pela ordem da tabela velha (só muda o desempate de quem fica entre os 16 dos regionais). Estatísticas de temporada (artilharia, notas): Fase 4, junto com a tela que as mostra.
 
+- **W8:** `rodada.ts`.
+  - `avancarRodada`/`continuarRodada`, `validar` e os comandos tipados (detalhe em `docs/fase2.md`). O dia em dois tempos (`comecarDia`/`terminarDia`) para o intervalo do modo live; sem intervalo, piloto automático.
+  - Caixa de entrada (`avisos`), proposta entre humanos, "quer se aposentar" e disputa de dois humanos pelo mesmo jogador da IA (maior oferta leva).
+  - Com 2 humanos na Série A, uma temporada tem ~64 rodadas.
+  - **Correção achada pelo gate:** a criação do mundo não gerava os juniores do `f_0.c(false)` (`p_0.java:165`); o port tinha metade dos juniores do original na 1ª temporada.
+  - **Ficou para depois:** os outros humanos cobrindo a venda imediata (`a/iX`); interface da caixa de entrada (Fase 4).
+
 **Gate:** CLI simula 5 temporadas só com IA sem erro, com invariantes e estatísticas plausíveis (campeões variados, times grandes no topo na média, caixa dos humanos-piloto não explode).
+
+**Notas do gate:** `pnpm sim --temporadas 10 --mundos 5` contra o original nas mesmas condições (`tools/temporadas.sh`).
+- A força dos 11 melhores sobe ~1,8 por temporada na Série A **no original também** (47,6 → 65,5; port 47,6 → 65,9). B, C e fora das séries batem dentro de 2.
+- Idade média, força máxima e juniores batem. O port tem ~2% menos jogadores e ~8 estrelas a menos o tempo todo: são os times espanhóis, fora por decisão da F0.
+- Em 50 temporadas: 13 campeões diferentes da Série A (Palmeiras 13), 19 da Copa, 2,8 gols por jogo, mandante ~38%, Spearman (colocação × Nivel inicial) ~0,5.
+- O piloto no automático é demitido com frequência e acha outro emprego; o caixa fica entre 10M e 90M.
 
 ### Fase 3 — Servidor, contas e jogos
 

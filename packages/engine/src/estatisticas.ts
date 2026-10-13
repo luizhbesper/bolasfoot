@@ -2,10 +2,14 @@
 // e à saída do oráculo Java (tools/Oracle.java), para comparar o port com o original.
 import base from '@bolasfoot/data/base.json' with { type: 'json' }
 import type { Base } from '@bolasfoot/data'
+import { TIPO } from './calendario.ts'
+import { contratarTecnicoHumano } from './carreira.ts'
+import { classificacaoFinal, type Competicao } from './competicoes.ts'
 import { escalarIA } from './escalacao.ts'
-import { novoJogo } from './mundo.ts'
+import { novoJogo, type Mundo } from './mundo.ts'
 import { iniciarPartida, simularTempo, type ContextoPartida, type Partida } from './partida.ts'
 import { derivar } from './rng.ts'
+import { avancarRodada, type ComandoDe } from './rodada.ts'
 
 /** Uma partida reduzida ao que as duas implementações conseguem informar. */
 export interface ResumoJogo {
@@ -106,4 +110,120 @@ export function simularLote(n: number, seed: string, divisao = 1, opcoes = { hab
     jogos.push(p)
   }
   return jogos
+}
+
+// ── Temporadas (gate da Fase 2: pnpm sim --temporadas) ─────────────────────
+
+/** Correlação de Spearman entre duas ordens (sem empates). */
+function spearman(a: number[], b: number[]): number {
+  const n = a.length
+  const d2 = a.reduce((s, x, i) => s + (x - b[i]!) * (x - b[i]!), 0)
+  return 1 - (6 * d2) / (n * (n * n - 1))
+}
+
+export interface ResumoTemporada {
+  temporada: number
+  /** campeões (nomes) de A, B, C, D e Copa */
+  campeoes: Record<'A' | 'B' | 'C' | 'D' | 'CB', string>
+  /** Spearman entre a colocação final da Série A e a ordem por Nivel do começo do jogo (1 = só os favoritos no topo) */
+  spearmanA: number
+  /** Série A: gols por jogo e resultado */
+  golsJogo: number
+  casa: number
+  empate: number
+  /** média da força dos 11 melhores de cada time, por divisão (A, B, C, fora das séries BR) */
+  forcaTop11: [number, number, number, number]
+  /** média de Nivel original dos times da Série A (os grandes continuam lá?) */
+  nivelMedioA: number
+  idadeMedia: number
+  ativos: number
+  juniores: number
+  aposentados: number
+  estrelas: number
+  forcaMax: number
+  transferencias: number
+  trocasDeTecnico: number
+  /** times BR por reputação 0..5 */
+  reputacaoBR: number[]
+  hallDaFama: number
+  /** o técnico humano-piloto: time em que terminou a temporada (null = desempregado), colocação na liga, caixa depois da virada */
+  piloto: { time: string | null; divisao: number; caixa: number; posicao: number | null; diretoria: number; torcida: number; demissoes: number }
+}
+
+/**
+ * Fotografia de uma temporada: competições pelas `encerradas`; jogadores, reputações e caixa já depois da virada (o
+ * começo da seguinte). `nivel0`: Nivel de cada time no começo do jogo.
+ */
+export function resumoTemporada(m: Mundo, encerradas: Competicao[], nivel0: number[], piloto: number, marcas: { transf: number; trocas: number }): ResumoTemporada {
+  const comp = (id: string) => encerradas.find((c) => c.id === id)
+  const nome = (id: number | null | undefined) => (id == null ? '-' : m.times[id]!.nome)
+  const a = comp('BR-1')!
+  const final = classificacaoFinal(a)
+  const porNivel = [...final].sort((x, y) => nivel0[y]! - nivel0[x]! || x - y)
+  const jogosA = a.fases.flatMap((f) => (f.tipo === 'liga' ? f.jogos : []))
+  const ativos = m.jogadores.filter((j) => j.time >= 0)
+  const pros = ativos.filter((j) => !j.juvenil)
+  const top11 = (div: number) => {
+    const ts = m.times.filter((t) => (div === 0 ? !t.ligaNacional || t.divisao === 0 : t.ligaNacional && t.divisao === div))
+    const v = ts.map((t) => {
+      const f = t.jogadores.map((id) => m.jogadores[id]!.forca).sort((x, y) => y - x).slice(0, 11)
+      return f.reduce((s, x) => s + x, 0) / f.length
+    })
+    return +(v.reduce((s, x) => s + x, 0) / v.length).toFixed(1)
+  }
+  const tc = m.tecnicos[piloto]!
+  const campanha = tc.campanhas.findLast((c) => c.temporada === m.temporada - 1)
+  const tp = campanha ? m.times[campanha.time]! : null
+  const ligaPiloto = tp && encerradas.find((c) => c.tipo === TIPO.liga && classificacaoFinal(c).includes(tp.id))
+  const rep = [0, 0, 0, 0, 0, 0]
+  for (const t of m.times) if (t.ligaNacional) rep[t.reputacao]!++
+  return {
+    temporada: m.temporada - 1,
+    campeoes: { A: nome(a.campeao), B: nome(comp('BR-2')?.campeao), C: nome(comp('BR-3')?.campeao), D: nome(comp('BR-4')?.campeao), CB: nome(comp('CB')?.campeao) },
+    spearmanA: +spearman(final.map((_, i) => i), final.map((t) => porNivel.indexOf(t))).toFixed(3),
+    golsJogo: +(jogosA.reduce((s, j) => s + j.gols![0] + j.gols![1], 0) / jogosA.length).toFixed(2),
+    casa: +(jogosA.filter((j) => j.gols![0] > j.gols![1]).length / jogosA.length).toFixed(3),
+    empate: +(jogosA.filter((j) => j.gols![0] === j.gols![1]).length / jogosA.length).toFixed(3),
+    forcaTop11: [top11(1), top11(2), top11(3), top11(0)],
+    nivelMedioA: +(final.reduce((s, t) => s + nivel0[t]!, 0) / final.length).toFixed(2),
+    idadeMedia: +(pros.reduce((s, j) => s + j.idade, 0) / pros.length).toFixed(2),
+    ativos: pros.length,
+    juniores: ativos.length - pros.length,
+    aposentados: m.jogadores.length - ativos.length,
+    estrelas: pros.filter((j) => j.estrela).length,
+    forcaMax: Math.max(...pros.map((j) => j.forca)),
+    transferencias: m.transferencias.length - marcas.transf,
+    trocasDeTecnico: m.trocasDeTecnico.length - marcas.trocas,
+    reputacaoBR: rep,
+    hallDaFama: m.hallDaFama.length,
+    piloto: {
+      time: tp?.nome ?? null, divisao: tp?.divisao ?? 0, caixa: tc.time !== null ? m.times[tc.time]!.financas?.caixa ?? 0 : 0,
+      diretoria: tc.diretoria, torcida: tc.torcida, posicao: tp && ligaPiloto ? classificacaoFinal(ligaPiloto).indexOf(tp.id) + 1 : null,
+      demissoes: m.trocasDeTecnico.slice(marcas.trocas).filter((x) => x.saiu === piloto && x.motivo > 0).length,
+    },
+  }
+}
+
+/**
+ * N temporadas de um mundo com um humano-piloto (começa no 10º da Série A por Nivel; escala pela IA e, desempregado,
+ * aceita a primeira proposta) jogando pelo caminho da máquina de estados (`avancarRodada`).
+ */
+export function simularTemporadas(n: number, seed: string): ResumoTemporada[] {
+  const B = base as Base
+  const m = novoJogo(B, { habilidadeIndividual: false }, seed)
+  const nivel0 = m.times.map((t) => t.nivel)
+  const time = m.times.filter((t) => t.divisao === 1).sort((x, y) => y.nivel - x.nivel || x.id - y.id)[9]!.id
+  const piloto = contratarTecnicoHumano(m, 'Piloto', 29, time).id
+  const out: ResumoTemporada[] = []
+  let marcas = { transf: 0, trocas: 0 }
+  for (let k = 0; out.length < n; k++) {
+    // desempregado, aceita a primeira proposta
+    const oferta = m.tecnicos[piloto]!.time === null ? m.ofertas.find((o) => o.tecnico === piloto) : undefined
+    const comandos: ComandoDe[] = oferta ? [{ tecnico: piloto, comando: { tipo: 'aceitarOferta', time: oferta.times[0]! } }] : []
+    const r = avancarRodada(m, B, comandos, `${seed}:${k}`)
+    if (!r.virou) continue
+    out.push(resumoTemporada(m, r.encerradas!, nivel0, piloto, marcas))
+    marcas = { transf: m.transferencias.length, trocas: m.trocasDeTecnico.length }
+  }
+  return out
 }

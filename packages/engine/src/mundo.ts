@@ -2,10 +2,10 @@
 import type { Base, Jogador, Time } from '@bolasfoot/data'
 import { ANO_INICIAL, criarCalendario, primeiroDomingo, type Calendario } from './calendario.ts'
 import { criarCompeticoesBR, type ColocacaoEstadual } from './brasil.ts'
-import type { Competicao } from './competicoes.ts'
+import type { Competicao, DiaEmJogo } from './competicoes.ts'
 import { atualizarValores, type Financas } from './economia.ts'
 import { listarIA, type Emprestimo, type Leilao, type Transferencia } from './mercado.ts'
-import { iniciarJunior, type Oferta, type Tecnico, type TrocaDeTecnico } from './carreira.ts'
+import { gerarJunior, iniciarJunior, type Oferta, type Tecnico, type TrocaDeTecnico } from './carreira.ts'
 import { derivar, type Rng } from './rng.ts'
 
 export const BRA = 29
@@ -118,6 +118,8 @@ export interface TimeM extends Omit<Time, 'jogadores' | 'juniores' | 'estadio' |
   jogadores: number[]
   juniores: number[]
   tatica: Tatica
+  /** escalação salva pelo humano (ah.nf/ng); sem ela, a IA escala por ele. A formação fica em `tatica`. */
+  escalacao?: { titulares: { id: number; slot: number }[]; banco: number[] }
   /** batedor de faltas/pênaltis (ke) e de escanteios (lq): ids de jogador */
   batedores: { falta: number | null; escanteio: number | null }
   estadio: Estadio
@@ -169,6 +171,29 @@ export interface Mundo {
   rebaixadosC: number[]
   /** f_0.afU: os 12 que entram na 3ª fase da próxima Copa do Brasil (Z.y); vazio na 1ª temporada */
   reservadosCopa: number[]
+  /** caixa de entrada dos técnicos humanos (os `as` do original) */
+  avisos: Aviso[]
+  /** propostas de um humano por jogador de outro humano, respondidas na rodada seguinte */
+  propostasHumanas: PropostaHumana[]
+  /** jogadores de humanos que pediram para se aposentar na virada (F.ge); o técnico decide até a próxima */
+  queremParar: number[]
+  /** o dia entre o 1º e o 2º tempo, no modo com intervalo */
+  emJogo: DiaEmJogo | null
+}
+
+export interface Aviso {
+  tecnico: number
+  dia: number
+  texto: string
+}
+
+export interface PropostaHumana {
+  id: number
+  /** time comprador */
+  comprador: number
+  jogador: number
+  valor: number
+  dia: number
 }
 
 export interface Historico {
@@ -373,7 +398,7 @@ export function novoJogo(base: Base, opcoes: OpcoesJogo, seed: string): Mundo {
     seed, temporada: 1, dia, diaEventos: dia - 1, calendario, competicoes: [], colocacoesEstaduais: [], opcoes, times: [], jogadores: [],
     continentes: base.paises.map((p) => p.continente), emprestimos: [], transferencias: [], leiloes: [],
     tecnicos: [], ofertas: [], trocasDeTecnico: [], semanaTreino: 0, historico: [], hallDaFama: [], filasEstaduais: {}, rebaixadosC: [],
-    reservadosCopa: [],
+    reservadosCopa: [], avisos: [], propostasHumanas: [], queremParar: [], emJogo: null,
   }
 
   // p_0.java:59 ordena por Nivel desc; p_0.java:110-128: país sem liga carrega só 15 times
@@ -462,6 +487,13 @@ export function novoJogo(base: Base, opcoes: OpcoesJogo, seed: string): Mundo {
   // F.fI (F.java:655-658): progresso inicial e potencial estimado dos juniores
   const rngJunior = derivar(seed, 'novoJogo:juniores')
   for (const j of ordem) if (j.juvenil) iniciarJunior(j, rngJunior)
+  // f_0.c(false) (p_0.java:165, f_0.java:1110): juniores da criação. Liga nacional com reputação ≥ 3 e menos de 12
+  // ganha um por posição (dois meias); os outros, com menos de 5, um por posição.
+  const rngNovos = derivar(seed, 'novoJogo:juniores-novos')
+  for (const t of mundo.times) {
+    const grande = t.ligaNacional && t.reputacao >= 3
+    if (t.juniores.length < (grande ? 12 : 5)) for (const pos of grande ? [0, 1, 2, 3, 3, 4] : [0, 1, 2, 3, 4]) gerarJunior(mundo, base, t, pos, rngNovos)
+  }
   // F.fI (F.java:674-680): contrato de 210 a 239 dias, depois valor e salário
   const rngContrato = derivar(seed, 'novoJogo:contrato')
   for (const j of ordem) j.contratoAte = mundo.dia + rngContrato.int(30) + 210

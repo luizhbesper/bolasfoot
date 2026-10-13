@@ -20,6 +20,8 @@ pnpm e2e               # Playwright
 pnpm data:build        # original/data → packages/data/base.json
 pnpm assets            # original/ → apps/web/public/assets
 pnpm sim               # simula N partidas e compara com o original (packages/engine/src/ref-original.json)
+pnpm sim --temporadas 10 --mundos 5   # temporadas completas pela rodada (gate da Fase 2)
+tools/temporadas.sh 10 # roda temporadas no jogo original (só IA); referência em packages/engine/src/ref-temporadas.json
 pnpm oracle [N]        # roda N partidas no jogo original (Java 17 + original/) e regenera a referência
 pnpm db:migrate | db:seed | db:reset   # (Fase 3)
 ```
