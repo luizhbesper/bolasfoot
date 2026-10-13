@@ -2,3 +2,5 @@
 export const ENGINE_VERSION = 0
 export * from './rng.ts'
 export * from './mundo.ts'
+export * from './escalacao.ts'
+export * from './partida.ts'
