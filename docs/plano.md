@@ -60,7 +60,7 @@ Repositório **privado** (assets e dados são do Brasfoot).
 | Camada | Escolha | Por quê |
 |---|---|---|
 | App | Next.js App Router, React, TypeScript | UI + API num lugar só |
-| Estilo | CSS Modules + tokens CSS (paleta fixa, inspirada no original) | sem lib de UI; sem temas configuráveis |
+| Estilo | CSS Modules + tokens CSS (tema escuro suave, acentos pastel, fixo) | sem lib de UI; sem temas configuráveis |
 | Estado no cliente | estado React + o snapshot do mundo | sem Redux/Zustand até precisar |
 | Tempo real | **SSE** (servidor → cliente) + POST (cliente → servidor) | sem servidor WebSocket; funciona num processo Node |
 | Auth | usuário + senha próprios, cadastro só com código de convite (2.4) | sem login social, sem lib de auth |
@@ -375,12 +375,14 @@ Começa fechando as **lacunas** listadas no fim de `engenharia-reversa.md`, cada
 
 ### Fase 4 — Front-end
 
+Tickets detalhados, direção visual e protótipo aprovado: `docs/fase4.md`.
+
 UI **moderna, inspirada** no original, sobre o servidor da fase 3 (em local, com o Postgres do Docker).
 
 **Diretrizes de UI:**
 - `docs/ref/*.png` é **inspiração**, não gabarito: mostra quais informações cada tela tem e como o jogador está acostumado a achá-las. A disposição, o visual e os componentes podem (e devem) ser modernos.
 - Mantém a "cara" do Brasfoot onde ela é identidade: escudos e camisas, nome do time com fundo `cor1`/texto `cor2` na tela de jogos, densidade alta de informação nas tabelas, partida com todos os jogos da rodada ao mesmo tempo.
-- Paleta e tema **fixos** (sem seletor de cores de tela, sem cores do time editáveis, sem temas).
+- Paleta e tema **fixos**: escuro suave com acentos pastel, cada cor com uma função (ver `docs/fase4.md`). Sem seletor de cores de tela, sem cores do time editáveis, sem temas.
 - Não portar: tela "novo jogo", "adicionar técnico humano", escolha de time por divisão / aleatória (ver 3.5), amistosos (agenda de amistosos, torneio de pré-temporada), leilão como tela pós-rodada, "cores da tela"/"cores do time", salvar/sair/registrar.
 - Modais do original viram painéis, abas ou itens da caixa de entrada; nada bloqueante durante a partida.
 

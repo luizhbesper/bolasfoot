@@ -1,0 +1,79 @@
+# Fase 4 — Front-end (tickets)
+
+Detalhe dos tickets U0–U8 do `plano.md`. Gate: uma noite inteira no modo live, no prod, sem dessincronizar e sem abrir o console.
+
+**Protótipo (U0):** https://claude.ai/artifact/9mvoxqeSM1nqiwmT28U8bZ — canvas com o sistema visual e as telas-chave (hub, escalação, partida, tabelas, mercado, caixa de entrada, escolha de times). É o gabarito visual da fase; `docs/ref/*.png` continua sendo só a lista do que cada tela mostra.
+
+**Decisões da fase**
+- **Tema escuro suave, fixo.** Sem modo claro, sem seletor.
+- **Desktop-first, mobile usável:** a sidebar empilha/vira barra, tabelas rolam na horizontal, o campo escala por `aspect-ratio`.
+- **Sem dependências novas.** CSS Modules + tokens em `app/globals.css`; ícones SVG inline em `app/_ui/icones.tsx`; gráficos em SVG à mão; fontes por `next/font/google`.
+- **Fontes:** Geist (UI, sempre `tabular-nums`) e Bricolage Grotesque (placar e títulos).
+- **Cores do time** (`cor1`/`cor2` do original) só no escudo, na faixa do nome na partida e no header do clube. O resto da UI usa a paleta.
+- **Chat fora** por ora: a call basta. O feed "Na liga dos amigos" (dos `round_logs` e transferências) cobre o social.
+
+**Tokens**
+
+| Token | Valor | Uso |
+|---|---|---|
+| `--bg` | `#13161c` | página |
+| `--menu` | `#0f1217` | sidebar |
+| `--surface` | `#1a1e26` | cards |
+| `--raised` | `#222733` | hover, linhas, avatares |
+| `--line` | `#2c3240` | bordas, trilhos das barras |
+| `--text` / `--muted` / `--faint` | `#ebe7df` / `#a3a9b8` / `#6f7686` | texto |
+| `--lavanda` | `#c3bcf5` | ação principal, seleção |
+| `--menta` | `#a8dcc0` | vitória, pronto, positivo |
+| `--pessego` | `#f3c49b` | prazo, alerta |
+| `--rosa` | `#f0a8a8` | derrota, lesão, vermelho |
+| `--ceu` | `#a6cdef` | informação, links |
+| `--manteiga` | `#eedd9c` | amarelo, destaque |
+
+Posição: GOL manteiga, LAT céu, ZAG lavanda, MEI menta, ATA rosa (texto na cor, fundo a 12%).
+
+**Navegação** (sidebar agrupada): Caixa de entrada · **Clube** (visão geral, elenco, escalação, treino, juniores) · **Competições** (partida, tabelas, agenda) · **Mercado** (procurar, leilões, minhas propostas) · **Gestão** (finanças, estádio) · **Mundo** (times e técnicos, história, transferências). Topbar: título, caixa, data, próximo jogo, avatares dos técnicos com anel de pronto, prazo e o CTA da fase ("Estou pronto" / "Ir para a partida" / "Voltar ao intervalo"). A partida e a escolha de times são telas cheias, sem sidebar.
+
+**Ordem:** U0 → U1 → U2 → U3 → U4 → U8 → U5 → U6 → U7. A U8 sobe porque o gate precisa da caixa de entrada.
+
+---
+
+## U0 — Protótipo de design
+Objetivo: direção visual aprovada antes de codar.
+Fonte original: n/a.
+Contrato: o canvas acima + esta seção de tokens.
+Pronto quando: o usuário aprova o canvas.
+
+## U1 — Casca
+Objetivo: tokens, layout do jogo e componentes base.
+Contrato: `app/globals.css`; `app/jogo/[id]/layout.tsx` (sidebar + topbar); `app/_ui/` (Tabela densa ordenável, Painel/Drawer, Escudo, Camisa com fallback `camisas/genericas`, Bandeira, ChipPosicao, Forca, Energia, Forma, Avatar, icones). Hook de cliente `useMundo(gid)`: baixa `/api/games/[id]/snapshot`, guarda em contexto e rebaixa quando o SSE avisa mudança de rodada (absorve o `ao-vivo.tsx`).
+Fora de escopo: telas.
+Testes: nenhum novo (visual).
+
+## U2 — Fora do jogo
+Objetivo: entrar, convite, seus jogos, admin, lobby e escolha de times no visual novo.
+Contrato: as telas existentes reestilizadas; escolha com busca ao vivo e picks pelo SSE (`lib/game/escolha.ts` sem mudar).
+
+## U3 — Clube e escalação
+Objetivo: hub, elenco e escalação jogáveis.
+Fonte original: `docs/ref/04,05,10`.
+Contrato: hub (próximo jogo, confiança, mini-tabela, feed), elenco (tabela + drawer do jogador), escalação (toque-no-jogador → toque-no-slot; formação, estilo, marcação, jogada, banco, batedores). Valida com `validar` no cliente e envia `escalar`/`tatica`/`batedores` por server action.
+Testes: e2e mobile smoke (6.5 #3).
+
+## U4 — Partida
+Objetivo: partida ao vivo sincronizada, intervalo e resultados.
+Fonte original: `docs/ref/06,07,08`.
+Contrato: placar grande do seu jogo + jogos dos amigos + todos os jogos por competição; eventos no relógio do servidor; sons; intervalo como painel (`substituir`/`mudarTatica` com prazo); resultados da rodada.
+Testes: e2e live (6.5 #1).
+
+## U8 — Caixa de entrada e fim de temporada
+Objetivo: substituir os modais do original.
+Contrato: lista com filtros e detalhe; propostas humanas (`responderProposta`), ofertas de emprego (`aceitarOferta`), aposentadoria, demissão, fim de temporada. **Motor:** `Aviso` ganha `tipo` e ref opcional (golden atualizado de propósito).
+
+## U5 — Competições e mundo
+Contrato: tabelas (de `FaseLiga.linhas`), agenda, história, times e técnicos, transferências. **Motor:** estatísticas de temporada por jogador (gols, assistências, jogos, notas) acumuladas no pós-jogo, para artilharia e a ficha do jogador.
+
+## U6 — Gestão
+Contrato: finanças (`financas`), estádio, ingresso, obras (`orcamentoObra`), empréstimo.
+
+## U7 — Mercado
+Contrato: procura com chips de filtro, proposta com prévia de aceite (`precoVendaIA`, `aceitaIr`) e aviso de disputa com amigo, leilões e lance, juniores, treino, emprestados, renovação. Lista à venda = `jogadores.filter(j => j.aVenda)`.
