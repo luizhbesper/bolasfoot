@@ -1,6 +1,6 @@
 # Referência visual (F0-6)
 
-Telas do Brasfoot 22-23 original, gabarito da UI (Fase 4). Geradas por `tools/capture-ref.sh`, que roda o jogo
+Telas do Brasfoot 22-23 original: **inspiração** para a UI da Fase 4, não gabarito (ver "Diretrizes de UI" em `docs/plano.md`). Geradas por `tools/capture-ref.sh`, que roda o jogo
 dentro de `tools/RefShots.java` e segue o roteiro `tools/capture-ref.txt` (sem intervenção, sem permissão de tela).
 Resolução da janela principal = tela do Mac (1470×923); os dialogs saem no tamanho próprio.
 
@@ -40,6 +40,8 @@ Resolução da janela principal = tela do Mac (1470×923); os dialogs saem no ta
 | `34-retrospecto.png` | Retrospecto do time |  |
 | `35-emprestados.png` | Jogadores emprestados |  |
 | `36-cores.png` | Cores do time |  |
+
+Não serão portadas (seção 3.5 do plano): `02-novo-jogo`, `03-tecnico-humano`, `18-agenda-amistosos`, `36-cores`, o leilão pós-rodada e a parte de cores/tema de `28-preferencias`.
 
 ## Limitações
 

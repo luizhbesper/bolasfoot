@@ -8,7 +8,7 @@ Referências: `docs/engenharia-reversa.md` (fórmulas), `original/src` (Java dec
 
 ## 1. Princípios
 
-1. **Fidelidade primeiro.** Fórmula, constante e tabela vêm do Java original, com citação `arquivo:linha` no código. Inventar só onde o original não se aplica (multiplayer).
+1. **Fidelidade primeiro — nas regras.** Fórmula, constante e tabela vêm do Java original, com citação `arquivo:linha` no código. Inventar só onde o original não se aplica (multiplayer). **A UI não é cópia:** o layout original é inspiração, a interface é moderna (ver "Diretrizes de UI" na Fase 4).
 2. **Um motor, dois lugares.** `packages/engine` é TypeScript puro, sem IO, sem `Math.random`, sem `Date`. Roda igual no servidor e no navegador.
 3. **Determinismo.** `estado(n+1) = avançar(estado(n), comandos(n), seed(n))`. Mesmo input → mesmo output, bit a bit. Isso dá replay, debug, testes "golden" e sincronização.
 4. **Servidor é a autoridade.** Tudo vive no servidor: jogos, mundo, histórico. O cliente usa o motor para *ver* (tabelas, prévias, animação da partida) e *validar* comandos antes de enviar; quem resolve a rodada é o servidor.
@@ -60,7 +60,7 @@ Repositório **privado** (assets e dados são do Brasfoot).
 | Camada | Escolha | Por quê |
 |---|---|---|
 | App | Next.js App Router, React, TypeScript | UI + API num lugar só |
-| Estilo | CSS Modules + tokens CSS da paleta original | tela Swing é simples; sem lib de UI |
+| Estilo | CSS Modules + tokens CSS (paleta fixa, inspirada no original) | sem lib de UI; sem temas configuráveis |
 | Estado no cliente | estado React + o snapshot do mundo | sem Redux/Zustand até precisar |
 | Tempo real | **SSE** (servidor → cliente) + POST (cliente → servidor) | sem servidor WebSocket; funciona num processo Node |
 | Auth | usuário + senha próprios, cadastro só com código de convite (2.4) | sem login social, sem lib de auth |
@@ -107,9 +107,9 @@ O motor trabalha com o mundo inteiro em memória (≈200 times BR + estrangeiros
 | `users` | usuário, hash da senha, `is_admin` |
 | `sessions` | token, usuário, expiração |
 | `invites` | código, jogo, criado por, usos máximos, usos, validade, revogado |
-| `games` | nome, admin, modo (`live` / `daily`), opções do novo jogo, `game_seed` (secreta), status (`lobby`, `running`, `paused`, `finished`), nº da rodada atual |
+| `games` | nome, admin, modo (`live` / `daily`), configuração do jogo (JSONB, seção 3.5), `game_seed` (secreta), status (`lobby`, `picking`, `running`, `paused`, `finished`), nº da rodada atual |
 | `game_settings` | 1 linha por jogo, colunas tipadas com default no banco (abaixo) |
-| `game_members` | usuário ↔ jogo ↔ técnico no mundo; `ready` da rodada atual |
+| `game_members` | usuário ↔ jogo ↔ técnico no mundo; time escolhido; `ready` (da escolha de times e da rodada atual) |
 | `rounds` | nº, fase, prazo, `seed_hash`, `seed` (revelada), `started_at` |
 | `commands` | rodada × membro → lista de comandos (JSONB) |
 | `snapshots` | rodada → mundo serializado (JSON + gzip, `bytea`) |
@@ -188,7 +188,7 @@ Todos os prazos vêm de `game_settings`.
 - **Modo live** (vocês numa call): prazos curtos, todos assistem juntos.
 - **Modo daily:** mesma máquina, prazo = `daily_resolve_at`. Sem intervalo: o time humano usa as regras de substituição da IA (piloto automático, configurável na escalação). O próximo login mostra o **resumo** do que aconteceu desde a última visita (resultados, tabela, eventos do elenco, caixa de entrada).
 - Os dois modos são o mesmo código; muda só o prazo e se o intervalo existe.
-- Painel do admin: criar jogo (opções do "novo jogo" original, sem limitações da versão grátis), gerar/revogar convites, editar `game_settings`, expulsar, pausar, forçar avanço, apagar o jogo.
+- Painel do admin: criar jogo (configuração da seção 3.5), gerar/revogar convites, editar `game_settings`, expulsar, pausar, forçar avanço, apagar o jogo.
 
 ### 3.3 Partida ao vivo sincronizada
 
@@ -210,7 +210,23 @@ O cliente calcula `minutoAtual = (agora + offset − startAt) / msPorMinuto` e m
 - **Comandos privados** (escalação, tática, treino, ingresso, obras, juniores, empréstimo): só afetam o próprio time e são aplicados na resolução, na ordem enviada.
 - **Comandos de mercado** (proposta por jogador): o cliente mostra na hora se a IA aceitaria (o preço de venda da IA é fórmula determinística), mas a compra só efetiva na resolução, como "transferência pendente" do original. Dois humanos no mesmo jogador → maior proposta vence; empate → quem enviou primeiro.
 - Proposta de humano para humano: item na caixa de entrada do vendedor, responde na próxima fase de planejamento.
-- Leilão: lances durante o planejamento, encerrado na resolução.
+- Leilão: **nunca** aparece como tela no fim da partida (como no original). Há um botão "Leilões" que lista os leilões ativos; o lance é dado a qualquer momento do planejamento e o leilão encerra na resolução.
+
+### 3.5 Criação do jogo e escolha de times
+
+Não existe a tela "novo jogo" nem "adicionar técnico" do original. O fluxo é:
+
+1. **Admin cria o jogo** e define toda a configuração (são as opções do original que sobram, mais as regras da escolha de times):
+   - modo (`live` / `daily`), prazos (`game_settings`), habilidade individual, salário mensal/semanal etc.;
+   - **regras de escolha de time:** times proibidos (lista), divisões permitidas (ex.: "só Série B"), e o que mais fizer sentido como filtro sobre o `base.json`.
+   - **Fixo, sem opção:** temporada de início = a dos dados (sem seletor); estaduais e regionais sempre jogados; sem amistosos nem torneio de pré-temporada.
+2. **Convite** → membros entram no lobby.
+3. **Admin inicia o campeonato** → fase **escolha de times** (status `picking`, com prazo):
+   - cada membro procura o time num **buscador** (nome, estado, divisão), não em pickers por divisão nem "time aleatório";
+   - os filtros do admin já valem na busca; time pego por outro membro aparece como ocupado **em tempo real** (SSE);
+   - escolheu → **ready**; todos ready (ou prazo) → o mundo é criado (`novoJogo`) e o jogo abre direto no hub do time.
+   - Sozinho (um membro): mesma tela, sem o tempo real.
+4. Preferências do original que são por jogador (velocidade, sons, cores) viram, quando fizerem sentido, configuração do admin ou do cliente; **cores e tema são fixos**.
 
 ---
 
@@ -267,7 +283,7 @@ Começa fechando as **lacunas** listadas no fim de `engenharia-reversa.md`, cada
 | W7 | Fim de temporada: prêmios, acesso/rebaixamento, novo calendário, envelhecimento, histórico |
 | W8 | `avançarRodada(mundo, comandos, seed)`: a função que a máquina de estados chama; comandos tipados e validados (`validar(mundo, técnico, comando)`) |
 
-**Notas vindas da F0:** W1 — ao criar um jogo, o original imprime no stdout o calendário inteiro da temporada (`Nacional:1) 27/03/2022 Dom 85` etc.); rodar `tools/capture-ref.sh` e guardar a saída dá o gabarito de datas sem decifrar `best/a.java:249` no escuro. W2 — `base.ligas` (só BR) e `base.estaduais` (por `uf`) já estão tipados.
+**Notas vindas da F0:** W1 — ao criar um jogo, o original imprime no stdout o calendário inteiro da temporada (`Nacional:1) 27/03/2022 Dom 85` etc.); rodar `tools/capture-ref.sh` e guardar a saída dá o gabarito de datas sem decifrar `best/a.java:249` no escuro. W2 — `base.ligas` (só BR) e `base.estaduais` (por `uf`) já estão tipados. Pelas decisões da 3.5: estaduais e regionais sempre ativos; amistosos (tipo 0) e torneio de pré-temporada (tipo 15) ficam fora do calendário.
 
 **Gate:** CLI simula 5 temporadas só com IA sem erro, com invariantes e estatísticas plausíveis (campeões variados, times grandes no topo na média, caixa dos humanos-piloto não explode).
 
@@ -278,7 +294,7 @@ Começa fechando as **lacunas** listadas no fim de `engenharia-reversa.md`, cada
 | S1 | Schema Drizzle da seção 2.6 + migrations + `db:seed` do admin |
 | S2 | Login/senha, sessão, convites (seção 2.4); telas de entrar, "tenho um código", criar conta |
 | S3 | Painel do admin: criar jogo, convites, `game_settings`, expulsar, pausar, apagar |
-| S4 | Lobby do jogo: membros entram pelo convite, escolhem time, admin inicia |
+| S4 | Lobby e escolha de times (seção 3.5): membros entram pelo convite, admin inicia, buscador de times com filtros do admin, picks em tempo real, ready, criação do mundo |
 | S5 | Máquina de estados no servidor (`lib/game`): planejamento, ready, prazo, resolução transacional, commit-reveal, snapshots, agendador |
 | S6 | SSE: canal por jogo (fase, prontos, prazo, eventos, relógio); reconexão com estado atual |
 | S7 | Deploy no Railway: environments `staging` e `production`, Postgres por ambiente, migrations no start, assets servidos pelo próprio Next |
@@ -289,20 +305,27 @@ Começa fechando as **lacunas** listadas no fim de `engenharia-reversa.md`, cada
 
 ### Fase 4 — Front-end
 
-UI idêntica ao original, guiada por `docs/ref/*.png`, sobre o servidor da fase 3 (em local, com o Postgres do Docker).
+UI **moderna, inspirada** no original, sobre o servidor da fase 3 (em local, com o Postgres do Docker).
+
+**Diretrizes de UI:**
+- `docs/ref/*.png` é **inspiração**, não gabarito: mostra quais informações cada tela tem e como o jogador está acostumado a achá-las. A disposição, o visual e os componentes podem (e devem) ser modernos.
+- Mantém a "cara" do Brasfoot onde ela é identidade: escudos e camisas, nome do time com fundo `cor1`/texto `cor2` na tela de jogos, densidade alta de informação nas tabelas, partida com todos os jogos da rodada ao mesmo tempo.
+- Paleta e tema **fixos** (sem seletor de cores de tela, sem cores do time editáveis, sem temas).
+- Não portar: tela "novo jogo", "adicionar técnico humano", escolha de time por divisão / aleatória (ver 3.5), amistosos (agenda de amistosos, torneio de pré-temporada), leilão como tela pós-rodada, "cores da tela"/"cores do time", salvar/sair/registrar.
+- Modais do original viram painéis, abas ou itens da caixa de entrada; nada bloqueante durante a partida.
 
 | ID | Entrega |
 |---|---|
-| U1 | Casca: tokens da paleta e temas, fontes, componentes base (tabela estilo Swing, barra de ícones, janela/modal, escudo, camisa, bandeira) |
-| U2 | Tela inicial (seus jogos), opções do novo jogo (admin), escolha de time |
+| U1 | Casca: tokens da paleta (fixa), tipografia, componentes base modernos (tabela densa, navegação, painel/drawer, escudo, camisa, bandeira) |
+| U2 | Tela inicial (seus jogos), criação do jogo pelo admin, lobby, escolha de times com buscador e picks ao vivo (3.5) |
 | U3 | Hub do time (elenco + 11 ícones) e escalação (campo 434×650, 25 slots, estilo, marcação, batedores). Toque-no-jogador → toque-no-slot, que serve para mouse e celular sem lib de drag-and-drop |
 | U4 | Partida ao vivo sincronizada (todos os jogos da rodada, eventos, sons), intervalo e resultados da rodada |
 | U5 | Tabelas/classificação, agenda, histórico, técnicos, times |
 | U6 | Finanças, estádio, ingresso, empréstimo |
-| U7 | Mercado: procura, proposta, leilão, juniores, treino (regras da seção 3.4) |
+| U7 | Mercado: procura, proposta, botão "Leilões" com os ativos e lance, juniores, treino (regras da seção 3.4) |
 | U8 | Caixa de entrada (substitui os modais), fim de temporada, demissão/ofertas; barra de "quem está pronto" + contagem regressiva |
 
-**Notas vindas da F0:** gabarito em `docs/ref/` (34 telas). Antes da U7/U8, capturar as que faltam (proposta, leilão, fim de temporada, demissão/emprego) estendendo `tools/capture-ref.txt`; a versão grátis bloqueia proposta. Assets em `apps/web/public/assets/` (nomes em `tools/assets.mjs`).
+**Notas vindas da F0:** referência em `docs/ref/` (34 telas). Antes da U7/U8, capturar as que faltam (proposta, leilão, fim de temporada, demissão/emprego) estendendo `tools/capture-ref.txt`; a versão grátis bloqueia proposta. Assets em `apps/web/public/assets/` (nomes em `tools/assets.mjs`).
 
 **Responsividade mínima:** layout desktop fixo (~1024 px) como o original; abaixo disso, tabelas com rolagem horizontal, barra de ícones vira barra inferior rolável, campo da escalação escala por `aspect-ratio`. Nada de redesenhar para mobile.
 
@@ -336,7 +359,7 @@ Libertadores, Sul-Americana, Recopa, Mundial de Clubes, Supercopa; ofertas de se
 
 ### Fase 8 — Polimento
 
-Sons, temas, conquistas/troféus (72 PNGs), ajustes de balanceamento do multiplayer, arte própria aos poucos.
+Sons, conquistas/troféus (72 PNGs), ajustes de balanceamento do multiplayer, arte própria aos poucos.
 
 ### Dependências
 

@@ -6,7 +6,7 @@ Port do Brasfoot 22-23 para o navegador, multiplayer com amigos.
 
 - `docs/plano.md` — arquitetura, fases, tickets (F0-x, M1…). Comece por aqui.
 - `docs/engenharia-reversa.md` — fórmulas e constantes do original.
-- `docs/ref/*.png` — telas do jogo original (gabarito da UI).
+- `docs/ref/*.png` — telas do jogo original: inspiração para a UI (moderna, não cópia).
 - `original/` — gitignored; gerado por `tools/extract.sh ~/Downloads/brasfoot22-23.exe`. Java decompilado em `original/src`.
 - `apps/web` — Next.js (UI, API, SSE). `packages/engine` — motor puro. `packages/data` — ETL → `base.json`.
 
@@ -30,3 +30,4 @@ pnpm db:migrate | db:seed | db:reset   # (Fase 3)
 - Nunca editar `original/`.
 - Rotas de teste só com `TEST_ENDPOINTS=1`; nunca em prod.
 - Commits na `dev`, um branch por ticket saindo dela; `main` = prod.
+- Mensagens de commit sempre em inglês (conventional commits). Docs e conversa em português.
