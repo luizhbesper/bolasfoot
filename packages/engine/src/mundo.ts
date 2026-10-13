@@ -1,7 +1,8 @@
 // Mundo do jogo (serializável, JSON puro) e criação a partir da base do original.
 import type { Base, Jogador, Time } from '@bolasfoot/data'
 import { ANO_INICIAL, criarCalendario, primeiroDomingo, type Calendario } from './calendario.ts'
-import { criarCompeticoesBR, type Competicao } from './competicoes.ts'
+import { criarCompeticoesBR, type ColocacaoEstadual } from './brasil.ts'
+import type { Competicao } from './competicoes.ts'
 import { derivar, type Rng } from './rng.ts'
 
 export const BRA = 29
@@ -92,6 +93,8 @@ export interface Mundo {
   dia: number
   calendario: Calendario
   competicoes: Competicao[]
+  /** colocações nos estaduais de quem está fora das séries (SR.bx): alimenta Série D e Copa no evento cD */
+  colocacoesEstaduais: ColocacaoEstadual[]
   opcoes: OpcoesJogo
   times: TimeM[]
   jogadores: JogadorM[]
@@ -274,7 +277,7 @@ export function novoJogo(base: Base, opcoes: OpcoesJogo, seed: string): Mundo {
   const rngForca = derivar(seed, 'novoJogo:forca')
   const calendario = criarCalendario(ANO_INICIAL)
   const dia = calendario.inicio + primeiroDomingo(calendario.inicio)
-  const mundo: Mundo = { seed, temporada: 1, dia, calendario, competicoes: [], opcoes, times: [], jogadores: [] }
+  const mundo: Mundo = { seed, temporada: 1, dia, calendario, competicoes: [], colocacoesEstaduais: [], opcoes, times: [], jogadores: [] }
 
   // p_0.java:59 ordena por Nivel desc; p_0.java:110-128: país sem liga carrega só 15 times
   // ponytail: empate de Nivel segue a ordem do base.json (o original usa a ordem dos arquivos)

@@ -79,6 +79,49 @@ describe('temporada BR só com IA', () => {
     expect(Math.min(...f2.jogos.map((j) => j.dia))).toBeGreaterThan(Math.max(...f1.jogos.map((j) => j.dia)))
   })
 
+  it('estaduais: 18 estados, Paulistão com os grupos reais e grupos cruzados', () => {
+    const est = mundo.competicoes.filter((c) => c.tipo === 3)
+    expect(est).toHaveLength(18)
+    for (const c of est) expect(c.campeao).not.toBeNull()
+    const sp = comp('EST-SP-1')
+    const f = sp.fases[0] as FaseLiga
+    expect(f.grupos).toHaveLength(4)
+    expect(f.jogos).toHaveLength(96) // 16 times × 12 adversários dos outros grupos / 2
+    for (const j of f.jogos) expect(f.grupos.findIndex((g) => g.includes(j.casa))).not.toBe(f.grupos.findIndex((g) => g.includes(j.fora)))
+    expect((sp.fases[1] as FaseMataMata).rodadas).toHaveLength(3)
+  })
+
+  it('regionais: Nordeste e Verde, 4 grupos de 4 e mata-mata de 8', () => {
+    for (const id of ['REG-2', 'REG-3']) {
+      const c = comp(id)
+      expect((c.fases[0] as FaseLiga).jogos).toHaveLength(48)
+      expect((c.fases[1] as FaseMataMata).rodadas).toHaveLength(3)
+      expect(c.campeao).not.toBeNull()
+    }
+    expect(mundo.competicoes.find((c) => c.id === 'REG-0')).toBeUndefined()
+  })
+
+  it('Série D: 64 times de fora das séries, 8 grupos, mata-mata de 32 em jogo único', () => {
+    const c = comp('BR-4')
+    const [g, mm] = c.fases as [FaseLiga, FaseMataMata]
+    expect(g.times).toHaveLength(64)
+    expect(g.grupos).toHaveLength(8)
+    expect(g.jogos).toHaveLength(8 * 56)
+    for (const t of g.times) expect(mundo.times[t]!.divisao).toBe(4)
+    expect(mm.rodadas.map((r) => r.confrontos.length)).toEqual([16, 8, 4, 2, 1])
+    expect(mm.rodadas.every((r) => !r.idaVolta)).toBe(true)
+  })
+
+  it('Copa do Brasil (formato novo): 80 na 1ª fase, 12 entram na 3ª, campeão Nordeste/Verde entre eles', () => {
+    const c = comp('CB')
+    const f = c.fases[0] as FaseMataMata
+    expect(f.rodadas.map((r) => r.confrontos.length)).toEqual([40, 20, 16, 8, 4, 2, 1])
+    expect(f.rodadas.map((r) => r.idaVolta)).toEqual([false, false, true, true, true, true, true])
+    expect(f.reservados).toHaveLength(12)
+    expect(f.reservados).toContain(comp('REG-2').campeao)
+    expect(c.campeao).not.toBeNull()
+  })
+
   it('tudo jogado, dias em ordem, dentro de 2026', () => {
     for (const c of mundo.competicoes) expect(jogos(c).every((j) => j.gols)).toBe(true)
     expect(dias).toEqual([...dias].sort((a, b) => a - b))

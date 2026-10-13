@@ -1,10 +1,10 @@
 // Competições: fases de liga/grupos e de mata-mata, tabela, avanço de fase e o dia de jogos.
 // Fontes: f/s.java (liga e grupos), f/z.java + f/g_0.java (mata-mata), best/t.java:746 (tabela de jogos),
 // f/b_0.java (divisão nacional), best/Z.java:112 (Ar: divisões), best/f_0.java:1378-1694 (ap/at/ax: o dia).
-import type { Base, ConfigLiga } from '@bolasfoot/data'
 import { datas, TIPO } from './calendario.ts'
 import { escalarIA } from './escalacao.ts'
-import { BRA, type Mundo } from './mundo.ts'
+import { eventoCD, proximaRodadaCopa, registrarColocacoes } from './brasil.ts'
+import type { Mundo } from './mundo.ts'
 import { iniciarPartida, simularTempo, type ContextoPartida } from './partida.ts'
 import { aplicarPosJogo, recuperarEnergia } from './posjogo.ts'
 import { derivar, type Rng } from './rng.ts'
@@ -48,6 +48,8 @@ export interface FaseLiga {
 
 export interface RodadaMataMata {
   idaVolta: boolean
+  /** falso = empate no jogo único classifica o visitante (Copa do Brasil, 1ª fase: g_0.java:250, `2129`) */
+  penaltis: boolean
   /** [time da casa na ida, outro] */
   confrontos: [number, number][]
   /** ida (um por confronto, na ordem), depois a volta */
@@ -59,6 +61,10 @@ export interface FaseMataMata {
   tipo: 'mata'
   rodadas: RodadaMataMata[]
   idaVolta: boolean[]
+  /** z.Zg: 2029 = Copa do Brasil no formato novo (cada fase tem regra própria) */
+  formato: number
+  /** times que entram depois (Copa: f/f_0.afU) */
+  reservados: number[]
 }
 
 export type Fase = FaseLiga | FaseMataMata
@@ -74,6 +80,10 @@ export interface Competicao {
   fases: Fase[]
   campeao: number | null
   vice: number | null
+  /** estaduais: índice em Base.ufs; regionais: região 0..3 */
+  uf?: number
+  /** opções guardadas para criar a fase depois (Série D, no evento cD) */
+  opcoes?: OpcoesLiga
 }
 
 const linhaVazia = (): Linha => ({ pts: 0, j: 0, v: 0, e: 0, d: 0, gp: 0, gc: 0 })
@@ -154,7 +164,14 @@ export interface OpcoesLiga {
   numeroTurnos: number
   idaVolta: boolean[]
   formato: number
+  /** grupos jogam contra os outros grupos, não entre si (estaduais 7 e 10: jogosDentroGrupo falso) */
+  cruzados?: boolean
 }
+
+// Tabelas fixas dos grupos cruzados: [grupo, posição, grupo, posição] (1-based), uma linha por rodada.
+// Fonte: best/t.java:14-15 (cY: 4×4, cZ: 4×5), usadas por t.java:908 e :943
+const cY = [[[4, 4, 2, 2], [4, 1, 2, 4], [4, 3, 2, 1], [3, 2, 1, 1], [3, 4, 1, 2], [4, 2, 2, 3], [3, 3, 1, 3], [3, 1, 1, 4]], [[2, 3, 4, 4], [2, 4, 4, 3], [1, 2, 3, 3], [1, 3, 3, 2], [2, 1, 4, 2], [2, 2, 4, 1], [1, 1, 3, 1], [1, 4, 3, 4]], [[4, 4, 2, 4], [1, 2, 3, 1], [3, 2, 1, 4], [1, 1, 4, 3], [4, 2, 2, 2], [2, 1, 4, 1], [2, 3, 3, 3], [1, 3, 3, 4]], [[2, 4, 4, 2], [4, 4, 2, 1], [4, 1, 1, 2], [2, 2, 3, 2], [4, 3, 2, 3], [3, 1, 1, 3], [3, 4, 1, 1], [3, 3, 1, 4]], [[2, 4, 3, 4], [1, 2, 3, 2], [1, 3, 4, 4], [2, 2, 4, 3], [2, 3, 3, 1], [2, 1, 3, 3], [1, 1, 4, 1], [1, 4, 4, 2]], [[3, 1, 2, 4], [3, 2, 2, 1], [4, 4, 1, 1], [4, 2, 1, 2], [3, 3, 2, 2], [3, 4, 2, 3], [4, 1, 1, 3], [4, 3, 1, 4]], [[2, 3, 3, 2], [2, 4, 3, 3], [1, 2, 4, 4], [1, 3, 4, 3], [2, 1, 3, 4], [2, 2, 3, 1], [1, 1, 4, 2], [1, 4, 4, 1]], [[3, 2, 2, 4], [4, 3, 1, 2], [1, 4, 4, 4], [3, 1, 2, 1], [3, 4, 2, 2], [3, 3, 1, 1], [4, 2, 1, 3], [4, 1, 2, 3]], [[4, 4, 3, 2], [2, 4, 1, 3], [2, 1, 1, 2], [4, 3, 3, 1], [2, 2, 1, 1], [2, 3, 1, 4], [4, 2, 3, 3], [4, 1, 3, 4]], [[1, 1, 2, 4], [1, 2, 2, 3], [3, 2, 4, 2], [3, 4, 4, 4], [3, 3, 4, 3], [1, 3, 2, 2], [1, 4, 2, 1], [3, 1, 4, 1]], [[2, 4, 1, 2], [3, 3, 4, 4], [3, 2, 4, 1], [3, 4, 4, 3], [2, 2, 1, 4], [2, 3, 1, 1], [2, 1, 1, 3], [3, 1, 4, 2]], [[4, 3, 3, 2], [1, 4, 2, 4], [1, 2, 2, 2], [4, 4, 3, 1], [1, 3, 2, 3], [1, 1, 2, 1], [4, 1, 3, 3], [4, 2, 3, 4]]] as const
+const cZ = [[[4, 3, 1, 1], [4, 1, 1, 5], [4, 2, 1, 4], [4, 5, 1, 3], [4, 4, 1, 2], [2, 3, 3, 1], [2, 4, 3, 3], [2, 2, 3, 4], [2, 1, 3, 2], [2, 5, 3, 5]], [[1, 1, 4, 5], [1, 5, 4, 4], [1, 3, 4, 3], [1, 4, 4, 1], [1, 2, 4, 2], [3, 1, 2, 5], [3, 4, 2, 3], [3, 5, 2, 4], [3, 2, 2, 2], [3, 3, 2, 1]], [[1, 1, 4, 2], [1, 2, 4, 5], [4, 1, 1, 3], [4, 3, 1, 5], [1, 4, 4, 4], [3, 1, 2, 1], [3, 4, 2, 5], [2, 3, 3, 5], [2, 4, 3, 2], [2, 2, 3, 3]], [[4, 1, 1, 1], [4, 2, 1, 5], [4, 5, 1, 4], [4, 3, 1, 2], [4, 4, 1, 3], [3, 1, 2, 2], [2, 1, 3, 5], [2, 5, 3, 2], [2, 3, 3, 3], [3, 4, 2, 4]], [[4, 4, 1, 1], [1, 4, 4, 3], [1, 3, 4, 2], [1, 5, 4, 5], [1, 2, 4, 1], [2, 4, 3, 1], [3, 5, 2, 2], [2, 1, 3, 4], [3, 3, 2, 5], [3, 2, 2, 3]], [[1, 1, 2, 3], [2, 2, 1, 4], [1, 3, 2, 4], [1, 5, 2, 1], [2, 5, 1, 2], [4, 3, 3, 1], [3, 4, 4, 4], [3, 3, 4, 2], [3, 5, 4, 1], [4, 5, 3, 2]], [[2, 2, 1, 1], [2, 3, 1, 2], [2, 5, 1, 3], [2, 4, 1, 5], [2, 1, 1, 4], [3, 1, 4, 5], [4, 2, 3, 4], [3, 2, 4, 3], [4, 4, 3, 5], [4, 1, 3, 3]], [[1, 1, 2, 1], [1, 2, 2, 4], [1, 3, 2, 3], [1, 4, 2, 5], [1, 5, 2, 2], [3, 1, 4, 4], [3, 2, 4, 2], [3, 4, 4, 1], [3, 5, 4, 3], [3, 3, 4, 5]], [[1, 1, 2, 4], [2, 5, 1, 5], [2, 1, 1, 2], [2, 2, 1, 3], [2, 3, 1, 4], [4, 1, 3, 1], [4, 3, 3, 3], [4, 4, 3, 2], [4, 2, 3, 5], [4, 5, 3, 4]], [[2, 5, 1, 1], [2, 1, 1, 3], [1, 2, 2, 2], [1, 5, 2, 3], [2, 4, 1, 4], [3, 1, 4, 2], [3, 2, 4, 1], [3, 4, 4, 3], [3, 5, 4, 5], [3, 3, 4, 4]], [[1, 1, 3, 2], [1, 3, 3, 4], [1, 5, 3, 3], [1, 2, 3, 1], [1, 4, 3, 5], [4, 1, 2, 3], [4, 3, 2, 2], [4, 2, 2, 4], [4, 5, 2, 1], [4, 4, 2, 5]], [[3, 1, 1, 1], [3, 2, 1, 3], [3, 5, 1, 2], [3, 3, 1, 4], [3, 4, 1, 5], [2, 5, 4, 1], [2, 3, 4, 5], [2, 2, 4, 2], [2, 4, 4, 4], [2, 1, 4, 3]], [[1, 1, 3, 3], [1, 5, 3, 5], [1, 3, 3, 1], [1, 2, 3, 4], [1, 4, 3, 2], [4, 1, 2, 4], [4, 4, 2, 1], [4, 2, 2, 5], [4, 3, 2, 3], [4, 5, 2, 2]], [[3, 4, 1, 1], [3, 3, 1, 2], [3, 2, 1, 5], [3, 5, 1, 3], [3, 1, 1, 4], [2, 1, 4, 1], [2, 5, 4, 3], [2, 3, 4, 2], [2, 2, 4, 4], [2, 4, 4, 5]], [[1, 1, 3, 5], [1, 5, 3, 1], [1, 4, 3, 4], [1, 2, 3, 2], [1, 3, 3, 3], [4, 1, 2, 2], [4, 3, 2, 4], [4, 2, 2, 1], [4, 5, 2, 5], [4, 4, 2, 3]]] as const
 
 /** Cria uma fase de liga/grupos. Fonte: f/s.java:396-449 (construtor) e :540-602 (j) */
 export function criarFaseLiga(mundo: Mundo, c: Competicao, times: number[], o: OpcoesLiga, desde: number, rng: Rng): FaseLiga {
@@ -167,16 +184,19 @@ export function criarFaseLiga(mundo: Mundo, c: Competicao, times: number[], o: O
     const porGrupo = times.length / o.grupos
     for (let g = 0; g < o.grupos; g++)
       fase.grupos.push(o.gruposEmBloco ? times.slice(g * porGrupo, (g + 1) * porGrupo) : times.filter((_, i) => i % o.grupos === g))
-    // ponytail: grupos que jogam contra os outros grupos (estaduais fórmulas 7 e 10) entram na W2b
-    for (const g of fase.grupos) agendar(rodadasRoundRobin(g, turnos(g.length), rng), dias, fase.jogos)
+    if (o.cruzados) {
+      const tab = porGrupo === 4 ? cY : cZ
+      const g = fase.grupos
+      agendar(tab.map((r) => r.map(([ga, pa, gb, pb]) => [g[ga - 1]![pa - 1]!, g[gb - 1]![pb - 1]!] as [number, number])), dias, fase.jogos)
+    } else for (const g of fase.grupos) agendar(rodadasRoundRobin(g, turnos(g.length), rng), dias, fase.jogos)
   }
   return fase
 }
 
 /** Cria uma rodada de mata-mata com os pares em sequência. Fonte: f/g_0.java:44-75 (b) */
-function criarRodada(mundo: Mundo, c: Competicao, ordem: number[], idaVolta: boolean, desde: number): RodadaMataMata {
+export function criarRodada(mundo: Mundo, c: Competicao, ordem: number[], idaVolta: boolean, desde: number, penaltis = true): RodadaMataMata {
   const dias = proximasDatas(mundo, c.tipo, desde)
-  const r: RodadaMataMata = { idaVolta, confrontos: [], jogos: [], vencedores: [] }
+  const r: RodadaMataMata = { idaVolta, penaltis, confrontos: [], jogos: [], vencedores: [] }
   for (let i = 0; i < ordem.length; i += 2) r.confrontos.push([ordem[i]!, ordem[i + 1]!])
   const n = idaVolta ? 2 : 1
   if (dias.length < n) throw new Error(`faltam datas para o mata-mata de ${c.id}`)
@@ -186,7 +206,7 @@ function criarRodada(mundo: Mundo, c: Competicao, ordem: number[], idaVolta: boo
 }
 
 export function criarFaseMataMata(mundo: Mundo, c: Competicao, ordem: number[], idaVolta: boolean[], desde: number): FaseMataMata {
-  return { tipo: 'mata', idaVolta, rodadas: [criarRodada(mundo, c, ordem, idaVolta[0] ?? true, desde)] }
+  return { tipo: 'mata', idaVolta, formato: -1, reservados: [], rodadas: [criarRodada(mundo, c, ordem, idaVolta[0] ?? true, desde)] }
 }
 
 /**
@@ -246,6 +266,27 @@ function classificados(f: FaseLiga): number[] {
   return ordenar(lista, s)
 }
 
+/**
+ * Colocação final: do último mata-mata para o primeiro (vencedor e vencido de cada confronto),
+ * depois a tabela das fases de liga. Fonte: f/s.java:1564-1636 (za)
+ */
+export function classificacaoFinal(c: Competicao): number[] {
+  const vistos: number[] = []
+  const add = (t: number) => void (vistos.includes(t) || vistos.push(t))
+  for (const f of [...c.fases].reverse()) {
+    if (f.tipo === 'mata')
+      for (const r of [...f.rodadas].reverse())
+        r.confrontos.forEach(([a, b], k) => {
+          const v = r.vencedores[k]
+          if (v === undefined) return
+          add(v)
+          add(v === a ? b : a)
+        })
+    else f.times.forEach(add)
+  }
+  return vistos
+}
+
 /** Atualiza tabela e grupos com os jogos de hoje. Fonte: best/ah.java:1080-1105 + f/s.java:1006-1020 (pO) */
 function atualizarTabela(f: FaseLiga, hoje: Jogo[]): void {
   for (const j of hoje) {
@@ -278,6 +319,7 @@ function avancarFase(mundo: Mundo, c: Competicao, desde: number, rng: Rng): void
     if (f.avancam === 0) {
       c.campeao = f.times[0]!
       c.vice = f.times[1]!
+      registrarColocacoes(mundo, c)
       return
     }
     const ordem = classificados(f)
@@ -295,45 +337,11 @@ function avancarFase(mundo: Mundo, c: Competicao, desde: number, rng: Rng): void
     const [a, b] = r.confrontos[0]!
     c.campeao = r.vencedores[0]!
     c.vice = c.campeao === a ? b : a
+    registrarColocacoes(mundo, c)
     return
   }
+  if (f.formato === 2029) return void f.rodadas.push(proximaRodadaCopa(mundo, c, f, desde, rng))
   f.rodadas.push(criarRodada(mundo, c, r.vencedores, f.idaVolta[f.rodadas.length] ?? true, desde))
-}
-
-// ── Competições BR ────────────────────────────────────────────────────────
-
-const ORDEM_CN = (mundo: Mundo) => (a: number, b: number) => {
-  const x = mundo.times[a]!, y = mundo.times[b]!
-  return y.nivel - x.nivel || y.desempate - x.desempate
-}
-
-function opcoesDaConfig(cfg: ConfigLiga): OpcoesLiga {
-  return {
-    grupos: cfg.nGrupos,
-    gruposEmBloco: false,
-    avancam: cfg.numeroTimesMataMata === 1020 ? 8 : cfg.numeroTimesMataMata,
-    doisTurnos: cfg.doisTurnos,
-    numeroTurnos: cfg.formula,
-    idaVolta: cfg.duasVoltasMataMata,
-    formato: cfg.numeroTimesMataMata === 1020 ? 1020 : -1,
-  }
-}
-
-/**
- * Séries A–C a partir de `ligas.jsonl`. A Série D (estaduais) entra na W2b.
- * Fonte: best/Z.java:112-210 (Ar), f/s.java:396-449
- */
-export function criarCompeticoesBR(mundo: Mundo, base: Base, rng: Rng): Competicao[] {
-  const comps: Competicao[] = []
-  const br = mundo.times.filter((t) => t.pais === BRA).map((t) => t.id).sort(ORDEM_CN(mundo))
-  for (const cfg of base.ligas) {
-    if (cfg.divisao > 3) continue
-    const times = br.filter((id) => mundo.times[id]!.divisao === cfg.divisao)
-    const c: Competicao = { id: `BR-${cfg.divisao}`, nome: `${cfg.nome} ${cfg.nomeDivisao}`, tipo: TIPO.liga, divisao: cfg.divisao, fases: [], campeao: null, vice: null }
-    c.fases.push(criarFaseLiga(mundo, c, times, opcoesDaConfig(cfg), mundo.dia, rng))
-    comps.push(c)
-  }
-  return comps
 }
 
 // ── O dia ─────────────────────────────────────────────────────────────────
@@ -351,7 +359,7 @@ export function jogosDoDia(mundo: Mundo): { comp: Competicao; fase: Fase; jogo: 
       const ctx: ContextoPartida = { competicao: comp.id, tipoComp: comp.tipo, temporada: mundo.temporada }
       if (r) {
         const n = r.confrontos.length
-        if (!r.idaVolta) ctx.mataMata = { golFora: false, penaltis: true }
+        if (!r.idaVolta) ctx.mataMata = { golFora: false, penaltis: r.penaltis }
         else if (i >= n) {
           const ida = r.jogos[i - n]!.gols!
           ctx.mataMata = { ida: [ida[1], ida[0]], golFora: false, penaltis: true }
@@ -409,6 +417,8 @@ export function avancarDia(mundo: Mundo, seed = mundo.seed): number | null {
     if (fase.tipo === 'liga') atualizarTabela(fase, hojeDaFase)
     avancarFase(mundo, comp, hoje + 1, rngFase)
   }
+  // evento cD (a.java:649-697): no 1º dia da liga, depois dos jogos, monta a Série D e a Copa do Brasil
+  if (hoje === datas(mundo.calendario, TIPO.liga)[0]) eventoCD(mundo, hoje + 1, derivar(seed, `cD:${hoje}`))
   const prox = proximoDiaDeJogo(mundo)
   if (prox !== null) mundo.dia = prox
   return prox

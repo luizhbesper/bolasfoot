@@ -7,7 +7,7 @@ const POSICOES = [0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4,
 
 /** Dois times idênticos (força fixa, sem características especiais). */
 export function mundoSintetico(forca = 50, reputacao = 5): Mundo {
-  const mundo: Mundo = { seed: 'sintetico', temporada: 1, dia: 0, calendario: criarCalendario(2026), competicoes: [], opcoes: { habilidadeIndividual: false }, times: [], jogadores: [] }
+  const mundo: Mundo = { seed: 'sintetico', temporada: 1, dia: 0, calendario: criarCalendario(2026), competicoes: [], colocacoesEstaduais: [], opcoes: { habilidadeIndividual: false }, times: [], jogadores: [] }
   for (const id of [0, 1]) {
     const ids = POSICOES.map((posicao, k) => {
       const j: JogadorM = {

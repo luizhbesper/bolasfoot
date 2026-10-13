@@ -296,6 +296,8 @@ Começa fechando as **lacunas** listadas no fim de `engenharia-reversa.md`, cada
 
 **Notas da entrega (F2):**
 - **W1:** `calendario.ts`, com datas absolutas (dias desde 1970) e a sequência `a.g()` inteira. Bate data a data com o original em 2022 e 2026 (`tools/calendario.sh <ano>` → `ref-calendario-<ano>.json`). `Mundo.dia` agora é absoluto e o `Mundo.calendario` é o da temporada corrente.
+- **W2:** a parte genérica está em `competicoes.ts`: fase de liga/grupos, mata-mata, tabela, desempate, colocação final e o `avancarDia`. A parte do Brasil está em `brasil.ts`: as Séries A–D (C no formato 1020; D com os 64 que vêm dos estaduais, `w.Q`), os 18 estaduais (fórmulas 0–10 e os grupos reais do Paulistão), os regionais Nordeste e Verde (`jogaRegionaisTodos = [F,F,T,T]`) e a Copa do Brasil no formato novo (12 times entram na 3ª fase; os campeões do Nordeste e da Verde têm prioridade). Uma temporada só com IA joga 25 competições em cerca de 80 dias de jogo, em ~0,5 s.
+  - **Ficou para depois:** os rebaixados da Série C entrarem direto na D, e as colocações do ano anterior nos regionais (W7). A tabela de jogos de grupo ímpar, de 6 em dois turnos e de 11 times usa o círculo com folga, não as tabelas fixas do `t.java`: muda a ordem dos jogos, não o formato. O `desempateEstadual` está em 0 em todos os estaduais e não foi portado. O humano escala pela IA até a W8. As vagas da Libertadores na Copa entram na Fase 6.
 
 **Gate:** CLI simula 5 temporadas só com IA sem erro, com invariantes e estatísticas plausíveis (campeões variados, times grandes no topo na média, caixa dos humanos-piloto não explode).
 
