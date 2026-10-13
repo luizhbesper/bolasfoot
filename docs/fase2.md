@@ -44,7 +44,8 @@ Testes: nº de rodadas e jogos por formato (A/B 38; C 19 + grupos + final; D 14 
 ## W3 — Economia
 Objetivo: caixa dos humanos e valores dos jogadores.
 Fonte original: RE "Economia" (mini-RE no ticket: `F.java` valor/salário, `ah.java` caixa, `v_0.java` obras).
-Contrato: `valorJogador`, `salarioJogador`, contrato e multa, caixa/patrocínio/salários/prêmios/empréstimo/juros/obras nos eventos do dia.
+Contrato: `valorJogador`, `salarioJogador`, `atualizarValores`, `folha`, `abrirCaixa` (time passa a ter `financas`), `receber`/`pagar`, `eventosEconomicos(mundo, dia)`, `pegarEmprestimo`/`pagarEmprestimo`, `orcamentoObra`/`iniciarObra`/`tetoEstadio`, `premioColocacao`/`premioFase`, `receberPatrocinio`/`zerarExtrato` (W7). `JogadorM` ganha `valor`, `salario`, `contratoAte`; `Mundo` ganha `diaEventos`; `OpcoesJogo.salarioMensal` (padrão true).
+Fora de escopo: multa e transferências (W4).
 Corrigir: o teto da obra fica em `pa[1]` a partir da 2ª temporada.
 
 ## W4 — Mercado

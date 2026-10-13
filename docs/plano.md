@@ -297,7 +297,17 @@ Começa fechando as **lacunas** listadas no fim de `engenharia-reversa.md`, cada
 **Notas da entrega (F2):**
 - **W1:** `calendario.ts`, com datas absolutas (dias desde 1970) e a sequência `a.g()` inteira. Bate data a data com o original em 2022 e 2026 (`tools/calendario.sh <ano>` → `ref-calendario-<ano>.json`). `Mundo.dia` agora é absoluto e o `Mundo.calendario` é o da temporada corrente.
 - **W2:** a parte genérica está em `competicoes.ts`: fase de liga/grupos, mata-mata, tabela, desempate, colocação final e o `avancarDia`. A parte do Brasil está em `brasil.ts`: as Séries A–D (C no formato 1020; D com os 64 que vêm dos estaduais, `w.Q`), os 18 estaduais (fórmulas 0–10 e os grupos reais do Paulistão), os regionais Nordeste e Verde (`jogaRegionaisTodos = [F,F,T,T]`) e a Copa do Brasil no formato novo (12 times entram na 3ª fase; os campeões do Nordeste e da Verde têm prioridade). Uma temporada só com IA joga 25 competições em cerca de 80 dias de jogo, em ~0,5 s.
+  - **cD:** roda antes dos jogos do 1º dia de liga (correção na W3; ver RE "Pendentes").
   - **Ficou para depois:** os rebaixados da Série C entrarem direto na D, e as colocações do ano anterior nos regionais (W7). A tabela de jogos de grupo ímpar, de 6 em dois turnos e de 11 times usa o círculo com folga, não as tabelas fixas do `t.java`: muda a ordem dos jogos, não o formato. O `desempateEstadual` está em 0 em todos os estaduais e não foi portado. O humano escala pela IA até a W8. As vagas da Libertadores na Copa entram na Fase 6.
+- **W3:** `economia.ts`.
+  - Valor, salário e contrato do jogador (o mundo já nasce com eles).
+  - Caixa só para os times humanos (`abrirCaixa`), com extrato da temporada.
+  - Eventos de dia, que o `avancarDia` agora roda para todos os dias pulados: salário no dia 2 (só nos meses com jogo), juros e fim das obras.
+  - Bilheteria do mandante humano; prêmios de liga, estadual, copa e regional.
+  - Empréstimo (`pegarEmprestimo`/`pagarEmprestimo`) e obras do estádio (`orcamentoObra`/`iniciarObra`), com o bug do teto corrigido.
+  - `receberPatrocinio` e `zerarExtrato` ficam prontos para a W7.
+  - Numa temporada de teste, um time da Série A (folha de ~2M/mês) saiu de 15M para 28M; um da C, de 10M para 12,7M.
+  - **Ficou para depois:** compra e venda (W4), juniores e o desconto do recém-promovido (W5), multa de rescisão (W4), satisfação da torcida no público (W5; hoje fixa em 85).
 
 **Gate:** CLI simula 5 temporadas só com IA sem erro, com invariantes e estatísticas plausíveis (campeões variados, times grandes no topo na média, caixa dos humanos-piloto não explode).
 
