@@ -148,6 +148,10 @@ export function zerarExtrato(t: TimeM): void {
   for (const k of Object.keys(t.financas.despesas) as (keyof Financas['despesas'])[]) t.financas.despesas[k] = 0
 }
 
+/** Até quanto o time pode dever (por divisão) e o tamanho de cada parcela. */
+export const limiteEmprestimo = (t: TimeM) => LIMITE_EMPRESTIMO[div(t)]!
+export const PARCELA_EMPRESTIMO = BLOCO
+
 const atualizarJuros = (f: Financas) => (f.juros = f.emprestimo > 0 ? Math.floor((f.emprestimo * 3) / 100) : 0)
 
 /** Pega 500 mil, até o limite da divisão. Fonte: best/C.java:228-238 (m) */
