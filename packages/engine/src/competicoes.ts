@@ -8,6 +8,7 @@ import type { Mundo } from './mundo.ts'
 import { iniciarPartida, simularTempo, type ContextoPartida } from './partida.ts'
 import { eventosEconomicos, premioFase, receber } from './economia.ts'
 import { aplicarPosJogo, publico, recuperarEnergia } from './posjogo.ts'
+import { mercadoAntesDosJogos, mercadoDepoisDosJogos } from './mercado.ts'
 import { derivar, type Rng } from './rng.ts'
 
 export interface Jogo {
@@ -391,6 +392,7 @@ export function proximoDiaDeJogo(mundo: Mundo): number | null {
  */
 export function avancarDia(mundo: Mundo, seed = mundo.seed): number | null {
   const hoje = mundo.dia
+  mercadoAntesDosJogos(mundo, derivar(seed, `mercado:${hoje}:antes`))
   const jogos = jogosDoDia(mundo)
   const porFase = new Map<Fase, Jogo[]>()
   for (const { comp, fase, jogo, ctx } of jogos) {
@@ -414,6 +416,8 @@ export function avancarDia(mundo: Mundo, seed = mundo.seed): number | null {
     // f_0.as(): recuperação de todos; juniores voltam a 100
     recuperarEnergia(mundo)
     for (const j of mundo.jogadores) if (j.juvenil) j.energia = 100
+    // f_0.ax: empréstimos, propostas da IA e leilões
+    mercadoDepoisDosJogos(mundo, jogos.map((x) => x.comp.tipo), derivar(seed, `mercado:${hoje}`))
   }
   const rngFase = derivar(seed, `fases:${hoje}`)
   for (const comp of mundo.competicoes) {

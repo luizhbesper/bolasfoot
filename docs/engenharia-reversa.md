@@ -384,7 +384,7 @@ Acesso e rebaixamento: `am()` → `Z.ee()` (`Z.java:454`). Sobem tantos quantos 
 | 3 | prêmios | 4 | juros |
 | 5 | bilheteria | 7 | obras |
 | 6 | patrocínio | 8 | comissões |
-| 9 | juniores | | salários (lançados à parte, `b()`) |
+| 9 | multas aos jogadores (`a/bn_0.java:103`) | | salários (lançados à parte, `b()`) |
 
 - **Salário** (`ds`, `a.n`): no dia 2 de cada mês (ou todo domingo, com salário semanal), mas só se o time **tem jogo marcado naquele mês** (`ah.bY`). Valor = soma do elenco e dos juniores (`kK`).
 - **Empréstimo** (`C.l/m`):
@@ -425,16 +425,37 @@ Acesso e rebaixamento: `am()` → `Z.ee()` (`Z.java:454`). Sobem tantos quantos 
 
   - Pago à vista. Prazo: <1000 lugares → 15 dias, <10 mil → 20, <30 mil → 30, senão 40. A obra termina no 1º dia de jogo depois do prazo.
   - Teto por setor `aq.pa`: o original testa `H >= 2` antes de `>= 6` e `>= 10`, então o teto real fica em `pa[1]` a partir da 2ª temporada. **Corrigido no port.**
-- **Preço de venda da IA:**
+- **Preço de venda da IA** (`l.java:578`), pelos jogadores do vendedor na posição (sem os emprestados):
 
-| Situação do elenco vendedor | Preço |
-|---|---|
-| Tem jogadores sobrando na posição | valor +20–50%, ou −10–20% se o jogador for fraco ou velho |
-| Ficaria com só um na posição | valor ×2,5 |
-| Demais casos | valor ×2 |
+| Situação | GOL / LAT / ZAG / MEI | ATA |
+|---|---|---|
+| Tem pelo menos 3/4/4/5/4 | +50% / +20% / +20% / +20% | +50% |
+| …e o jogador tem força < 30 ou mais de 35 anos | −15% / −20% / −20% / −10% | −10% |
+| Tem só um | ×2,5 | ×3 |
+| Demais casos | ×2 | ×2,5 |
 
 - **Elenco:** no máximo 35 jogadores.
-- **Contratos:** 180 dias, ou 365 dias em empréstimo. Há multa de rescisão (W4).
+- **Contratos:** 180 dias, ou 365 dias em empréstimo.
+  - Multa de rescisão (`F.java:2566`), paga pelo vendedor humano só na venda pela lista ou imediata: 12% / 20% / 22% / 25% / 30% do preço com até 30 / 60 / 90 / 180 / mais dias de contrato.
+  - Renovação (`a/fy_0`): 180/365/730/1095 dias somados ao fim atual. Salário até 25% do valor; o mínimo aceito é o salário −1/3/5/12% (faltando menos de 60 dias) ou +10/12/15/5%.
+
+## Mercado (W4)
+
+Campos do `F`: `ff()` estrela, `gm()` craque, `status == 1` titular, `gl()` emprestado, `ft()` à venda, `fz()` para empréstimo, `fl()` preço pedido, `eZ` time anterior (a IA não recompra).
+
+- **Lista da IA** (`ah.kp`, na criação do mundo e no começo da temporada): embaralha o elenco; em cada posição com mais de 2/3/3/5/4, 50% de chance de listar o 1º reserva que não é estrela, craque nem emprestado, pelo valor. 30% desses, se a força for < 42, também ficam para empréstimo.
+- **Quem compra** (`best/l`): um time da IA que "quer" o jogador (`ah.a`: elenco < 35, força entre o mínimo da divisão/reputação `aq.qg/qh` e o máximo da reputação `aq.qi`; se o vendedor é da IA, sem excesso na posição).
+  - Ordem da busca: times da liga BR na faixa de divisões do vendedor (±1; força ≤ 20 em qualquer uma), depois times de fora das ligas nacionais (do país do jogador, se ele é sul-americano ou do continente 4 e com 85%; senão do continente do vendedor). Na venda pedida, a partir da 3ª temporada e abaixo do valor, qualquer time.
+  - Craque vai primeiro para um grande da Europa. Estrela, ou força > 30 com 40%, de humano pula a liga BR.
+  - As listas de ligas europeias do original ficam vazias no port (sem a Espanha não há liga na Europa).
+- **O jogador aceita?** (`l.c/d`): destino europeu sempre. De um europeu de reputação ≥ 4: só para reputação ≥ 4 ou Série A; reputação 3 pede o salário dobrado. Senão recusa só um time de reputação ≥ 4 indo para ≤ 2, ou de reputação 3 indo para 0.
+- **Proposta do humano** (`a/cz_0`): listado com oferta ≥ preço pedido sai pelo preço pedido. Senão, oferta ≥ preço da IA fecha (ou pede o salário dobrado); abaixo, contraproposta pelo preço da IA se o humano tem esse caixa. Depois da compra, a IA repõe cada posição abaixo de 2/3/3/5/3 com um jogador de força ±5 **da posição do vendido** (bug do original, mantido) de um time de reputação parecida com sobra.
+- **Venda pelo humano:** pela lista, a IA compra depois de cada dia de jogo com 50% (`f_0.av`); imediata (`a/jc.dE`), aceita até 10–15% abaixo do valor. Nos dois casos a IA só paga até valor + 10% (às vezes 15%, `eg_0.HL`).
+- **Empréstimo** (`components/t_0`): 366 dias; até 4 emprestados por time, até 10 emprestáveis; na volta, dono humano precisa de vaga. O emprestado pode ser comprado pelo valor sem consultar o dono (`eg_0.qF`).
+- **Leilão** (`best/N`, `a/dz_0`): depois de rodada de liga, estadual ou regional, 0 a 3 sobras da IA (times com ≥ 21). Lance mínimo = metade do valor. O maior lance leva, mas abaixo de 2,5× o mínimo a IA cobre com 49% (paga mínimo × 1,45 ou 1,62 + o lance). O ramo `> 80 → 0,82` do original vem depois do `> 60` e nunca roda.
+- **Junior promovido** (`k_0`): força = potencial + (base da divisão/reputação + 0..4, +5 na Europa) × progresso/100; +0..9 com potencial ≥ 9.
+- **Janela da IA** (`ag.jO`, fim da temporada): cada time vende de 1 a 4 sobras (mais quanto pior a colocação), completa as posições em falta e os grandes da Europa levam estrelas (força > 50, < 31 anos) dos médios.
+
 
 ## Evolução e carreira
 
@@ -520,5 +541,4 @@ Números do original (20 mil partidas, Série A, temporada 1): 2,65 gols/jogo, m
 
 - Detalhes finos da W2: comparador `desempateEstadual`, chaveamento `Zy` da Série D, como `g_0` distribui ida e volta nas datas, conteúdo de `conf_estadual/*.ces`.
 - Sorteio das continentais e dos grupos (cotas por país já mapeadas acima).
-- Como a IA monta propostas pelos jogadores humanos.
 - Tabelas exatas de confiança da diretoria e da torcida.

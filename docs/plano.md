@@ -308,6 +308,13 @@ Começa fechando as **lacunas** listadas no fim de `engenharia-reversa.md`, cada
   - `receberPatrocinio` e `zerarExtrato` ficam prontos para a W7.
   - Numa temporada de teste, um time da Série A (folha de ~2M/mês) saiu de 15M para 28M; um da C, de 10M para 12,7M.
   - **Ficou para depois:** compra e venda (W4), juniores e o desconto do recém-promovido (W5), multa de rescisão (W4), satisfação da torcida no público (W5; hoje fixa em 85).
+- **W4:** `mercado.ts`.
+  - A IA lista sobras (`kp`) na criação do mundo; `listarIA` e `janelaIA` ficam prontos para a W7.
+  - O humano faz proposta (com contraproposta), compra listados, vende pela lista ou na hora (com multa de rescisão), pega e devolve emprestados, dá lance em leilão, promove e dispensa juniores e renova contratos.
+  - O `avancarDia` fecha os leilões antes dos jogos; depois deles, devolve os empréstimos vencidos, roda as propostas da IA (50%) e abre de 0 a 3 leilões se há humano.
+  - A receita 9 do extrato é "multas" (aos jogadores), não "juniores": corrigido o nome no `Financas`.
+  - Numa temporada de teste, a janela da IA fez ~2,6 mil transferências; ~94% das vendas de times BR ficam no Brasil.
+  - **Ficou para depois:** proposta entre humanos e os lances dos outros humanos na venda imediata (W8); sem vendedor para repor uma posição, o original gera e promove um junior (W5); o desconto do valor do recém-promovido (W5); elencos das seleções na janela (Fase 6).
 
 **Gate:** CLI simula 5 temporadas só com IA sem erro, com invariantes e estatísticas plausíveis (campeões variados, times grandes no topo na média, caixa dos humanos-piloto não explode).
 

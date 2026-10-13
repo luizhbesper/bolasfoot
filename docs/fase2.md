@@ -50,8 +50,9 @@ Corrigir: o teto da obra fica em `pa[1]` a partir da 2ª temporada.
 
 ## W4 — Mercado
 Objetivo: transferências.
-Fonte original: mini-RE (`kp()` da M2, `f_0.au/av`).
-Contrato: preço de venda da IA, transferências entre IAs, propostas da IA pelos listados do humano, leilão, juniores, empréstimo.
+Fonte original: RE "Mercado (W4)" (`best/l.java`, `ah.kp/ku/kv`, `F.a/c`, `components/t_0` e `an`, `f_0.au/av`, `best/N` + `a/dz_0`, `k_0`, `a/fy_0`, `best/ag`).
+Contrato: `listarIA`, `precoVendaIA`, `aceitaIr`, `acharComprador`, `transferir`, `proporCompra` (contraproposta + `aceitar`), `anunciar`/`retirarDaLista`/`venderAgora`, `disponibilizarEmprestimo`/`pedirEmprestado`/`encerrarEmprestimo`/`comprarEmprestado`, `darLance`, `promoverJunior`/`dispensarJunior`, `renovarContrato`, `mercadoAntesDosJogos`/`mercadoDepoisDosJogos` (no `avancarDia`), `janelaIA` (W7). `JogadorM` ganha `aVenda`, `preco`, `paraEmprestimo`, `emprestado`, `timeAnterior`, `progresso`; `Mundo` ganha `continentes`, `emprestimos`, `transferencias`, `leiloes`.
+Fora de escopo: proposta entre humanos e lances dos outros humanos na venda imediata (W8); geração de juniores (W5).
 
 ## W5 — Carreira
 Objetivo: os jogadores e os técnicos evoluem.
