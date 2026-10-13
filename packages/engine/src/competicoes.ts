@@ -6,7 +6,8 @@ import { escalarIA } from './escalacao.ts'
 import { eventoCD, proximaRodadaCopa, registrarColocacoes } from './brasil.ts'
 import type { Mundo } from './mundo.ts'
 import { iniciarPartida, simularTempo, type ContextoPartida } from './partida.ts'
-import { aplicarPosJogo, recuperarEnergia } from './posjogo.ts'
+import { eventosEconomicos, premioFase, receber } from './economia.ts'
+import { aplicarPosJogo, publico, recuperarEnergia } from './posjogo.ts'
 import { derivar, type Rng } from './rng.ts'
 
 export interface Jogo {
@@ -333,6 +334,8 @@ function avancarFase(mundo: Mundo, c: Competicao, desde: number, rng: Rng): void
   const r = f.rodadas.at(-1)!
   if (!r.jogos.every((j) => j.gols)) return
   r.vencedores = r.confrontos.map((_, k) => vencedor(r, k))
+  const nRodadas = Math.round(Math.log2(f.rodadas[0]!.confrontos.length * 2))
+  for (const v of r.vencedores) premioFase(mundo.times[v]!, c, f.rodadas.length - 1, nRodadas)
   if (r.vencedores.length === 1) {
     const [a, b] = r.confrontos[0]!
     c.campeao = r.vencedores[0]!
@@ -399,6 +402,10 @@ export function avancarDia(mundo: Mundo, seed = mundo.seed): number | null {
     simularTempo(p, 1, derivar(seed, `${rotulo}:1T`))
     simularTempo(p, 2, derivar(seed, `${rotulo}:2T`))
     aplicarPosJogo(mundo, p, derivar(seed, `${rotulo}:pos`))
+    // I.hf: bilheteria do mandante humano (nunca no Mundial nem em seleções)
+    const casa = mundo.times[jogo.casa]!
+    if (casa.financas && comp.tipo !== 5 && comp.tipo !== 7)
+      receber(casa, publico(casa, mundo.times[jogo.fora]!, ctx, derivar(seed, `${rotulo}:publico`)).renda, 'bilheteria')
     jogo.gols = [...p.placar]
     if (p.penaltis) jogo.penaltis = p.penaltis.vencedor
     porFase.set(fase, [...(porFase.get(fase) ?? []), jogo])
@@ -417,9 +424,17 @@ export function avancarDia(mundo: Mundo, seed = mundo.seed): number | null {
     if (fase.tipo === 'liga') atualizarTabela(fase, hojeDaFase)
     avancarFase(mundo, comp, hoje + 1, rngFase)
   }
-  // evento cD (a.java:649-697): no 1º dia da liga, depois dos jogos, monta a Série D e a Copa do Brasil
-  if (hoje === datas(mundo.calendario, TIPO.liga)[0]) eventoCD(mundo, hoje + 1, derivar(seed, `cD:${hoje}`))
-  const prox = proximoDiaDeJogo(mundo)
+  // f_0.at → q(0): eventos de dia (salário, juros, obras) de todos os dias até hoje
+  for (let d = mundo.diaEventos + 1; d <= hoje; d++) eventosEconomicos(mundo, d)
+  mundo.diaEventos = Math.max(mundo.diaEventos, hoje)
+  // f_0.ax → az() + q(1): eventos pós-jogo dos dias até o próximo dia de jogo. O cD (a.java:649-697)
+  // está no 1º dia de liga, então a Série D e a Copa nascem antes da 1ª rodada, com a tabela ainda zerada.
+  let prox = proximoDiaDeJogo(mundo)
+  const cD = datas(mundo.calendario, TIPO.liga)[0]!
+  if (hoje < cD && (prox === null || prox >= cD)) {
+    eventoCD(mundo, cD, derivar(seed, `cD:${cD}`))
+    prox = proximoDiaDeJogo(mundo)
+  }
   if (prox !== null) mundo.dia = prox
   return prox
 }

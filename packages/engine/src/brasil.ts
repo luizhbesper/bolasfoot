@@ -7,6 +7,7 @@ import {
   classificacaoFinal, criarFaseLiga, criarFaseMataMata, criarRodada,
   type Competicao, type FaseMataMata, type OpcoesLiga, type RodadaMataMata,
 } from './competicoes.ts'
+import { premioColocacao } from './economia.ts'
 import { BRA, type Mundo, type TimeM } from './mundo.ts'
 import type { Rng } from './rng.ts'
 
@@ -162,11 +163,16 @@ export function criarCompeticoesBR(mundo: Mundo, base: Base, rng: Rng): Competic
   return comps
 }
 
-/** Ao fim de um estadual, guarda a colocação de quem não está nas séries. Fonte: f/s.java:1564-1636 (za) */
+/**
+ * Fim de uma competição: prêmio de colocação dos humanos e, nos estaduais, a colocação de quem
+ * está fora das séries (vai para a Série D e a Copa). Fonte: f/s.java:1564-1636 (za)
+ */
 export function registrarColocacoes(mundo: Mundo, c: Competicao): void {
-  if (c.tipo !== TIPO.estadual) return
   classificacaoFinal(c).forEach((time, i) => {
-    if (mundo.times[time]!.divisao === 0) mundo.colocacoesEstaduais.push({ uf: c.uf!, divisao: c.divisao, time, pos: i + 1 })
+    const t = mundo.times[time]!
+    // ah.a → c (ah.java:803): prêmio de colocação de liga e estadual para humanos
+    if (t.financas) premioColocacao(t, c, i + 1)
+    if (c.tipo === TIPO.estadual && t.divisao === 0) mundo.colocacoesEstaduais.push({ uf: c.uf!, divisao: c.divisao, time, pos: i + 1 })
   })
 }
 

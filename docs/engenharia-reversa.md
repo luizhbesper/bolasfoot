@@ -265,7 +265,7 @@ senão se 2ºT e minuto≥5: substituições da IA
 | `cD` | monta Copa do Brasil e Série D a partir de estaduais e regionais | 1º dia de liga |
 | `cw` | sorteio internacional | antes do último dia de continental 1 |
 
-- **Pendentes:** o jogo só para em dia de jogo. `q(n)` (`f_0.java:1867`) roda os eventos de todos os dias até `af`, então evento de dia sem jogo dispara no próximo dia de jogo.
+- **Pendentes:** o jogo só para em dia de jogo. Depois dos jogos do dia D, `q(0)` roda os eventos de dia (`ds`, `dJ`, `aj`) de todos os dias até D. Em seguida `az()` avança para o próximo dia de jogo D′, e `q(1)` roda os eventos pós-jogo de todos os dias até D′. Por isso o `cD` do 1º dia de liga roda **antes** dos jogos desse dia: a Série D e a Copa já começam nele, com a tabela das séries ainda zerada. A troca de nome é do decompilador: `r()` devolve a lista `q`, e `s()` a lista `r`.
 - Torneios de seleções seguem ciclos de 2 ou 4 anos.
 
 ### Avançar o dia (`f_0.ap` → `at` → `ax`)
@@ -368,32 +368,73 @@ Acesso e rebaixamento: `am()` → `Z.ee()` (`Z.java:454`). Sobem tantos quantos 
 6. Juniores.
 7. Rodízio de técnicos da IA.
 
-## Economia
+## Economia (port em `packages/engine/src/economia.ts`)
 
-- **Só os times humanos têm dinheiro simulado.** A IA não tem caixa.
-- **Caixa inicial por divisão:** 15M / 12M / 10M / 3.5M.
-- **Patrocínio anual:** 6M / 4.5M / 2.5M / 2M.
-- **Salários:** soma do elenco mais os juniores.
-- **Prêmios:**
-  - liga, top 6 da Série A: 5M, 3.5M, 2M, 1.5M, 1M, 0.5M;
-  - copa nacional, por fase: 1M → 25M;
-  - Libertadores: 2M → 40M;
-  - Mundial: até 7M.
-- **Empréstimo:** blocos de 500k, com limite por divisão (5M na div. 1). Juros de 3% ao mês.
-- **Estádio:** obras levam de 15 a 40 dias, com custo por assento e teto por setor. Bug original: o teto real fica sempre em `pa[1]` a partir da 2ª temporada.
-- **Demissão:** acontece quando a satisfação da diretoria fica abaixo de 10. A diretoria começa em 95 e a torcida em 85; ambas variam por resultado (`al.java:162-530`).
-- **Valor do jogador:** `(2·força)² × mult`. O mult é 366 a 750 conforme o nível do time, ajustado por idade, craque, ídolo, atacante e titular.
-- **Salário do jogador:** `força × 2 × round(base/2)`, menos um desconto por posição e idade.
+- **Só os times humanos têm dinheiro simulado.** O original dá caixa a todos (`kH`), mas a IA nunca gasta.
+- **Caixa inicial** (`aq.sC`): 15M / 12M / 10M / 3,5M nas Séries A a D, e 3,5M fora delas. É definido quando o humano assume o time (`ah.lg` → `kH`).
+- **Patrocínio anual** (`aq.sD`): 6M / 4,5M / 2,5M / 2M; fora das séries, 3,5M.
+  - O do 1º ano só entra no extrato: já está contado no caixa inicial.
+  - A partir daí é pago na virada da temporada (`kG`, `f_0.java:1202`).
+  - Estrangeiro com estaduais ligados recebe ainda +3,2 folhas.
+- **Extrato da temporada** (`best/C.java`):
+
+| Código | Receita | Código | Despesa |
+|---|---|---|---|
+| 1 | vendas | 1 | compras |
+| 3 | prêmios | 4 | juros |
+| 5 | bilheteria | 7 | obras |
+| 6 | patrocínio | 8 | comissões |
+| 9 | juniores | | salários (lançados à parte, `b()`) |
+
+- **Salário** (`ds`, `a.n`): no dia 2 de cada mês (ou todo domingo, com salário semanal), mas só se o time **tem jogo marcado naquele mês** (`ah.bY`). Valor = soma do elenco e dos juniores (`kK`).
+- **Empréstimo** (`C.l/m`):
+  - Blocos de 500 mil, até 5M / 3M / 2M / 1,5M nas Séries A a D, ou 1M fora delas.
+  - Devolve 500 mil se houver caixa.
+  - Juros = `floor(saldo × 3 / 100)`, cobrados no dia 2 (`dJ`, `a.o`).
+- **Bilheteria** (`I.hf`): só para o mandante humano, nunca no Mundial nem em jogo de seleções. O público vem de `v_0` (ver acima).
+- **Prêmios** (só humanos):
+
+| Competição | Fonte | Valores |
+|---|---|---|
+| Liga, por colocação | `aq.sr`, `ah.c` | A 5M / 3,5M / 2M / 1,5M / 1M / 0,5M; B 2,5M a 100k; C 1,5M a 75k; D 750k a 50k |
+| Estadual da 1ª divisão | `su` | 700k / 500k / 300k / 100k |
+| Copa nacional, por fase vencida | `ss`, `g_0.c/V` | `ss[fase + 8 − nFases]`, de 1M a 25M (a final paga 25M) |
+| Regionais, por fase do mata-mata | `sv` | 100k / 100k / 400k |
+
+- **Valor do jogador** (`F.fK`):
+  - Fórmula: `(2·força)² × mult`.
+  - Base do mult pelo Nivel do time: ≥21 → 750, ≥20 → 600, ≥18 → 500, ≥12 → 400, senão 366.
+  - Estrela: ×3 (Nivel ≥22, país europeu), ×2 (≥21, europeu), ou ×1,7. Craque ×1,6. Atacante ×1,3. Titular +20%.
+  - Idade: <20 → +(32−i)·27; ≤25 → +(32−i)·22; <32 → +(32−i)·15; <34 → +(34−i)·10; senão −(i−34)·50. Se o mult ficar ≤ 0, vale 60.
+  - Juvenil: `round(v·0,03) × potencial` (×1,5 com potencial 10).
+- **Salário do jogador** (`F.fJ`):
+  - Base por divisão: 600 / 500 / 450 / 400, ou 750 / 550 / 500 / 450 nos países `aq.rW`; fora das séries, 350. +50 se Nivel > 20.
+  - Por posição: GOL −70, LAT −30, ZAG −40, ATA −50.
+  - Fórmula: `força·2·round(base/2)`; +força·250 para estrela. A partir de 32 anos, −(i−32)·300.
+  - Piso 500. Craque ×1,4; juvenil ×0,1. ×4 se o salário é mensal.
+- **Contrato:** 210 a 239 dias na criação do mundo (`F.fI`); 180 dias para o juvenil promovido (`k_0`). Valor e salário são recalculados na virada da temporada (`f_0.af`).
+- **Estádio** (`a/cq_0`, `f_0.aw`):
+  - Custo = 100 mil + Σ lugares × preço da faixa da capacidade final:
+
+| Setor | Faixas (até) | Preço por lugar |
+|---|---|---|
+| geral | 1000 / 2500 / 3500 / 10000 / 18000 | 80 / 160 / 240 / 500 / 700 |
+| arquibancada | 5k / 15k / 30k / 60k / 80k | 120 / 380 / 640 / 700 / 1400 |
+| cadeira | 1k / 2k / 3k / 5k / 9k | 300 / 600 / 750 / 800 / 1200 |
+| camarote | 100 / 200 / 500 / 600 / 700 | 1500 / 3500 / 4000 / 6000 / 6400 |
+
+  - Pago à vista. Prazo: <1000 lugares → 15 dias, <10 mil → 20, <30 mil → 30, senão 40. A obra termina no 1º dia de jogo depois do prazo.
+  - Teto por setor `aq.pa`: o original testa `H >= 2` antes de `>= 6` e `>= 10`, então o teto real fica em `pa[1]` a partir da 2ª temporada. **Corrigido no port.**
 - **Preço de venda da IA:**
 
 | Situação do elenco vendedor | Preço |
 |---|---|
 | Tem jogadores sobrando na posição | valor +20–50%, ou −10–20% se o jogador for fraco ou velho |
-| Ficaria com só um na posição | valor ×2.5 |
+| Ficaria com só um na posição | valor ×2,5 |
 | Demais casos | valor ×2 |
 
 - **Elenco:** no máximo 35 jogadores.
-- **Contratos:** 180 dias, ou 365 dias em empréstimo. Há multa de rescisão.
+- **Contratos:** 180 dias, ou 365 dias em empréstimo. Há multa de rescisão (W4).
 
 ## Evolução e carreira
 

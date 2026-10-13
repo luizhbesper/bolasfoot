@@ -3,6 +3,7 @@ import type { Base, Jogador, Time } from '@bolasfoot/data'
 import { ANO_INICIAL, criarCalendario, primeiroDomingo, type Calendario } from './calendario.ts'
 import { criarCompeticoesBR, type ColocacaoEstadual } from './brasil.ts'
 import type { Competicao } from './competicoes.ts'
+import { atualizarValores, type Financas } from './economia.ts'
 import { derivar, type Rng } from './rng.ts'
 
 export const BRA = 29
@@ -41,6 +42,12 @@ export interface JogadorM extends Jogador {
   lesaoAte: number
   /** jogou desde a última evolução semanal (F.eL) */
   jogou: boolean
+  /** F.eu: valor de mercado */
+  valor: number
+  /** F.et: salário (mensal ou semanal, conforme a opção) */
+  salario: number
+  /** F.eJ: dia em que o contrato acaba */
+  contratoAte: number
 }
 
 export interface Tatica {
@@ -73,6 +80,8 @@ export interface TimeM extends Omit<Time, 'jogadores' | 'juniores' | 'estadio'> 
   /** ah.hr: desempate aleatório 1..1000 */
   desempate: number
   humano: boolean
+  /** só times com técnico humano têm caixa (a IA não tem) */
+  financas: Financas | null
   jogadores: number[]
   juniores: number[]
   tatica: Tatica
@@ -83,6 +92,8 @@ export interface TimeM extends Omit<Time, 'jogadores' | 'juniores' | 'estadio'> 
 
 export interface OpcoesJogo {
   habilidadeIndividual: boolean
+  /** salário pago no dia 2 (padrão do original) ou todo domingo */
+  salarioMensal?: boolean
 }
 
 export interface Mundo {
@@ -91,6 +102,8 @@ export interface Mundo {
   temporada: number
   /** dia corrente, absoluto (calendario.ts) */
   dia: number
+  /** último dia cujos eventos (salário, juros, obras…) já rodaram */
+  diaEventos: number
   calendario: Calendario
   competicoes: Competicao[]
   /** colocações nos estaduais de quem está fora das séries (SR.bx): alimenta Série D e Copa no evento cD */
@@ -277,7 +290,7 @@ export function novoJogo(base: Base, opcoes: OpcoesJogo, seed: string): Mundo {
   const rngForca = derivar(seed, 'novoJogo:forca')
   const calendario = criarCalendario(ANO_INICIAL)
   const dia = calendario.inicio + primeiroDomingo(calendario.inicio)
-  const mundo: Mundo = { seed, temporada: 1, dia, calendario, competicoes: [], colocacoesEstaduais: [], opcoes, times: [], jogadores: [] }
+  const mundo: Mundo = { seed, temporada: 1, dia, diaEventos: dia - 1, calendario, competicoes: [], colocacoesEstaduais: [], opcoes, times: [], jogadores: [] }
 
   // p_0.java:59 ordena por Nivel desc; p_0.java:110-128: país sem liga carrega só 15 times
   // ponytail: empate de Nivel segue a ordem do base.json (o original usa a ordem dos arquivos)
@@ -304,6 +317,9 @@ export function novoJogo(base: Base, opcoes: OpcoesJogo, seed: string): Mundo {
         suspensoes: {},
         lesaoAte: 0,
         jogou: false,
+        valor: 0,
+        salario: 0,
+        contratoAte: 0,
       }
       mundo.jogadores.push(jm)
       return jm.id
@@ -318,6 +334,7 @@ export function novoJogo(base: Base, opcoes: OpcoesJogo, seed: string): Mundo {
       continente: base.paises[t.pais]!.continente,
       desempate: rngDesempate.int(1000) + 1,
       humano: false,
+      financas: null,
       jogadores: jogadores.map((j) => novo(j, false)),
       juniores: juniores.map((j) => novo(j, true)),
       tatica: { formacao: 4, estilo: 0, marcacao: 0, jogada: 0 },
@@ -344,6 +361,10 @@ export function novoJogo(base: Base, opcoes: OpcoesJogo, seed: string): Mundo {
   // entre jogadores de mesma força. A lista de transferências do kp() fica para a W4.
   const rngElenco = derivar(seed, 'novoJogo:elenco')
   for (const t of mundo.times) rngElenco.shuffle(t.jogadores)
+  // F.fI (F.java:674-680): contrato de 210 a 239 dias, depois valor e salário
+  const rngContrato = derivar(seed, 'novoJogo:contrato')
+  for (const j of ordem) j.contratoAte = mundo.dia + rngContrato.int(30) + 210
+  atualizarValores(mundo, (pais) => base.paises[pais]?.continente ?? -1)
   mundo.competicoes = criarCompeticoesBR(mundo, base, derivar(seed, 'temporada:1:competicoes'))
   return mundo
 }
