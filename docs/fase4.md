@@ -9,6 +9,7 @@ Detalhe dos tickets U0–U8 do `plano.md`. Gate: uma noite inteira no modo live,
 - **Desktop-first, mobile usável:** a sidebar empilha/vira barra, tabelas rolam na horizontal, o campo escala por `aspect-ratio`.
 - **Sem dependências novas.** CSS Modules + tokens em `app/globals.css`; ícones SVG inline em `app/_ui/icones.tsx`; gráficos em SVG à mão; fontes por `next/font/google`.
 - **Fontes:** Geist (UI, sempre `tabular-nums`) e Bricolage Grotesque (placar e títulos).
+- **Camisas do original na escalação** (campo e banco): `camisas/1/<fileRef>.png`, goleiro com a genérica escura, fallback pela matiz da `cor1` em `camisas/genericas`. É charme do Brasfoot; fica.
 - **Cores do time** (`cor1`/`cor2` do original) só no escudo, na faixa do nome na partida e no header do clube. O resto da UI usa a paleta.
 - **Chat fora** por ora: a call basta. O feed "Na liga dos amigos" (dos `round_logs` e transferências) cobre o social.
 
