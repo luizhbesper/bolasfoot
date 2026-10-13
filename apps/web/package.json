@@ -7,17 +7,24 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc -p .",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "node lib/db/cli.ts migrate",
+    "db:seed": "node lib/db/cli.ts seed",
+    "db:reset": "node lib/db/cli.ts reset"
   },
   "dependencies": {
     "@bolasfoot/engine": "workspace:*",
+    "drizzle-orm": "^0.45.4",
     "next": "^16.4.0",
+    "postgres": "^3.4.9",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.0",
     "@types/react": "^19.3.0",
-    "@types/react-dom": "^19.3.0"
+    "@types/react-dom": "^19.3.0",
+    "drizzle-kit": "^0.31.11"
   }
 }

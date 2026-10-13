@@ -364,6 +364,9 @@ Começa fechando as **lacunas** listadas no fim de `engenharia-reversa.md`, cada
 
 **Gate:** dois usuários criados por convite no staging avançam rodadas com uma UI crua (botão "pronto" + lista de resultados).
 
+**Notas da entrega (F3):** tickets em `docs/fase3.md`.
+- **S1:** `apps/web/lib/db/schema.ts` + `drizzle/` (gerar com `pnpm --filter web db:generate`). Fase e prazo correntes ficam em `games` (`round`, `deadline`); `rounds`, `commands`, `snapshots` e `round_logs` têm `etapa` (0 = planejamento, 1 = intervalo). A sessão guarda o sha256 do token. `db:migrate|seed|reset` rodam `lib/db/cli.ts` direto no Node. Os testes do `apps/web` zeram e migram o `bolasfoot_test` (recusam outro banco); o CI sobe Postgres no `check`.
+
 ### Fase 4 — Front-end
 
 UI **moderna, inspirada** no original, sobre o servidor da fase 3 (em local, com o Postgres do Docker).
