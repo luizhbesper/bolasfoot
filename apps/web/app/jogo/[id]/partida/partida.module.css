@@ -7,9 +7,8 @@
 .topo {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 14px;
   padding: 10px 20px;
-  border-bottom: 1px solid var(--raised);
   flex-wrap: wrap;
 }
 
@@ -25,7 +24,7 @@
 .titulo {
   font-family: var(--font-bricolage), sans-serif;
   font-weight: 700;
-  font-size: 20px;
+  font-size: 18px;
 }
 
 .ponto {
@@ -40,30 +39,12 @@
   50% { opacity: 0.3; }
 }
 
-.progresso {
-  flex: 1;
-  min-width: 160px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.trilho {
-  flex: 1;
-  height: 4px;
-  border-radius: 2px;
-  background: var(--line);
-  overflow: hidden;
-}
-
-.trilho > div {
-  height: 100%;
-  background: var(--lavanda);
-  transition: width 0.5s linear;
+@media (prefers-reduced-motion: reduce) {
+  .ponto { animation: none; }
 }
 
 .cta {
-  height: 40px;
+  height: 38px;
   padding: 0 16px;
   border-radius: var(--raio);
   display: inline-flex;
@@ -86,150 +67,337 @@
   background: var(--surface);
 }
 
-.grade {
-  flex: 1;
-  min-height: 0;
-  padding: 16px 20px;
-  display: grid;
-  grid-template-columns: minmax(0, 3fr) minmax(360px, 2fr);
-  gap: 16px;
-}
+/* --- placar em faixa: a peça da tela. As cores dos clubes entram pelas laterais. --- */
 
-/* tela única: quem rola são os lances, o intervalo e a lista de jogos, nunca a página */
-.principal {
+.placar {
+  flex: none;
+  margin: 0 20px;
+  padding: 18px 28px 16px;
+  border-radius: var(--raio-card);
+  border: 1px solid var(--line);
+  background:
+    linear-gradient(90deg,
+      color-mix(in srgb, var(--c0) 30%, var(--surface)) 0%,
+      var(--surface) 34%, var(--surface) 66%,
+      color-mix(in srgb, var(--c1) 30%, var(--surface)) 100%);
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  min-width: 0;
-  min-height: 0;
-}
-
-.destaque {
-  flex: 0 1 auto;
-  min-height: 0;
-  padding: 14px 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-@media (max-width: 900px) {
-  .tela { height: auto; min-height: 100vh; }
-  .grade { grid-template-columns: minmax(0, 1fr); padding: 12px; }
-  .todos { max-height: 70vh; }
-}
-
-.cabeca {
-  text-align: center;
-  font-size: 13px;
-  color: var(--muted);
-}
-
-.placarGrande {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 20px;
-  flex-wrap: wrap;
-}
-
-.lado {
-  display: flex;
-  align-items: center;
   gap: 14px;
+}
+
+.confronto {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 24px;
+}
+
+.clube {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+  font-family: var(--font-bricolage), sans-serif;
+  font-weight: 700;
+  font-size: 28px;
+  line-height: 1.1;
+}
+
+.clube > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.clube img {
+  flex: none;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.45));
+}
+
+.fora {
+  flex-direction: row-reverse;
+  text-align: right;
+}
+
+.centro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
 }
 
 .gols {
   font-family: var(--font-bricolage), sans-serif;
   font-weight: 700;
-  font-size: 52px;
-  line-height: 1;
-  white-space: nowrap;
+  font-size: 76px;
+  line-height: 0.9;
+  letter-spacing: -0.02em;
+  display: flex;
+  gap: 18px;
 }
 
 .gols > span {
   color: var(--faint);
+  font-weight: 500;
 }
 
-.faixa {
-  padding: 3px 9px;
-  border-radius: 6px;
+.minuto {
+  font-size: 13px;
   font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
-  background: var(--raised);
-}
-
-.placarGrande .faixa {
-  padding: 6px 12px;
-  border-radius: 8px;
-  font-size: 15px;
-}
-
-.numeros {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 8px 16px;
-}
-
-.numero {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: end;
-  gap: 6px;
-  font-size: 12px;
-}
-
-.numero > strong:first-child {
-  text-align: right;
-}
-
-.numero > div {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
   color: var(--muted);
 }
 
-.numero .trilho {
-  width: 100%;
-  flex: none;
+/* a linha do jogo: 0' a 90', o intervalo no meio, gols do mandante em cima e do visitante embaixo */
+.linhaJogo {
+  position: relative;
+  height: 52px;
 }
 
-.eventos {
-  min-height: 0;
-  overflow-y: auto;
+.linhaJogo::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 25px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--line);
+}
+
+.corrido {
+  position: absolute;
+  left: 0;
+  top: 25px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--lavanda);
+  transition: width 0.5s linear;
+}
+
+.meioTempo {
+  position: absolute;
+  left: 50%;
+  top: 19px;
+  width: 1px;
+  height: 14px;
+  background: var(--faint);
+}
+
+/* selo do lance no minuto, com uma haste até a linha: mandante em cima, visitante embaixo */
+.marco {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  margin-left: -10px;
+  border-radius: 5px;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+
+.marco::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  width: 1px;
+  height: 5px;
+  background: var(--faint);
+}
+
+.acima { top: 0; }
+.acima::after { top: 20px; }
+.abaixo { bottom: 0; }
+.abaixo::after { bottom: 20px; }
+
+.numeros {
   margin: 0;
-  padding: 10px 0 0;
-  list-style: none;
-  border-top: 1px solid var(--raised);
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px 24px;
+}
+
+.numeros dt {
+  font-size: 12px;
+  color: var(--faint);
+  text-align: center;
+}
+
+.numeros dd {
+  margin: 2px 0 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.barra {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.barra > span {
+  display: block;
+  height: 100%;
+  background: var(--lavanda);
+}
+
+/* --- abaixo do placar: lances (ou intervalo) e os outros jogos, cada um rolando por dentro --- */
+
+.grade {
+  flex: 1;
+  min-height: 0;
+  padding: 14px 20px 16px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(380px, 1fr);
+  gap: 14px;
+}
+
+.principal {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  min-height: 0;
+}
+
+.amigos {
+  flex: none;
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.eventos li {
-  display: flex;
+.amigo {
+  padding: 8px 14px;
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 10px;
   font-size: 13px;
 }
 
-.min {
-  width: 44px;
-  flex: none;
+.quem {
+  color: var(--ceu);
+  font-weight: 600;
+}
+
+.amigo .nome:first-of-type { text-align: right; }
+
+.nome {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.placarPequeno {
+  font-family: var(--font-bricolage), sans-serif;
+  font-size: 18px;
+}
+
+.quando {
+  min-width: 56px;
   text-align: right;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.lances {
+  flex: 1;
+  min-height: 0;
+  padding: 14px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.lances h2 {
+  font-size: 15px;
+}
+
+.lances ol {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  position: relative;
+}
+
+/* eixo do tempo no meio; o minuto fica nele e o lance vai para o lado do time */
+.lances li {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 56px minmax(0, 1fr);
+  align-items: center;
+  padding: 5px 0;
+  font-size: 13px;
+}
+
+.lances li::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--raised);
+}
+
+.min {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: center;
+  position: relative;
+  padding: 1px 7px;
+  border-radius: 10px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  font-size: 12px;
   color: var(--muted);
 }
 
+.texto {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  grid-row: 1;
+}
+
+.casa .texto {
+  grid-column: 1;
+  flex-direction: row-reverse;
+  text-align: right;
+  padding-right: 12px;
+}
+
+.visita .texto {
+  grid-column: 3;
+  padding-left: 12px;
+}
+
+.gol .texto strong {
+  font-size: 15px;
+}
+
+.gol .min {
+  background: var(--menta);
+  color: var(--sobre-menta);
+  border-color: transparent;
+  font-weight: 700;
+}
+
 .ic {
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   flex: none;
-  border-radius: 6px;
+  border-radius: 5px;
   display: grid;
   place-items: center;
   font-size: 11px;
@@ -242,38 +410,39 @@
 .ceu { background: var(--ceu); color: var(--sobre-ceu); }
 .pessego { background: var(--pessego); color: var(--sobre-pessego); }
 
-.amigos {
-  flex: none;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 12px;
-}
-
-.amigo {
-  padding: 10px 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.linhaAmigo {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-weight: 500;
-}
-
-.placarMedio {
-  font-family: var(--font-bricolage), sans-serif;
-  font-size: 20px;
-  white-space: nowrap;
-}
-
-.todos {
-  overflow: hidden;
+.outros {
   min-height: 0;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
+}
+
+.chips {
+  flex: none;
+  display: flex;
+  gap: 6px;
+  padding: 12px 14px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--raised);
+  scrollbar-width: thin;
+}
+
+.chips button {
+  flex: none;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 14px;
+  font-size: 12px;
+  font-weight: 500;
+  background: transparent;
+  color: var(--muted);
+  border-color: var(--line);
+}
+
+.chips .chipSel {
+  background: var(--lavanda);
+  color: var(--sobre-lavanda);
+  border-color: transparent;
 }
 
 .rolagem {
@@ -282,52 +451,28 @@
   overflow-y: auto;
 }
 
-.comp {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  padding: 6px 14px;
-  font-size: 11px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--faint);
-  background: #161a21;
-}
-
 .jogo {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) 52px minmax(0, 1fr);
   align-items: center;
-  gap: 8px;
-  padding: 4px 14px;
-  border-top: 1px solid var(--raised);
-  font-size: 12px;
+  column-gap: 10px;
+  padding: 7px 14px;
+  border-bottom: 1px solid var(--raised);
+  font-size: 13px;
 }
 
-.ultimo {
+.mandante,
+.visitante {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   min-width: 0;
-  overflow: hidden;
   white-space: nowrap;
-  text-overflow: ellipsis;
-  color: var(--muted);
 }
 
-.ultimo .ic {
-  width: 16px;
-  height: 16px;
-  font-size: 9px;
-  border-radius: 4px;
-}
-
-.jogo > .faixa:first-child {
-  justify-self: end;
-}
-
-.jogo > .faixa:nth-child(3) {
-  justify-self: start;
+.mandante {
+  justify-content: flex-end;
+  text-align: right;
 }
 
 .meu {
@@ -335,15 +480,44 @@
 }
 
 .placarJogo {
-  min-width: 44px;
   text-align: center;
+  font-family: var(--font-bricolage), sans-serif;
   font-weight: 700;
+  font-size: 15px;
   white-space: nowrap;
 }
 
 .placarJogo small {
+  font-family: var(--font-geist), sans-serif;
   font-weight: 400;
+  font-size: 11px;
   color: var(--muted);
+}
+
+.ultimo {
+  grid-row: 2;
+  font-size: 11px;
+  color: var(--faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ultimo.mandante { grid-column: 1; padding-right: 26px; }
+.ultimo.visitante { grid-column: 3; padding-left: 26px; }
+
+@media (max-width: 900px) {
+  .tela { height: auto; min-height: 100vh; }
+  .placar { margin: 0 12px; padding: 14px 16px; }
+  .clube { flex-direction: column; font-size: 16px; gap: 6px; text-align: center; }
+  .fora { flex-direction: column; text-align: center; }
+  .clube img { width: 44px; height: 44px; }
+  .gols { font-size: 48px; gap: 10px; }
+  .numeros { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .grade { grid-template-columns: minmax(0, 1fr); padding: 12px; }
+  .lances { max-height: 70vh; }
+  .outros { max-height: 70vh; }
+  .amigo { grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr) auto; }
+  .amigo > img, .quem { display: none; }
 }
 
 .intervalo {
