@@ -123,8 +123,11 @@ export function aplicarPosJogo(mundo: Mundo, p: Partida, rng: Rng): { notas: Rec
       m.energia = j.energia
       m.forca = j.forca
       m.jogou = true
+      if (!m.juvenil) m.jogos++ // I.hh → F.b
       if (j.lesao > 0) m.lesaoAte = mundo.dia + j.lesao
     }
+  // I.hh → F.a: gol (não contra) na carreira
+  for (const e of p.eventos) if (e.tipo === 1 && e.subtipo !== 2 && e.jogador !== null && !mundo.jogadores[e.jogador]!.juvenil) mundo.jogadores[e.jogador]!.gols++
   if (p.ctx.tipoComp !== 0)
     for (const e of p.eventos) {
       if ((e.tipo !== 2 && e.tipo !== 3 && e.tipo !== 4) || e.jogador === null) continue

@@ -71,6 +71,9 @@ export interface JogadorM extends Jogador {
   evolucaoJunior: number
   /** F.eH: acumulado da evolução de cada habilidade (gol, vel, tec, pas, des, arm, fin) */
   evolucaoHab: number[]
+  /** F.fh / F.fi: gols e jogos na carreira (o hall da fama olha os gols) */
+  gols: number
+  jogos: number
 }
 
 export interface Tatica {
@@ -156,6 +159,29 @@ export interface Mundo {
   trocasDeTecnico: TrocaDeTecnico[]
   /** f_0.bh: semana do ciclo de treino (0..3; na 3 a IA sorteia o treino) */
   semanaTreino: number
+  /** campeões, vices e colocações de cada temporada encerrada (aj por time no original) */
+  historico: Historico[]
+  /** aposentados com gols na carreira (SR.bJ, best.b_0) */
+  hallDaFama: { nome: string; gols: number; jogos: number; temporada: number }[]
+  /** w.dt: times de cada estado (índice em Base.ufs) fora das divisões do estadual, na ordem de acesso */
+  filasEstaduais: Record<number, number[]>
+  /** SR.bY: rebaixados da Série C, que entram primeiro na Série D seguinte */
+  rebaixadosC: number[]
+  /** f_0.afU: os 12 que entram na 3ª fase da próxima Copa do Brasil (Z.y); vazio na 1ª temporada */
+  reservadosCopa: number[]
+}
+
+export interface Historico {
+  temporada: number
+  competicao: string
+  nome: string
+  campeao: number | null
+  vice: number | null
+  /** colocação final (classificacaoFinal) */
+  classificacao: number[]
+  /** acesso e rebaixamento aplicados na virada (ah.b(at, 0|1)) */
+  subiram: number[]
+  cairam: number[]
 }
 
 /** Técnico novo, sem histórico. Fonte: best/al.java:41 (construtor), :38 (diretoria 95, torcida 85) */
@@ -346,7 +372,8 @@ export function novoJogo(base: Base, opcoes: OpcoesJogo, seed: string): Mundo {
   const mundo: Mundo = {
     seed, temporada: 1, dia, diaEventos: dia - 1, calendario, competicoes: [], colocacoesEstaduais: [], opcoes, times: [], jogadores: [],
     continentes: base.paises.map((p) => p.continente), emprestimos: [], transferencias: [], leiloes: [],
-    tecnicos: [], ofertas: [], trocasDeTecnico: [], semanaTreino: 0,
+    tecnicos: [], ofertas: [], trocasDeTecnico: [], semanaTreino: 0, historico: [], hallDaFama: [], filasEstaduais: {}, rebaixadosC: [],
+    reservadosCopa: [],
   }
 
   // p_0.java:59 ordena por Nivel desc; p_0.java:110-128: país sem liga carrega só 15 times
@@ -388,6 +415,8 @@ export function novoJogo(base: Base, opcoes: OpcoesJogo, seed: string): Mundo {
         evolucao: 0,
         evolucaoJunior: 0,
         evolucaoHab: [0, 0, 0, 0, 0, 0, 0],
+        gols: 0,
+        jogos: 0,
       }
       mundo.jogadores.push(jm)
       return jm.id

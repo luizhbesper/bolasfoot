@@ -325,6 +325,13 @@ Começa fechando as **lacunas** listadas no fim de `engenharia-reversa.md`, cada
   - Escalação, formação e tática (`ah.kh` → `ah.a`): `escalarIA` (F1). Substituições e trocas táticas no jogo: `partida.ts` (M4). Rodízio de técnicos: W5. Lista, venda, compra, leilão e janela: W4.
   - Fechado aqui: sem vendedor para repor uma posição, a IA gera um junior da posição e o promove na hora (`l.java:727`). `janelaIA` agora recebe a `Base`.
   - **Ficou para depois:** a reposição depois de uma compra do humano (`proporCompra`) segue sem o junior até a W8 passar a `Base`.
+- **W7:** `temporada.ts`.
+  - `fimDeTemporada(mundo, base)` vira o ano na ordem do `f_0.aa`.
+  - Histórico de cada competição (campeão, vice, colocação, quem subiu e caiu) e hall da fama (gols e jogos na carreira).
+  - Acesso e rebaixamento nas séries e nos estaduais. O "quem sobe" (`s.l`) foi lido do bytecode, porque o decompilador perdia o ramo do mata-mata. Os rebaixados da C entram primeiro na D seguinte.
+  - Os 12 reservados da próxima Copa, o calendário novo, as reputações, a lista da IA, o patrocínio, o envelhecimento com juniores novos, a janela da IA e as demissões.
+  - Em 5 temporadas de teste: cerca de 0,6 s por temporada e campeões variados (Série A: Flamengo, Palmeiras ×2, Flamengo, Corinthians). Os juniores sobem ~2,5 por time ao ano até o teto de 15–20 e os elencos ficam em ~21. O piloto da Série A foi de 15M para 200M, quase tudo em prêmios de títulos.
+  - **Ficou para depois:** Supercopa, continentais, seleções e torneio amistoso (Fase 6). As séries do ano novo saem pelo Nivel, não pela ordem da tabela velha (só muda o desempate de quem fica entre os 16 dos regionais). Estatísticas de temporada (artilharia, notas): U-fase, quando houver tela.
 
 **Gate:** CLI simula 5 temporadas só com IA sem erro, com invariantes e estatísticas plausíveis (campeões variados, times grandes no topo na média, caixa dos humanos-piloto não explode).
 

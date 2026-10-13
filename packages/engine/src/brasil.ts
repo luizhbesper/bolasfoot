@@ -64,16 +64,20 @@ const SP = 25
 /** Grupos "reais" do Paulistão (usaGrupoPadraoEstadual), em blocos de 4. Fonte: best/aq.java:839 (sO) */
 const GRUPOS_SP = ['corinthians_bra', 'santoandre_sp', 'interlimeirasp_bra', 'botafogosp_bra', 'saopaulo_bra', 'ferroviaria_sp', 'pontepreta_bra', 'saobento_bra', 'bragantino_bra', 'palmeiras', 'ituano_sp', 'novorinzontino_sp', 'miirassol_sp', 'santos', 'guaranisp_bra', 'saocaetano_bra']
 
-/** Estaduais de todo estado com 6+ times, até 4 divisões. Fonte: best/w.java:57-150 (dY), :175-193 (dZ) */
-function criarEstaduais(mundo: Mundo, base: Base, rng: Rng): Competicao[] {
+/**
+ * Estaduais de todo estado com 6+ times, até 4 divisões. Na 1ª temporada as divisões saem do Nivel e o resto vira a fila
+ * de acesso (w.dt); depois vêm de `divisoes` (acesso e rebaixamento, w.ee). Fonte: best/w.java:57-150 (dY), :175-193 (dZ)
+ */
+function criarEstaduais(mundo: Mundo, base: Base, rng: Rng, divisoes?: Map<number, number[][]>): Competicao[] {
   const comps: Competicao[] = []
   const porUf = new Map<number, number[]>()
   for (const t of timesBR(mundo)) if (t.uf !== null) porUf.set(t.uf, [...(porUf.get(t.uf) ?? []), t.id])
   for (const [uf, todos] of [...porUf].sort((a, b) => a[0] - b[0])) {
     if (todos.length < 6) continue
+    const dadas = divisoes?.get(uf)
     const resto = [...todos].sort(porNivel(mundo))
     const total = resto.length
-    for (let div = 1; div <= 4 && resto.length >= 6; div++) {
+    for (let div = 1; dadas ? div <= dadas.length : div <= 4 && resto.length >= 6; div++) {
       const cfg = base.estaduais.find((e) => e.uf === uf && e.divisao === div)
       // sem configuração, ou fórmula maior que o estado (compara com o total, não com o que sobrou): 6 times em dois turnos
       const f = cfg && FORMULAS[cfg.formula]![0] <= total ? cfg.formula : null
@@ -82,9 +86,9 @@ function criarEstaduais(mundo: Mundo, base: Base, rng: Rng): Competicao[] {
         grupos, gruposEmBloco: false, avancam, doisTurnos: dois === 1, numeroTurnos: 0,
         idaVolta: cfg && f !== null ? cfg.finaisIdaVolta : TODAS_IDA_VOLTA, formato: f ?? 0, cruzados: f === 7 || f === 10,
       }
-      let times = resto.slice(0, n)
+      let times = dadas ? dadas[div - 1]! : resto.slice(0, n)
       if (f === 7 && div === 1 && uf === SP && base.opcoes.usaGrupoPadraoEstadual) {
-        const reais = GRUPOS_SP.flatMap((ref) => resto.filter((id) => mundo.times[id]!.fileRef === ref))
+        const reais = GRUPOS_SP.flatMap((ref) => (dadas ? times : resto).filter((id) => mundo.times[id]!.fileRef === ref))
         if (reais.length === 16) {
           times = reais
           opcoes.gruposEmBloco = true
@@ -94,8 +98,9 @@ function criarEstaduais(mundo: Mundo, base: Base, rng: Rng): Competicao[] {
       const c: Competicao = { id: `EST-${base.ufs[uf]!.sigla}-${div}`, nome, tipo: TIPO.estadual, divisao: div, uf, fases: [], campeao: null, vice: null, rebaixados: f === null ? 0 : cfg!.nRebaixados }
       c.fases.push(criarFaseLiga(mundo, c, times, opcoes, mundo.dia, rng))
       comps.push(c)
-      for (const t of times) resto.splice(resto.indexOf(t), 1)
+      for (const t of times) if (resto.includes(t)) resto.splice(resto.indexOf(t), 1)
     }
+    if (!dadas) mundo.filasEstaduais[uf] = resto
   }
   return comps
 }
@@ -148,7 +153,7 @@ function criarRegionais(mundo: Mundo, base: Base, rng: Rng): Competicao[] {
  * Séries A–C, estaduais e regionais. A Série D (pelos estaduais) e a Copa do Brasil
  * nascem no evento cD, no 1º dia da liga. Fonte: best/Z.java:112-228 (Ar), best/p_0.java:130-150 (dg)
  */
-export function criarCompeticoesBR(mundo: Mundo, base: Base, rng: Rng): Competicao[] {
+export function criarCompeticoesBR(mundo: Mundo, base: Base, rng: Rng, estaduais?: Map<number, number[][]>): Competicao[] {
   const comps: Competicao[] = []
   for (const cfg of base.ligas) {
     const c: Competicao = { id: `BR-${cfg.divisao}`, nome: `${cfg.nome} ${cfg.nomeDivisao}`, tipo: TIPO.liga, divisao: cfg.divisao, fases: [], campeao: null, vice: null, rebaixados: cfg.nRebaixados }
@@ -160,7 +165,7 @@ export function criarCompeticoesBR(mundo: Mundo, base: Base, rng: Rng): Competic
     comps.push(c)
   }
   mundo.competicoes = comps
-  comps.push(...criarEstaduais(mundo, base, rng), ...criarRegionais(mundo, base, rng))
+  comps.push(...criarEstaduais(mundo, base, rng, estaduais), ...criarRegionais(mundo, base, rng))
   return comps
 }
 
@@ -202,8 +207,8 @@ const regiaoD = (t: TimeM) => REGIAO_D.findIndex((r) => r.includes(t.uf ?? -1))
 /** Os n da Série D a partir dos estaduais. Fonte: best/w.java:465-549 (Q) */
 function timesSerieD(mundo: Mundo, n: number): number[] {
   const col = ordenarColocacoes(mundo)
-  // ponytail: rebaixados da Série C (SR.bY) entram primeiro a partir da 2ª temporada (W7)
-  const lista: number[] = []
+  // os rebaixados da Série C (SR.bY) entram primeiro
+  const lista = mundo.rebaixadosC.filter((t) => mundo.times[t]!.divisao === 0)
   for (const e of [SB, SC, SD, SE, SF, SB, SB, SB, SC, SC, SD, SE, SB, SB, SB, SC, SC, SD, SE]) porEstado(col, e, lista)
   // ponytail: o original completa na ordem de Z.hv (lista de times do país); aqui, a ordem do mundo
   for (const t of timesBR(mundo)) if (lista.length < n && t.divisao === 0 && !lista.includes(t.id)) lista.push(t.id)
@@ -247,7 +252,8 @@ function criarCopa(mundo: Mundo, lista: number[], desde: number, rng: Rng): Comp
   }
   // 12 entram na 3ª fase: os 13 primeiros da lista, com os campeões da Copa Verde e do Nordeste na frente (Bg/Bf).
   // ponytail: com as continentais (Fase 6), os brasileiros da Libertadores entram antes
-  let reservados = lista.slice(0, 13)
+  // da 2ª temporada em diante, os 12 do Z.y (reservadosCopa) ocupam o lugar dos 13 primeiros (f_0.java:90)
+  let reservados = mundo.reservadosCopa.length > 0 ? [...mundo.reservadosCopa] : lista.slice(0, 13)
   for (const r of ['REG-2', 'REG-3']) {
     const campeao = mundo.competicoes.find((x) => x.id === r)?.campeao
     if (campeao == null) continue
