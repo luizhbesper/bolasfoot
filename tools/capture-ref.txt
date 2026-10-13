@@ -1,0 +1,202 @@
+# Roteiro do tools/capture-ref.sh (comandos documentados em tools/RefShots.java).
+# Versão grátis do original: só começa na 4ª divisão, sem estaduais nem internacionais.
+
+# --- início
+shot 01-tela-inicial
+clickat 100 155
+wait 2500
+shot 02-novo-jogo
+click Iniciar Jogo
+wait 4000
+shot 03-tecnico-humano
+type Luiz
+click Iniciar Jogo
+until Não
+click Não
+until Escalar Time
+wait 1500
+shot 04-hub-pre-temporada
+
+# --- escalação e partida
+click Escalar Time
+wait 2500
+# Seleção Automática → 4-4-2
+combo 0 5
+wait 1500
+shot 05-escalacao
+click Jogar
+wait 4000
+shot 06-partida
+until Voltar ao jogo
+wait 1000
+shot 07-intervalo
+click Voltar ao jogo
+until Continuar >>
+wait 1500
+shot 08-pos-jogo
+click Continuar >>
+wait 4000
+shotif Continuar Jogo|09-leilao
+click Continuar Jogo
+until Escalar Time
+wait 1500
+shot 10-hub
+
+# --- barra de ícones
+click Tabelas
+wait 2500
+shot 11-tabelas
+close
+wait 1000
+click Estádio
+wait 2500
+shot 12-estadio
+close
+wait 1000
+click Juniores
+wait 2500
+shot 13-juniores
+close
+wait 1000
+click Procura
+wait 2500
+shot 14-procura
+close
+wait 1000
+click Times
+wait 2500
+shot 15-times
+# proposta por jogador: a versão grátis bloqueia ("Apenas na versão registrada..."), fica sem referência
+close
+wait 1000
+
+click Agenda
+wait 1000
+click Jogos do seu time
+wait 2500
+shot 17-agenda
+close
+wait 1000
+click Agenda
+wait 1000
+click Jogos Amistosos
+wait 2500
+shot 18-agenda-amistosos
+close
+wait 1000
+click Agenda
+wait 1000
+click Central de Empregos
+wait 2500
+shot 19-central-empregos
+close
+wait 1000
+
+click Técnicos
+wait 1000
+click Ranking de técnicos
+wait 2500
+shot 20-ranking-tecnicos
+close
+wait 1000
+click Técnicos
+wait 1000
+click Adicionar/remover técnicos
+wait 2500
+shot 21-tecnicos-humanos
+close
+wait 1000
+click Técnicos
+wait 1000
+click Últimas trocas de técnicos
+wait 2500
+shot 22-trocas-tecnicos
+close
+wait 1000
+
+click História
+wait 1000
+click Campeões
+wait 2500
+shot 23-historia-campeoes
+close
+wait 1000
+click História
+wait 1000
+click Ranking Clubes
+wait 2500
+shot 24-ranking-clubes
+close
+wait 1000
+click História
+wait 1000
+click Artilheiros
+wait 2500
+shot 25-artilheiros
+close
+wait 1000
+click História
+wait 1000
+click Time da Rodada
+wait 2500
+shot 26-time-da-rodada
+close
+wait 1000
+click História
+wait 1000
+click Transferências de Jogadores
+wait 2500
+shot 27-transferencias
+close
+wait 1000
+
+click Opções
+wait 1000
+click Preferências
+wait 2500
+shot 28-preferencias
+close
+wait 1000
+
+# --- painel esquerdo do hub
+# saldo em caixa → finanças
+clickat 100 170
+wait 2500
+shot 29-financas
+close
+wait 1000
+# ícone ao lado do próximo jogo → histórico do confronto
+clickat 270 320
+wait 2500
+shot 30-confronto
+close
+wait 1000
+click Estatísticas
+wait 2500
+shot 31-jogador-estatisticas
+close
+wait 1000
+click Contrato
+wait 2500
+shot 32-jogador-contrato
+close
+wait 1000
+click Galeria de troféus
+wait 2500
+shot 33-galeria-trofeus
+close
+wait 1000
+click Retrospecto do time
+wait 2500
+shot 34-retrospecto
+close
+wait 1000
+click Jogadores emprestados
+wait 2500
+shot 35-emprestados
+close
+wait 1000
+click Cores da tela
+wait 2500
+shot 36-cores
+close
