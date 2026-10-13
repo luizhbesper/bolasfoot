@@ -1,4 +1,4 @@
-# Fase 1 — Motor de partida (tickets)
+# Fase 1 — Motor de partida (tickets) — COMPLETE (2026-10-13)
 
 Detalhe dos tickets M1–M6 do `plano.md`. Fórmulas em `engenharia-reversa.md`.
 
