@@ -10,6 +10,7 @@ import { ChipPosicao, Escudo } from '../../../_ui/ui.tsx'
 import { enviarComandosAcao } from '../acoes.ts'
 import { BotaoPronto, Relogio } from '../casca.tsx'
 import { useJogo, useRelogio, type EstadoFase } from '../contexto.tsx'
+import { dataLonga, etapaDoJogo } from '../consultas.ts'
 import { ESTILOS, JOGADAS, MARCACOES } from '../escalacao/escalacao.tsx'
 import s from './partida.module.css'
 
@@ -123,7 +124,7 @@ export function Partida({ log, pendentes }: { log: Log | null; pendentes: Comand
     <div className={s.tela}>
       <header className={s.topo}>
         <Link href={`/jogo/${jogo}`} className={s.voltar}><Icone nome="voltar" />Clube</Link>
-        <span className={s.titulo}>{log ? `Rodada ${log.n}` : 'Partida'}</span>
+        <span className={s.titulo}>{log?.resumo.dias[0] !== undefined ? dataLonga(log.resumo.dias[0]) : 'Partida'}</span>
         <span className={`etiqueta ${aoVivo ? 'menta' : noIntervalo ? 'pessego' : ''}`}>{aoVivo && <span className={s.ponto} />}{titulo}</span>
         <span style={{ flex: 1 }} />
         {!aoVivo && !atrasado && <Relogio />}
@@ -139,7 +140,7 @@ export function Partida({ log, pendentes }: { log: Log | null; pendentes: Comand
         <p className="mudo" style={{ padding: 24 }}>Nenhuma partida jogada ainda.</p>
       ) : (
         <>
-          {minha && <Placar p={minha} pt={pt} m={m} />}
+          {minha && <Placar p={minha} pt={pt} m={m} dias={log.resumo.dias} />}
           <div className={s.grade}>
             <section className={s.principal}>
               {amigos.length > 0 && (
@@ -165,15 +166,19 @@ function naLinha(p: PartidaLog, tempo: 1 | 2, minuto: number): number {
 }
 
 /** O placar em faixa: as cores dos clubes vêm das laterais, e embaixo a linha do jogo com gols e expulsões no minuto. */
-function Placar({ p, pt, m }: { p: PartidaLog; pt: Ponto; m: Mundo | null }) {
+function Placar({ p, pt, m, dias }: { p: PartidaLog; pt: Ponto; m: Mundo | null; dias: number[] }) {
   const g = placar(p, pt)
   const st = situacao(p, pt)
   const marcos = p.eventos.filter((e) => (e.tipo === 1 || e.tipo === 3 || e.tipo === 4) && visivel(e, pt))
   const agora = pt.min === Infinity ? (pt.tempo === 1 ? 0.5 : 1) : naLinha(p, pt.tempo, pt.min)
   const t = (i: 0 | 1) => m?.times[p.times[i]!]
   const n = st.fim ? p.numeros : null
+  // o que é o jogo: "Paulista, 7ª rodada · Itaquerão"
+  const etapa = m ? dias.map((d) => etapaDoJogo(m, p.comp, p.times[0]!, p.times[1]!, d)).find(Boolean) : ''
+  const sobre = [[p.compNome, etapa].filter(Boolean).join(', '), t(0)?.estadio.nome].filter(Boolean).join(' · ')
   return (
     <section className={s.placar} style={{ '--c0': t(0)?.cor1 ?? 'transparent', '--c1': t(1)?.cor1 ?? 'transparent' } as CSSProperties}>
+      <div className={s.sobre}>{sobre}</div>
       <div className={s.confronto}>
         <div className={s.clube}>
           {m && <Escudo fileRef={t(0)!.fileRef} tamanho={72} />}

@@ -85,6 +85,14 @@
   gap: 14px;
 }
 
+.sobre {
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  margin-bottom: -6px;
+}
+
 .confronto {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);

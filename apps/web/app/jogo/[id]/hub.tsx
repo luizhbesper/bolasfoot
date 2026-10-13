@@ -5,7 +5,7 @@ import Link from 'next/link'
 import type { ResumoRodada } from '../../../lib/game/rodada.ts'
 import { Erro } from '../../_ui/pagina.tsx'
 import { ChipPosicao, Energia, Escudo, Forca, Forma } from '../../_ui/ui.tsx'
-import { alerta, dataLonga, dinheiro, forma, jogadoresDe, proximoJogo, tabelaDoTime } from './consultas.ts'
+import { alerta, dataLonga, dinheiro, etapaDoJogo, forma, jogadoresDe, proximoJogo, tabelaDoTime } from './consultas.ts'
 import { useJogo } from './contexto.tsx'
 import s from './hub.module.css'
 
@@ -51,7 +51,8 @@ export function Hub({ ultima, erro }: { ultima: { n: number; resumo: ResumoRodad
           <div className={`card ${s.proximo}`}>
             <div className="linha mudo" style={{ fontSize: 13 }}>
               <span className="etiqueta ceu">Próximo jogo</span>
-              {prox.comp} · {dataLonga(prox.dia)} · {mandante!.estadio.nome}
+              <strong style={{ color: 'var(--text)' }}>{[prox.comp, etapaDoJogo(m, prox.compId, mandante!.id, prox.casa ? adv.id : t.id, prox.dia)].filter(Boolean).join(', ')}</strong>
+              · {dataLonga(prox.dia)} · {mandante!.estadio.nome}
             </div>
             <div className={s.confronto}>
               <Lado time={t} forma={forma(m, t.id)} />
