@@ -7,7 +7,7 @@
 //                                                  └─ ninguém em campo (proposta de emprego, virada) ─► planejamento n+1
 //   resultados ─(prazo)─► planejamento n+1
 import {
-  avancarRodada, continuarRodada, contratarTecnicoHumano, novoJogo, validar,
+  avancarRodada, continuarRodada, contratarTecnicoHumano, novoJogo, possePct, validar,
   type Comando, type ComandoDe, type Mundo, type Partida, type Rodada,
 } from '@bolasfoot/engine'
 import { and, eq, isNotNull } from 'drizzle-orm'
@@ -108,15 +108,22 @@ async function mudarFase(tx: Tx, g: Jogo, n: number, phase: FaseRodada, deadline
 const fimDoTempo = (inicio: Date, partidas: Partida[], tempo: 1 | 2, msPorMinuto: number) =>
   new Date(inicio.getTime() + (45 + Math.max(0, ...partidas.map((p) => p.acrescimos[tempo - 1]!))) * msPorMinuto)
 
-/** O que o log da rodada guarda: placar e eventos com os nomes (o resto o cliente acha no snapshot). */
+/** O que o log da rodada guarda: todas as partidas do dia, com placar, eventos com os nomes e números do time (o resto
+ * o cliente acha no snapshot). */
 const resumo = (m: Mundo, r: Rodada) => ({
   resultados: r.resultados, dias: r.dias, virou: r.virou,
-  partidas: r.partidas.map((p) => ({
-    times: [p.lados[0].time, p.lados[1].time], nomes: [m.times[p.lados[0].time]!.nome, m.times[p.lados[1].time]!.nome],
-    placar: p.placar, acrescimos: p.acrescimos,
-    eventos: p.eventos.map((e) => ({ ...e, nome: e.jogador === null ? null : p.jogadores[e.jogador]?.nome ?? null })),
-    penaltis: p.penaltis && { placar: p.penaltis.placar, vencedor: p.penaltis.vencedor },
-  })),
+  partidas: r.todas.map(({ comp, partida: p }) => {
+    const nome = (id: number | undefined) => (id === undefined ? null : p.jogadores[id]?.nome ?? null)
+    const posse = possePct(p)
+    return {
+      comp, compNome: m.competicoes.find((c) => c.id === comp)?.nome ?? comp,
+      times: [p.lados[0].time, p.lados[1].time], nomes: [m.times[p.lados[0].time]!.nome, m.times[p.lados[1].time]!.nome],
+      placar: p.placar, acrescimos: p.acrescimos,
+      numeros: p.lados.map((l, i) => ({ posse: posse[i]!, chutes: l.chutes, noAlvo: l.noAlvo, fora: l.fora, desarmes: l.desarmes, passesErrados: l.passesErrados })),
+      eventos: p.eventos.map((e) => ({ ...e, nome: e.jogador === null ? null : nome(e.jogador), nome2: nome(e.jogador2) })),
+      penaltis: p.penaltis && { placar: p.penaltis.placar, vencedor: p.penaltis.vencedor },
+    }
+  }),
 })
 export type ResumoRodada = ReturnType<typeof resumo>
 

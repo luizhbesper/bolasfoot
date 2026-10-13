@@ -1,8 +1,8 @@
 'use client'
 // Casca do jogo: menu lateral, barra superior (caixa, data, próximo jogo, técnicos prontos, prazo, ação da fase).
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import type { ReactNode } from 'react'
+import { usePathname, useRouter } from 'next/navigation'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { Icone } from '../../_ui/icones.tsx'
 import { Avatar, Escudo } from '../../_ui/ui.tsx'
 import { readyAcao } from './acoes.ts'
@@ -14,8 +14,18 @@ import { CAIXA, GRUPOS, itemDaRota, type ItemNav } from './nav.ts'
 export function Casca({ nomeJogo, usuario, timeInicial, children }: {
   nomeJogo: string; usuario: string; timeInicial: { fileRef: string; nome: string } | null; children: ReactNode
 }) {
-  const base = `/jogo/${useJogo().jogo}`
+  const { jogo, fase, meuTime } = useJogo()
+  const base = `/jogo/${jogo}`
   const sufixo = usePathname().slice(base.length).replace(/^\//, '')
+  // o apito inicial leva quem está em campo para a partida (só na virada da fase, não ao abrir a página)
+  const router = useRouter()
+  const antes = useRef(fase.fase)
+  useEffect(() => {
+    if (fase.fase === 'ao_vivo_1t' && antes.current !== 'ao_vivo_1t' && meuTime && sufixo !== 'partida') router.push(`${base}/partida`)
+    antes.current = fase.fase
+  }, [fase.fase, meuTime, sufixo, base, router])
+  // a partida é tela cheia
+  if (sufixo === 'partida') return <>{children}</>
   return (
     <div className={s.casca}>
       <Menu base={base} sufixo={sufixo} nomeJogo={nomeJogo} usuario={usuario} timeInicial={timeInicial} />
@@ -112,23 +122,28 @@ export function Relogio() {
   return <span className={s.pilula} aria-live="off">{Math.floor(resta / 60)}:{String(resta % 60).padStart(2, '0')}</span>
 }
 
+/** Pronto / não pronto da fase (planejamento e intervalo). */
+export function BotaoPronto() {
+  const { jogo, fase, eu, prontos } = useJogo()
+  const pronto = prontos.includes(eu.id)
+  return (
+    <form action={readyAcao}>
+      <input type="hidden" name="jogo" value={jogo} />
+      <input type="hidden" name="ready" value={pronto ? '0' : '1'} />
+      <button className={pronto ? undefined : 'primario'}>
+        {pronto ? 'Não estou pronto' : fase.fase === 'intervalo' ? 'Voltar para o 2º tempo' : 'Estou pronto'}
+      </button>
+    </form>
+  )
+}
+
 function AcaoDaFase() {
-  const { jogo, fase, eu, prontos, meuTime } = useJogo()
+  const { jogo, fase, eu, meuTime } = useJogo()
   if (fase.status !== 'running') return null
-  if (fase.fase === 'planejamento' || fase.fase === 'intervalo') {
-    if (eu.tecnicoId === null) return null
-    const pronto = prontos.includes(eu.id)
-    return (
-      <form action={readyAcao}>
-        <input type="hidden" name="jogo" value={jogo} />
-        <input type="hidden" name="ready" value={pronto ? '0' : '1'} />
-        <button className={pronto ? undefined : 'primario'}>
-          {pronto ? 'Não estou pronto' : fase.fase === 'intervalo' ? 'Voltar para o 2º tempo' : 'Estou pronto'}
-        </button>
-      </form>
-    )
-  }
-  if (fase.fase?.startsWith('ao_vivo') && meuTime)
-    return <Link href={`/jogo/${jogo}`} className={`${s.cta} primario`}>Ir para a partida <Icone nome="seta" /></Link>
+  if (fase.fase === 'planejamento') return eu.tecnicoId === null ? null : <BotaoPronto />
+  const ir = (texto: string) => <Link href={`/jogo/${jogo}/partida`} className={`${s.cta} primario`}>{texto} <Icone nome="seta" /></Link>
+  if (fase.fase === 'intervalo') return meuTime ? ir('Voltar ao intervalo') : <BotaoPronto />
+  if (fase.fase?.startsWith('ao_vivo')) return ir('Ir para a partida')
+  if (fase.fase === 'resultados') return ir('Ver resultados')
   return null
 }

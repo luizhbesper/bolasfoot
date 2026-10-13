@@ -23,6 +23,8 @@ const PATHS = {
   voltar: 'M15 6l-6 6 6 6',
   ok: 'M5 12l5 5 9-10',
   alerta: 'M12 3l10 18H2zM12 10v5M12 18v.5',
+  som: 'M4 9h4l5-4v14l-5-4H4zM17 9a4 4 0 010 6',
+  mudo: 'M4 9h4l5-4v14l-5-4H4zM17 10l4 4M21 10l-4 4',
 } as const
 
 export type NomeIcone = keyof typeof PATHS

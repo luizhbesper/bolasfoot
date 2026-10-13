@@ -3,7 +3,7 @@ import { revalidatePath } from 'next/cache'
 import { exigirUsuario } from '../../../lib/auth/sessao.ts'
 import { db } from '../../../lib/db/index.ts'
 import { escolherTime } from '../../../lib/game/escolha.ts'
-import { definirComandos, marcarReady } from '../../../lib/game/rodada.ts'
+import { definirComandos, enviarComandos, marcarReady } from '../../../lib/game/rodada.ts'
 import type { Comando } from '@bolasfoot/engine'
 import { redirect } from 'next/navigation'
 
@@ -26,5 +26,12 @@ export async function escolherAcao(f: FormData) {
 export async function definirComandosAcao(jogo: number, novos: Comando[]): Promise<string | null> {
   const u = await exigirUsuario()
   const r = await definirComandos(db(), jogo, u.id, novos)
+  return 'erro' in r ? r.erro : r.erros.find((e) => e !== null) ?? null
+}
+
+/** Troca a lista inteira de comandos da fase (o intervalo manda substituições + tática de uma vez). */
+export async function enviarComandosAcao(jogo: number, lista: Comando[]): Promise<string | null> {
+  const u = await exigirUsuario()
+  const r = await enviarComandos(db(), jogo, u.id, lista)
   return 'erro' in r ? r.erro : r.erros.find((e) => e !== null) ?? null
 }
