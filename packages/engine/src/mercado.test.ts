@@ -186,6 +186,16 @@ describe('juniores e contrato', () => {
 })
 
 describe('temporada', () => {
+  it('sem vendedor na posição, a IA promove um junior novo (l.java:727)', () => {
+    const m = mundoSintetico()
+    const t = m.times[0]!
+    t.jogadores = t.jogadores.filter((id) => m.jogadores[id]!.posicao !== 0)
+    janelaIA(m, base as Base, rng())
+    const goleiros = t.jogadores.map((id) => m.jogadores[id]!).filter((j) => j.posicao === 0)
+    expect(goleiros.length).toBe(1) // uma reposição por posição na janela (ah.ku)
+    expect(goleiros.every((j) => !j.juvenil && j.time === 0 && j.promovidoEm === 1)).toBe(true)
+  })
+
   it('humano vende pela lista; janela da IA mantém elencos coerentes', () => {
     const m = novoJogo(base as Base, { habilidadeIndividual: false }, 'mercado')
     const id = m.times.find((t) => t.divisao === 1)!.id
@@ -196,7 +206,7 @@ describe('temporada', () => {
     while (avancarDia(m) !== null);
     expect(vendidos.every((j) => m.jogadores[j]!.time !== id)).toBe(true)
     expect(m.transferencias.length).toBeGreaterThan(20) // leilões
-    janelaIA(m, derivar('mercado', 'janela'))
+    janelaIA(m, base as Base, derivar('mercado', 'janela'))
     const vistos = new Set<number>()
     for (const t of m.times) {
       expect(t.jogadores.length).toBeLessThanOrEqual(35)

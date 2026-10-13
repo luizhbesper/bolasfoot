@@ -19,7 +19,6 @@ packages/engine/src/
   economia.ts     W3
   mercado.ts      W4
   carreira.ts     W5
-  ia.ts           W6
   temporada.ts    W7
   rodada.ts       W8
 tools/Calendario.java + calendario.sh   W1 (gabarito de datas)
@@ -63,6 +62,7 @@ Fora de escopo: avisos ao humano (caixa de entrada, W8); seleções (Fase 6); ha
 ## W6 — IA dos técnicos
 Objetivo: técnicos da IA decidem como no original.
 Fonte original: mini-RE (`ah.kh()`, decisões de mercado). O rodízio de técnicos já veio na W5 (`substituirTecnico`, `demissoesFimDeTemporada`).
+Resultado: `ah.kh()` é só o `ah.a` (já portado como `escalarIA`) para cada time da IA que joga no dia; as decisões de mercado vieram na W4. O que faltava era a reposição por junior gerado (`l.java:727`), que entrou no `mercado.ts`. Não existe `ia.ts`.
 
 ## W7 — Fim de temporada
 Objetivo: virar o ano.
