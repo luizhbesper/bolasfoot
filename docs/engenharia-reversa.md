@@ -41,7 +41,8 @@ A semântica de `doisTurnos` ainda não foi confirmada.
 - **Juniores** ficam na lista `Juniores` do time (85 times, 1.175 jogadores), mesma classe `e.g`.
 - **Países:** enum `best/ac.java:13-236` → `(P<idx>, CÓDIGO, idx, continente, nívelPaís, cores)`. Nome em `default_lang.xml` (`P<idx>`); continente 0 Europa, 1 Am. Sul, 2 África, 3 Ásia, 4 CONCACAF, 5 Oceania. `ac.fn(pais)` é o `paisNivel` do `F.fI()` e usa o país do **time**. Nomes/sobrenomes por código (`names/BRA.txt`).
 - **Carga do mundo** (`best/p_0.java:51-128`): todos os `.ban` entram, ordenados por Nivel. Liga jogável exige ≥ 10 times no país (≥ 16 para ALE, ARG, ING, ITA, FRA) — só BRA e ESP. Países sem liga selecionada carregam os 15 primeiros por Nivel.
-- **Divisão BR** não está nos dados: `Z.Ar()` (`best/Z.java:112-228`) ordena por Nivel com desempate aleatório (1..1000) e corta em blocos de `nTimes` (20/20/20/64). Sem estaduais, a Série D sai do Nivel 9, 8 e 1 sorteado do 7; o resto fica na divisão 0.
+- **Divisão BR** não está nos dados: `Z.Ar()` (`best/Z.java:112-228`) ordena por Nivel com desempate aleatório (`hr = rand(1000)+1`, sorteado no construtor do time) e corta em blocos de `nTimes` (20/20/20/64). Sem estaduais, a Série D sai do Nivel 9, 8 e 1 sorteado do 7. **Com estaduais ligados (sempre, no port) a Série D não é formada aqui** (`Z.java:177`, `SR.e(true)`): vem dos estaduais. O resto fica na divisão 0.
+- **Carga:** país sem liga selecionada carrega só os 15 primeiros por Nivel (`best/p_0.java:110-128`).
 - **Continentais por cota de país** (`f/b.java:14-25` → `Z.a()`): Libertadores `f/r.java` (28 da fase de grupos + 19 da preliminar; BR 5+campeão da copa, ARG 5+1, outros 2 cada), Sul-Americana `f/H.java` (BR 6, ARG 6, outros 4 cada, sem repetir quem está na Libertadores). Faltando time, completa com outros países (`f/b.java:27-39`). O modo de grupos fixos (`aq.sP/sQ`) nunca é usado: cita FileRefs que não existem.
 - **Recopa** só a partir da 2ª temporada (`best/f_0.java:1019-1023`). **Mundial** (`f/a_0.java:41-79`) só é criado se houver campeão das 6 confederações, por isso o port mantém todos os estrangeiros.
 - **Extração:** o 7-Zip grava os bytes Latin-1 dos nomes de arquivo em U+EFxx (`puskás` → `pusks`); o `tools/assets.mjs` desfaz.
@@ -65,8 +66,10 @@ estrela/craque:       f += 9 + rand(3)
 juvenil:              f -= 23; se f<5 → 10
 paisNivel<=13: f *= (nivel<=5 ? .4 : nivel<10 ? .65 : .75)
 senão nivel<3 ×.5 | <5 ×.6 | <10 ×.7
-f = min(f,100)
+f = min(f,100)   // teto, não piso
 ```
+
+- `n6` (segundo número da base) e `lvl−4` só alimentam a semeadura das habilidades.
 
 - Existe a opção "habilidade individual". Com ela, 7 skills (Gol, Vel, Tec, Pas, Des, Arm, Fin) são semeadas por posição e característica, e cada slot as pondera de um jeito.
 
@@ -103,7 +106,7 @@ goleiro= B(slot 1)   (nenhum → .1; goleiro fora de posição → round(g*.2))
 
 ### Loop por minuto (`vO`)
 
-A posse alterna o lado que "tenta" a cada tick. O parâmetro `k` vale 11 da 5ª rodada em diante e 8 antes; `kb` vale 10 e 8.
+A posse alterna o lado que "tenta" a cada tick. O parâmetro `k` vale 11 da **5ª temporada** em diante e 8 antes; `kb` vale 10 e 8. (`a.SR.H()` é o nº da temporada, `f_0.java:1206`; o ramo `>=9 → 12` nunca roda.)
 
 ```
 posse:  d2=1+(meio[A]-meio[B])/k; d3 = inverso; mandante +.3 (exceto comp 5/7); clamp .2
@@ -139,17 +142,21 @@ Com times iguais, cerca de 10% dos chutes viram gol.
 ### Cartões, lesões e energia (`I.a`, estático, uma vez por minuto)
 
 ```
-p = minuto<15?0 : <30?1 : 2 ; marc = {30,10,0}[marcação]
-1ºT: amarelo 1/({70,40,30}[p]+marc)  vermelho 1/{1200,900,800}[p]  lesão 1/{1500,1000,800}[p]
-2ºT: amarelo 1/({45,40,30}[p]+marc)  vermelho 1/{800,700,550}[p]   lesão 1/{800,600,600}[p]
->5 amarelos → denominador ×2; ≥2 vermelhos → Y=R*2; ≥1 lesão → Y=INJ*5
+p = minuto<15?0 : <30?1 : 2 ; marc = {30,10,0}[marcação do lado punido]
+1ºT: Y = {70,40,30}[p]+marc   R = {1200,900,800}[p]   J = {1500,1000,800}[p]
+2ºT: Y = {45,40,30}[p]+marc   R = {800,700,550}[p]    J = {800,600,600}[p]
+amarelos>5 → Y×2 ; vermelhos≥2 → Y=R*2 ; lesões≥1 → Y=J*5   (contadores da partida, dos dois times)
+se rand(Y)==1 amarelo  senão se rand(R)==1 vermelho  senão se rand(J)==1 lesão
+senão se 2ºT e minuto≥5: substituições da IA
 ```
 
-- O lado afetado é o mandante em 44% dos casos e o visitante em 56%.
+- Os sorteios são **encadeados** (else-if) e os contadores sobem mesmo quando não se acha vítima.
+- O lado punido é o mandante em 44% dos casos e o visitante em 56%.
+- Eventos: 2º amarelo = tipo 3, vermelho direto = tipo 4 (a tabela de rótulos `aq.sT` está invertida).
 - A vítima é sorteada por faixa de slots, com distribuições próprias para amarelo, vermelho e lesão.
-- **Energia:** a cada 7 minutos todos perdem energia (o goleiro só no 2º tempo). A perda depende da idade: até 20 anos −1, até 25 −2, até 31 −3, até 36 −4, acima −5.
-- **IA:** 5 substituições, com minutos sorteados antes do jogo. Entram cansados (energia < 60) e trocas táticas quando está perdendo.
-- **Acréscimos:** 1º tempo `rand(3)`, 2º tempo `rand(5)+1`.
+- **Energia:** quando `minuto % 7 == 0` (inclusive o minuto 0) todos perdem energia (o goleiro só no 2º tempo). A perda depende da idade: até 20 anos −1, até 25 −2, até 31 −3, até 36 −4, acima −5. Piso 1.
+- **IA:** 5 substituições, só no 2º tempo e no intervalo, com minutos sorteados antes do jogo (`I.java:208-283`). Trocas por cansaço (energia < 60, < 90 depois dos 40') e táticas quando está perdendo. No intervalo o mandante troca perdendo por 1, o visitante só perdendo por 2.
+- **Acréscimos:** 1º tempo `rand(3)`, 2º tempo `rand(5)+1`, minutos a partir de 0. Só no caminho só-IA; partida com humano tinha duração fixa na UI (48/51 ticks). O port usa acréscimo em todas.
 - **Não existe prorrogação.**
 - **Pênaltis:**
   - jogos só da IA: placar sorteado, `a=rand(7)+2`;
@@ -165,27 +172,30 @@ p = minuto<15?0 : <30?1 : 2 ; marc = {30,10,0}[marcação]
 
 ### Pós-jogo
 
-- **Gancho:** 3 amarelos. Vermelho direto suspende 1/2/3/5/10 jogos com probabilidades 70/20/7/2/1%.
-- **Lesão:** dura `rand(14)` dias mais um adicional por idade. Há ainda 1% de chance de +70 dias, 3% de +40 e 6% de +20.
+- **Gancho:** 3 amarelos (ao cumprir, zeram). Vermelho direto suspende 1/2/3/5/10 jogos com probabilidades 70/20/7/2.1/0.9%. A suspensão é cumprida antes de lançar os cartões da partida.
+- **Lesão** (sorteada no momento do evento, `F.java:2116`): `rand(14)` dias + adicional por idade (≤20: 0; ≤25: +1; ≤30: +2; ≤35: +3; ≤45: +5+rand(20); acima +15+rand(20)) + energia (<10 → +5, <50 → +1; não vale para ≤20). 1% +70 dias, 3% +40, 6% +20. Jogador ≥35 perde 5 de força para sempre.
 - **Recuperação de energia após a rodada:**
 
 | Situação | até 20 | até 25 | até 31 | até 36 | acima |
 |---|---|---|---|---|---|
 | Jogou, time humano | +13 | +24 | +37 | +40 | +30 |
 | Jogou, time da IA | +20 | +30 | +50 | +52 | +42 |
-| Não jogou | +30 a +35 | | | | |
+| Não jogou | <26: +30 | <45: +35 | acima: +30 | | |
 
-- **Notas:** dependem do resultado, da força e da estatística do setor. Gol +0.9, assistência +0.4, estrela +0.4, craque +0.6.
+"Jogou" = jogou desde o último domingo (a flag só limpa na evolução semanal).
+
+- **Notas** (`F.java:2289-2482`): base por resultado e força, fora de posição −1.5, posse (meio), desarmes (defesa), goleiro por gols sofridos e chutes defendidos, gol +0.9, assistência +0.4, chute defendido +0.3, gol contra −1.5, amarelo −0.2, vermelho −0.8, estrela +0.4, craque +0.6; poucos minutos −2.5/−1.5. **Bugs do original, corrigidos no port:** gol normal/falta soma +0.9 duas vezes; qualquer evento (não só substituição) redefine os minutos jogados; pênalti perdido multiplica o contador de gol contra.
 
 ### Público e bilheteria (`best/v_0.java:90`)
 
 - **Setores:** geral 15%, arquibancada 75%, cadeira 9% e camarote 0.9% da capacidade.
+- Calculado antes da partida (`I.V()`). A renda só vai para mandante **humano** e nunca em comp 5/7 (`I.hf`).
 - **Fórmula por setor:**
-  - parte da demanda base por reputação, de `{200,500,50,0}` (rep 0) a `{5000,40000,5500,500}` (rep 5);
+  - parte da demanda base por reputação (só ela; a divisão escolhe apenas a linha do ruído), de `{200,500,50,0}` (rep 0) a `{5000,40000,5500,500}` (rep 5);
   - ×0.7 em estadual/regional e ×0.4 em amistoso;
   - soma `capacidade×(0.3 + bônus da fase ou competição)`;
   - ±5% por nível de diferença de reputação com o visitante;
-  - multiplica pela satisfação da torcida (`/100`);
+  - multiplica pela satisfação da torcida (`/100`; 80 sem técnico);
   - soma um ruído que depende da divisão;
   - aplica a elasticidade de preço: `+3% × (preçoPadrão − preço)`.
 - **Multiplicadores da renda:** ×3 em copa de seleções, ×5 na Copa do Mundo, ×2 nas eliminatórias.

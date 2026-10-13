@@ -255,6 +255,8 @@ Cada fase termina jogável ou testável. Os IDs servem para abrir sessões ("vam
 
 ### Fase 1 — Motor de partida (`packages/engine`)
 
+Tickets detalhados e decisões da fase: `docs/fase1.md`.
+
 | ID | Entrega |
 |---|---|
 | M1 | RNG (`sfc32` + derivação + API estilo Java) e regra de lint de determinismo |
