@@ -367,6 +367,7 @@ Começa fechando as **lacunas** listadas no fim de `engenharia-reversa.md`, cada
 **Notas da entrega (F3):** tickets em `docs/fase3.md`.
 - **S1:** `apps/web/lib/db/schema.ts` + `drizzle/` (gerar com `pnpm --filter web db:generate`). Fase e prazo correntes ficam em `games` (`round`, `deadline`); `rounds`, `commands`, `snapshots` e `round_logs` têm `etapa` (0 = planejamento, 1 = intervalo). A sessão guarda o sha256 do token. `db:migrate|seed|reset` rodam `lib/db/cli.ts` direto no Node. Os testes do `apps/web` zeram e migram o `bolasfoot_test` (recusam outro banco); o CI sobe Postgres no `check`.
 - **S2:** `lib/auth/conta.ts` (`entrar`, `resgatarConvite`: conta nova, conta existente com a senha dela, ou a sessão; uso contado sob `FOR UPDATE`), `sessao.ts` (cookie `sessao`, `usuarioAtual`/`exigirUsuario`/`exigirAdmin`), `limite.ts` (10 tentativas por IP a cada 10 min). Usuário sem diferença de maiúsculas. Telas cruas `/entrar`, `/convite` e `/` (seus jogos), por server actions sem JS no cliente; erro volta em `?erro=`. O `SESSION_SECRET` segue sem uso (o token é aleatório e o banco guarda o hash).
+- **S3:** `lib/game/admin.ts` (`criarJogo` já põe o admin como membro, `gerarConvite` `XXXX-XX` sem 0/O/1/I, `revogarConvite`, `editarSettings` com validação de horário e fuso, `expulsar`, `apagarJogo`) e as telas `/admin` e `/admin/[id]`. Pausar e forçar avanço entram com a S5.
 
 ### Fase 4 — Front-end
 
