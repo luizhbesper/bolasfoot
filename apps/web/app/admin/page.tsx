@@ -21,8 +21,8 @@ export default async function Admin() {
         <label><input type="checkbox" name="salarioSemanal" /> Salário semanal</label>
         <fieldset>
           <legend>Divisões permitidas na escolha (nenhuma marcada = todas)</legend>
-          {[1, 2, 3, 4, 0].map((d) => (
-            <label key={d}><input type="checkbox" name="divisoes" value={d} /> {d ? `Série ${'ABCD'[d - 1]}` : 'fora das séries'}</label>
+          {[1, 2, 3, 0].map((d) => (
+            <label key={d}><input type="checkbox" name="divisoes" value={d} /> {d ? `Série ${'ABC'[d - 1]}` : 'fora das séries (a Série D sai dos estaduais)'}</label>
           ))}
         </fieldset>
         <label>Times proibidos (fileRef, separados por vírgula) <input name="proibidos" /></label>

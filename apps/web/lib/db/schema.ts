@@ -33,7 +33,7 @@ export interface ConfigJogo {
   salarioMensal: boolean
   /** fileRef dos times que ninguém pode escolher */
   proibidos: string[]
-  /** divisões BR permitidas (1–4; 0 = fora das séries); vazio = todas */
+  /** divisões BR permitidas (1–3 = Série A–C; 0 = fora das séries, de onde sai a D); vazio = todas */
   divisoes: number[]
 }
 

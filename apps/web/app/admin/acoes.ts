@@ -5,6 +5,7 @@ import { exigirAdmin } from '../../lib/auth/sessao.ts'
 import { db } from '../../lib/db/index.ts'
 import type { ModoJogo } from '../../lib/db/schema.ts'
 import { apagarJogo, criarJogo, editarSettings, expulsar, gerarConvite, revogarConvite } from '../../lib/game/admin.ts'
+import { iniciarEscolha } from '../../lib/game/escolha.ts'
 import { pausar, retomar, transicionar } from '../../lib/game/rodada.ts'
 
 const txt = (f: FormData, k: string) => String(f.get(k) ?? '').trim()
@@ -81,5 +82,11 @@ export async function retomarAcao(f: FormData) {
 export async function forcarAcao(f: FormData) {
   await exigirAdmin()
   await transicionar(db(), id(f), true)
+  voltar(id(f))
+}
+
+export async function escolhaAcao(f: FormData) {
+  await exigirAdmin()
+  await iniciarEscolha(db(), id(f))
   voltar(id(f))
 }
