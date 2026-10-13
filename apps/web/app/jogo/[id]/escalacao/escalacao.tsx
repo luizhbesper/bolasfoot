@@ -24,9 +24,9 @@ const POS: Record<number, [number, number]> = {
   11: [36, 56], 12: [50, 58], 13: [64, 56], 14: [28, 38], 15: [50, 40], 16: [72, 38],
   18: [16, 18], 25: [84, 18], 19: [28, 16], 20: [50, 14], 21: [72, 16], 22: [34, 16], 23: [50, 15], 24: [66, 16],
 }
-const ESTILOS = ['Equilibrado', 'Ataque total', 'Contra-ataque']
-const MARCACOES = ['Leve', 'Pesada', 'Muito pesada']
-const JOGADAS = ['Pelo meio', 'Pelas laterais']
+export const ESTILOS = ['Equilibrado', 'Ataque total', 'Contra-ataque']
+export const MARCACOES = ['Leve', 'Pesada', 'Muito pesada']
+export const JOGADAS = ['Pelo meio', 'Pelas laterais']
 const MAX_BANCO = 11
 // a formação 0 duplica a 1 no original; não aparece no seletor
 const OPCOES_FORMACAO = NOMES_FORMACAO.map((n, i) => ({ i, n })).filter((x) => x.i > 0)

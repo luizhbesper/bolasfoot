@@ -1,5 +1,8 @@
-// Canal em memória por jogo (SSE). Fica no globalThis porque o agendador (instrumentation) e as rotas são bundles
-// diferentes do mesmo processo. ponytail: um processo só (plano §7); LISTEN/NOTIFY se um dia tiver mais de um.
+// Canal por jogo (SSE). Fica no globalThis porque o agendador (instrumentation) e as rotas são bundles diferentes do
+// mesmo processo. Entre processos (dev + e2e no mesmo banco, ou mais de uma instância), o Postgres repassa por
+// LISTEN/NOTIFY: quem transiciona pode não ser o processo que segura o SSE.
+import { randomUUID } from 'node:crypto'
+import { db } from '../db/index.ts'
 import type { FaseRodada, StatusJogo } from '../db/schema.ts'
 
 export type EventoJogo =
@@ -8,8 +11,10 @@ export type EventoJogo =
   | { tipo: 'pick'; membro: number; time: string | null }
 
 type Ouvinte = (e: EventoJogo) => void
-const g = globalThis as { __canais?: Map<number, Set<Ouvinte>> }
+const g = globalThis as { __canais?: Map<number, Set<Ouvinte>>; __canalPg?: boolean }
 const canais = (g.__canais ??= new Map())
+const PROCESSO = randomUUID()
+const CANAL = 'bolasfoot_jogo'
 
 export function ouvir(gameId: number, f: Ouvinte): () => void {
   const s = canais.get(gameId) ?? new Set()
@@ -20,6 +25,22 @@ export function ouvir(gameId: number, f: Ouvinte): () => void {
   }
 }
 
-export function publicar(gameId: number, e: EventoJogo) {
+const entregar = (gameId: number, e: EventoJogo) => {
   for (const f of canais.get(gameId) ?? []) f(e)
+}
+
+export function publicar(gameId: number, e: EventoJogo) {
+  entregar(gameId, e)
+  if (g.__canalPg)
+    db().$client.notify(CANAL, JSON.stringify({ de: PROCESSO, gameId, e })).catch((err) => console.error('canal:', err))
+}
+
+/** Liga o repasse entre processos (uma vez, na subida do servidor; os testes não ligam). */
+export async function iniciarCanal() {
+  if (g.__canalPg) return
+  g.__canalPg = true
+  await db().$client.listen(CANAL, (s) => {
+    const { de, gameId, e } = JSON.parse(s) as { de: string; gameId: number; e: EventoJogo }
+    if (de !== PROCESSO) entregar(gameId, e)
+  })
 }

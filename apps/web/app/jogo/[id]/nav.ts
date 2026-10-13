@@ -19,7 +19,7 @@ export const GRUPOS: { titulo: string; itens: ItemNav[] }[] = [
   {
     titulo: 'Competições',
     itens: [
-      { chave: 'partida', rotulo: 'Partida', rota: null },
+      { chave: 'partida', rotulo: 'Partida', rota: 'partida' },
       { chave: 'tabelas', rotulo: 'Tabelas', rota: null },
       { chave: 'agenda', rotulo: 'Agenda', rota: null },
     ],

@@ -3,7 +3,7 @@
 // de emprego ou o fim da temporada. Fonte: n/a (multiplayer); o "pare quando um humano decide" vem de f_0.ay().
 import type { Base } from '@bolasfoot/data'
 import { aceitarOferta, aposentar, definirTreino, MOTIVOS_DEMISSAO, pedirDemissao } from './carreira.ts'
-import { comecarDia, jogosDoDia, terminarDia, type Competicao, type DiaEmJogo } from './competicoes.ts'
+import { comecarDia, jogosDoDia, terminarDia, type Competicao, type DiaEmJogo, type PartidaDoDia } from './competicoes.ts'
 import { iniciarObra, pagarEmprestimo, pegarEmprestimo } from './economia.ts'
 import { BANCO, FORMACOES } from './escalacao.ts'
 import {
@@ -63,6 +63,8 @@ export interface Rodada {
   resultados: ResultadoComando[]
   /** partidas do dia com humano (a do intervalo só com o 1º tempo) */
   partidas: Partida[]
+  /** todas as partidas desse dia, de todas as competições (a tela da partida mostra a rodada inteira) */
+  todas: PartidaDoDia[]
   /** dias jogados nesta rodada */
   dias: number[]
   /** a temporada virou nesta rodada */
@@ -371,7 +373,7 @@ export function avancarRodada(m: Mundo, base: Base, comandos: readonly ComandoDe
   m.queremParar = m.queremParar.filter((id) => m.jogadores[id]!.time >= 0)
   const humano = humanoJoga(m)
   const dia = comecarDia(m, seed, !(intervalo && humano))
-  const r: Rodada = { fase: 'planejamento', resultados, partidas: partidasHumanas(m, dia), dias: [dia.dia], virou: false }
+  const r: Rodada = { fase: 'planejamento', resultados, partidas: partidasHumanas(m, dia), todas: dia.partidas, dias: [dia.dia], virou: false }
   if (intervalo && humano) {
     m.emJogo = dia
     return { ...r, fase: 'intervalo' }
@@ -386,7 +388,7 @@ export function continuarRodada(m: Mundo, base: Base, comandos: readonly Comando
   const resultados = aplicarComandos(m, base, comandos, derivar(seed, 'intervalo'))
   m.emJogo = null
   const prox = terminarDia(m, dia, seed)
-  const r: Rodada = { fase: 'planejamento', resultados, partidas: partidasHumanas(m, dia), dias: [dia.dia], virou: false }
+  const r: Rodada = { fase: 'planejamento', resultados, partidas: partidasHumanas(m, dia), todas: dia.partidas, dias: [dia.dia], virou: false }
   return seguir(m, base, seed, r, dia.dia, prox)
 }
 
