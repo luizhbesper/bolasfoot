@@ -5,6 +5,7 @@ import { criarCompeticoesBR, type ColocacaoEstadual } from './brasil.ts'
 import type { Competicao } from './competicoes.ts'
 import { atualizarValores, type Financas } from './economia.ts'
 import { listarIA, type Emprestimo, type Leilao, type Transferencia } from './mercado.ts'
+import { iniciarJunior, type Oferta, type Tecnico, type TrocaDeTecnico } from './carreira.ts'
 import { derivar, type Rng } from './rng.ts'
 
 export const BRA = 29
@@ -58,8 +59,18 @@ export interface JogadorM extends Jogador {
   emprestado: boolean
   /** F.eZ: time de onde veio (a IA não o recompra); -1 = nenhum */
   timeAnterior: number
-  /** F.fd: progresso do junior, 0..100 (sobe na evolução semanal, W5) */
+  /** F.fd: progresso do junior, 0..100 (sobe na evolução semanal; fica depois de promovido) */
   progresso: number
+  /** F.ff: temporada em que subiu dos juniores (0 = nunca); o valor tem desconto por três temporadas */
+  promovidoEm: number
+  /** F.fc: potencial que o olheiro mostra (potencial ± 1) */
+  potencialEstimado: number
+  /** F.eM: acumulado da evolução da força (sobe ou cai 1 a cada 1,0) */
+  evolucao: number
+  /** F.fe: acumulado do progresso do junior */
+  evolucaoJunior: number
+  /** F.eH: acumulado da evolução de cada habilidade (gol, vel, tec, pas, des, arm, fin) */
+  evolucaoHab: number[]
 }
 
 export interface Tatica {
@@ -81,7 +92,7 @@ export interface Estadio {
   precos: [number, number, number, number] | null
 }
 
-export interface TimeM extends Omit<Time, 'jogadores' | 'juniores' | 'estadio'> {
+export interface TimeM extends Omit<Time, 'jogadores' | 'juniores' | 'estadio' | 'tecnico'> {
   id: number
   /** 0 = fora das ligas; 1..3 = Série A..C (Série D vem dos estaduais, W2) */
   divisao: number
@@ -92,6 +103,13 @@ export interface TimeM extends Omit<Time, 'jogadores' | 'juniores' | 'estadio'> 
   /** ah.hr: desempate aleatório 1..1000 */
   desempate: number
   humano: boolean
+  /** id em Mundo.tecnicos (ah.mZ) */
+  tecnico: number
+  /** ah.nu: pontos de reputação (títulos somam, cada temporada desconta) */
+  pontosReputacao: number
+  /** treino semanal, só com habilidade individual: foco 0 principais, 1 secundárias (ah.ns); auxiliar decide (ah.nt);
+   * habilidade treinada por posição (ah.nr) */
+  treino: { foco: 0 | 1; auxiliar: boolean; habilidade: number[] }
   /** só times com técnico humano têm caixa (a IA não tem) */
   financas: Financas | null
   jogadores: number[]
@@ -131,6 +149,21 @@ export interface Mundo {
   transferencias: Transferencia[]
   /** leilões abertos depois da rodada, resolvidos no próximo avancarDia (best.N, a/dz_0) */
   leiloes: Leilao[]
+  tecnicos: Tecnico[]
+  /** propostas de emprego abertas para técnicos humanos */
+  ofertas: Oferta[]
+  /** histórico de trocas de técnico (u_0) */
+  trocasDeTecnico: TrocaDeTecnico[]
+  /** f_0.bh: semana do ciclo de treino (0..3; na 3 a IA sorteia o treino) */
+  semanaTreino: number
+}
+
+/** Técnico novo, sem histórico. Fonte: best/al.java:41 (construtor), :38 (diretoria 95, torcida 85) */
+export function novoTecnico(id: number, nome: string, pais: number, humano: boolean, time: number | null, reputacao: number): Tecnico {
+  return {
+    id, nome, pais, humano, time, timeAnterior: null, paisAnterior: -1, divisaoAnterior: 0, reputacao, pontosReputacao: 0,
+    pontos: 0, diretoria: 95, torcida: 85, temporadas: 0, jogos: 0, vitorias: 0, derrotas: 0, campanhas: [], titulos: [],
+  }
 }
 
 /** F.fG(): subperfil por posição e características. Fonte: best/F.java:513-525 */
@@ -313,6 +346,7 @@ export function novoJogo(base: Base, opcoes: OpcoesJogo, seed: string): Mundo {
   const mundo: Mundo = {
     seed, temporada: 1, dia, diaEventos: dia - 1, calendario, competicoes: [], colocacoesEstaduais: [], opcoes, times: [], jogadores: [],
     continentes: base.paises.map((p) => p.continente), emprestimos: [], transferencias: [], leiloes: [],
+    tecnicos: [], ofertas: [], trocasDeTecnico: [], semanaTreino: 0,
   }
 
   // p_0.java:59 ordena por Nivel desc; p_0.java:110-128: país sem liga carrega só 15 times
@@ -349,13 +383,23 @@ export function novoJogo(base: Base, opcoes: OpcoesJogo, seed: string): Mundo {
         emprestado: false,
         timeAnterior: -1,
         progresso: 0,
+        potencialEstimado: 0,
+        promovidoEm: 0,
+        evolucao: 0,
+        evolucaoJunior: 0,
+        evolucaoHab: [0, 0, 0, 0, 0, 0, 0],
       }
       mundo.jogadores.push(jm)
       return jm.id
     }
-    const { jogadores, juniores, estadio, ...resto } = t
+    const { jogadores, juniores, estadio, tecnico, ...resto } = t
+    // ah.java:1356: o técnico do time, com a reputação do time
+    mundo.tecnicos.push(novoTecnico(mundo.tecnicos.length, tecnico, t.tecNac, false, id, t.reputacao))
     const tm: TimeM = {
       ...resto,
+      tecnico: mundo.tecnicos.length - 1,
+      pontosReputacao: 0,
+      treino: { foco: 0, auxiliar: true, habilidade: [0, 1, 1, 1, 1] },
       nivel: t.nivel >= 1 && t.nivel <= 25 ? t.nivel : 10, // ah.java:356
       id,
       divisao: 0,
@@ -386,6 +430,9 @@ export function novoJogo(base: Base, opcoes: OpcoesJogo, seed: string): Mundo {
     j.forca = forca
     if (opcoes.habilidadeIndividual) j.habilidades = habilidadesIniciais(j, n8, n6, rngForca)
   }
+  // F.fI (F.java:655-658): progresso inicial e potencial estimado dos juniores
+  const rngJunior = derivar(seed, 'novoJogo:juniores')
+  for (const j of ordem) if (j.juvenil) iniciarJunior(j, rngJunior)
   // F.fI (F.java:674-680): contrato de 210 a 239 dias, depois valor e salário
   const rngContrato = derivar(seed, 'novoJogo:contrato')
   for (const j of ordem) j.contratoAte = mundo.dia + rngContrato.int(30) + 210

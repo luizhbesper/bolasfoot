@@ -307,14 +307,20 @@ Começa fechando as **lacunas** listadas no fim de `engenharia-reversa.md`, cada
   - Empréstimo (`pegarEmprestimo`/`pagarEmprestimo`) e obras do estádio (`orcamentoObra`/`iniciarObra`), com o bug do teto corrigido.
   - `receberPatrocinio` e `zerarExtrato` ficam prontos para a W7.
   - Numa temporada de teste, um time da Série A (folha de ~2M/mês) saiu de 15M para 28M; um da C, de 10M para 12,7M.
-  - **Ficou para depois:** compra e venda (W4), juniores e o desconto do recém-promovido (W5), multa de rescisão (W4), satisfação da torcida no público (W5; hoje fixa em 85).
+  - **Ficou para depois:** compra e venda (W4), juniores e o desconto do recém-promovido (W5), multa de rescisão (W4), satisfação da torcida no público (feito na W5).
 - **W4:** `mercado.ts`.
   - A IA lista sobras (`kp`) na criação do mundo; `listarIA` e `janelaIA` ficam prontos para a W7.
   - O humano faz proposta (com contraproposta), compra listados, vende pela lista ou na hora (com multa de rescisão), pega e devolve emprestados, dá lance em leilão, promove e dispensa juniores e renova contratos.
   - O `avancarDia` fecha os leilões antes dos jogos; depois deles, devolve os empréstimos vencidos, roda as propostas da IA (50%) e abre de 0 a 3 leilões se há humano.
   - A receita 9 do extrato é "multas" (aos jogadores), não "juniores": corrigido o nome no `Financas`.
   - Numa temporada de teste, a janela da IA fez ~2,6 mil transferências; ~94% das vendas de times BR ficam no Brasil.
-  - **Ficou para depois:** proposta entre humanos e os lances dos outros humanos na venda imediata (W8); sem vendedor para repor uma posição, o original gera e promove um junior (W5); o desconto do valor do recém-promovido (W5); elencos das seleções na janela (Fase 6).
+  - **Ficou para depois:** proposta entre humanos e os lances dos outros humanos na venda imediata (W8); sem vendedor para repor uma posição, o original gera e promove um junior (precisa da `Base` em `janelaIA`/`proporCompra`: W7/W8); elencos das seleções na janela (Fase 6).
+- **W5:** `carreira.ts`.
+  - Evolução semanal aos domingos (força, habilidades com treino, progresso dos juniores); a força média da Série A sobe ~1,6 por temporada, os jovens ~2,8 e quem tem 33+ cai ~2,4.
+  - Cada time tem um `Tecnico` (o da base). Depois de cada jogo: campanha, pontos de carreira, diretoria e torcida; na colocação final: títulos e reputação de time e técnico. O público usa a torcida do técnico.
+  - Depois de dia de liga/estadual: demissões (diretoria < 10) e propostas aos humanos desempregados; na 20ª rodada da liga, propostas aos empregados. O humano pede demissão e aceita propostas.
+  - Prontos para a W7: `envelhecer` (aniversário, aposentadoria, juniores de 20 anos, valores), `atualizarReputacoes`, `demissoesFimDeTemporada`. Numa virada de teste, ~750 jogadores se aposentam, ~900 juniores nascem e ~150 técnicos da IA caem.
+  - **Ficou para depois:** avisos ao humano ("quer se aposentar", demissão, propostas) na caixa de entrada (W8); hall da fama e pontos de história do time (W7); seleções (Fase 6); nomes de países sem arquivo usam os do Brasil.
 
 **Gate:** CLI simula 5 temporadas só com IA sem erro, com invariantes e estatísticas plausíveis (campeões variados, times grandes no topo na média, caixa dos humanos-piloto não explode).
 

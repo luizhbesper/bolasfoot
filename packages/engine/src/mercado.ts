@@ -262,7 +262,8 @@ function reporPosicao(m: Mundo, t: TimeM, posicao: number, forca: number, rng: R
       return
     }
   }
-  // ponytail: sem vendedor o original gera um junior e o promove (F.a + k_0.a); a geração de juniores é da W5
+  // ponytail: sem vendedor o original gera um junior e o promove (F.a + k_0.a): gerarJunior precisa da Base, que
+  // chega aqui quando a W7/W8 passarem a base para janelaIA e proporCompra
 }
 
 /** Depois de vender ao humano, a IA repõe as posições abaixo do mínimo (com a posição do vendido, como no original). Fonte: best/l.java:697 */
@@ -523,14 +524,15 @@ export function promoverJunior(m: Mundo, jogadorId: number, rng: Rng): string | 
     j.habilidades = habilidadesIniciais(j, Math.max(forca - 5, 5), b, rng)
   }
   j.juvenil = false
+  j.promovidoEm = m.temporada
+  j.evolucao = 0
   j.contratoAte = m.dia + 180
-  // ponytail: F.ar(temporada) alimenta o desconto do recém-promovido no valor, que entra com a W5
   if (j.estrela) {
     const r = rng.int(3)
     if (!j.craque) j.estrela = r === 1 // o craque continua estrela (F.a força ek com el)
   } else if (rng.int(200) === 1) j.estrela = true
   if (j.estrela && j.potencial < 8) j.potencial = 8
-  j.valor = valorJogador(j, t, m.continentes[j.pais] ?? -1)
+  j.valor = valorJogador(j, t, m.continentes[j.pais] ?? -1, m.temporada)
   j.salario = salarioJogador(j, t, m.opcoes.salarioMensal ?? true)
   t.juniores = t.juniores.filter((id) => id !== j.id)
   t.jogadores.push(j.id)

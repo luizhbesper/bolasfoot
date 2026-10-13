@@ -56,12 +56,13 @@ Fora de escopo: proposta entre humanos e lances dos outros humanos na venda imed
 
 ## W5 — Carreira
 Objetivo: os jogadores e os técnicos evoluem.
-Fonte original: `F.java` (evolução `fV/fY`, aposentadoria), `ga/fZ` (potencial juvenil), `al.java:162-530` (diretoria/torcida), `ay.zw` (ofertas de emprego).
-Contrato: evolução semanal no evento de domingo, aposentadoria, juniores, reputação, satisfação, demissão e ofertas.
+Fonte original: RE "Evolução e carreira (W5)" (`F.fV/fW/fX/fY/ga/fZ`, `F.ge/gf/a`, `k_0`, `best/al`, `ah.d/kk/kE`, `f_0.n/af`, `s.A/b`, `ay.b/zw`, `ag.jQ`).
+Contrato: `evolucaoSemanal` (domingos, no `avancarDia`), `definirTreino`; `iniciarJunior`, `gerarJunior`, `gerarNome`, `aposentar`, `envelhecer` (W7); `Tecnico` em `Mundo.tecnicos` (o time guarda o id); `posJogoTecnicos`/`confrontoTecnicos`/`colocacaoTecnico` (no dia e na colocação final), `atualizarReputacoes` (W7), `demissoesDoDia` e `ofertasPromocao` (no `avancarDia`), `demissoesFimDeTemporada` (W7), `substituirTecnico`, `ofertasDeEmprego`/`aceitarOferta`, `pedirDemissao`, `contratarTecnicoHumano`. `JogadorM` ganha `potencialEstimado`, `promovidoEm`, `evolucao`, `evolucaoJunior`, `evolucaoHab`; `TimeM` ganha `tecnico` (id), `pontosReputacao`, `treino`; `Mundo` ganha `tecnicos`, `ofertas`, `trocasDeTecnico`, `semanaTreino`; `Competicao.rebaixados`.
+Fora de escopo: avisos ao humano (caixa de entrada, W8); seleções (Fase 6); hall da fama (W7).
 
 ## W6 — IA dos técnicos
 Objetivo: técnicos da IA decidem como no original.
-Fonte original: mini-RE (`ah.kh()`, rodízio de técnicos, decisões de mercado).
+Fonte original: mini-RE (`ah.kh()`, decisões de mercado). O rodízio de técnicos já veio na W5 (`substituirTecnico`, `demissoesFimDeTemporada`).
 
 ## W7 — Fim de temporada
 Objetivo: virar o ano.
