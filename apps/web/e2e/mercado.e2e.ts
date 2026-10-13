@@ -45,6 +45,8 @@ test('pede empréstimo, obra e proposta; vê o resultado depois da rodada', asyn
   await page.keyboard.press('Escape')
 
   await page.getByRole('link', { name: 'Elenco' }).click()
+  await expect(page.getByRole('heading', { name: 'Elenco', level: 1 })).toBeVisible()
+  await page.getByRole('button', { name: 'Jogador' }).click() // ordena: a tabela já é a do elenco
   await page.locator('tbody tr').last().click()
   await expect(page.getByRole('heading', { name: 'Negociar' })).toBeVisible()
   await foto('elenco-negociar')
