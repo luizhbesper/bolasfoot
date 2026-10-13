@@ -57,7 +57,7 @@ Fora de escopo: proposta entre humanos e lances dos outros humanos na venda imed
 Objetivo: os jogadores e os técnicos evoluem.
 Fonte original: RE "Evolução e carreira (W5)" (`F.fV/fW/fX/fY/ga/fZ`, `F.ge/gf/a`, `k_0`, `best/al`, `ah.d/kk/kE`, `f_0.n/af`, `s.A/b`, `ay.b/zw`, `ag.jQ`).
 Contrato: `evolucaoSemanal` (domingos, no `avancarDia`), `definirTreino`; `iniciarJunior`, `gerarJunior`, `gerarNome`, `aposentar`, `envelhecer` (W7); `Tecnico` em `Mundo.tecnicos` (o time guarda o id); `posJogoTecnicos`/`confrontoTecnicos`/`colocacaoTecnico` (no dia e na colocação final), `atualizarReputacoes` (W7), `demissoesDoDia` e `ofertasPromocao` (no `avancarDia`), `demissoesFimDeTemporada` (W7), `substituirTecnico`, `ofertasDeEmprego`/`aceitarOferta`, `pedirDemissao`, `contratarTecnicoHumano`. `JogadorM` ganha `potencialEstimado`, `promovidoEm`, `evolucao`, `evolucaoJunior`, `evolucaoHab`; `TimeM` ganha `tecnico` (id), `pontosReputacao`, `treino`; `Mundo` ganha `tecnicos`, `ofertas`, `trocasDeTecnico`, `semanaTreino`; `Competicao.rebaixados`.
-Fora de escopo: avisos ao humano (caixa de entrada, W8); seleções (Fase 6); hall da fama (W7).
+Fora de escopo: avisos ao humano (caixa de entrada, W8); seleções (Fase 6); hall da fama (feito na W7).
 
 ## W6 — IA dos técnicos
 Objetivo: técnicos da IA decidem como no original.
@@ -66,8 +66,9 @@ Resultado: `ah.kh()` é só o `ah.a` (já portado como `escalarIA`) para cada ti
 
 ## W7 — Fim de temporada
 Objetivo: virar o ano.
-Fonte original: `best/f_0.java:524` (`aa`), `:1207` (`ah`: novo calendário), `:1303` (`am`), `best/Z.java:454-591` (`ee`: acesso/rebaixamento, troca com o pool), `best/w.java:265`.
-Contrato: `fimDeTemporada(mundo, rng)`. Testes: golden de 1 temporada semeada (hash do mundo).
+Fonte original: RE "Fim de temporada" (`f_0.aa` e a ordem dos passos, `Z.ee`, `w.ee`, `s.l` pelo bytecode, `s.fG`, `Z.y`).
+Contrato: `fimDeTemporada(mundo, base, seed?)` (chamado quando `avancarDia` devolve null), `sobem`/`caem`. `JogadorM` ganha `gols`, `jogos`; `Mundo` ganha `historico`, `hallDaFama`, `filasEstaduais`, `rebaixadosC`, `reservadosCopa`. `criarCompeticoesBR` aceita as divisões estaduais da virada. `envelhecer` também gera os juniores do ano.
+Testes: virada real (trocas 4 × 4, Série D de volta ao pool, sobem os semifinalistas da D, calendário de 2027, extrato e patrocínio), 2ª temporada inteira e golden (hash do mundo na 3ª).
 
 ## W8 — `avancarRodada`
 Objetivo: a função que a máquina de estados do servidor chama.

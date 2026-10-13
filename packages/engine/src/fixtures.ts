@@ -7,7 +7,7 @@ const POSICOES = [0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4,
 
 /** Dois times idênticos (força fixa, sem características especiais). */
 export function mundoSintetico(forca = 50, reputacao = 5): Mundo {
-  const mundo: Mundo = { seed: 'sintetico', temporada: 1, dia: 0, diaEventos: -1, calendario: criarCalendario(2026), competicoes: [], colocacoesEstaduais: [], opcoes: { habilidadeIndividual: false }, times: [], jogadores: [], continentes: [], emprestimos: [], transferencias: [], leiloes: [], tecnicos: [], ofertas: [], trocasDeTecnico: [], semanaTreino: 0 }
+  const mundo: Mundo = { seed: 'sintetico', temporada: 1, dia: 0, diaEventos: -1, calendario: criarCalendario(2026), competicoes: [], colocacoesEstaduais: [], opcoes: { habilidadeIndividual: false }, times: [], jogadores: [], continentes: [], emprestimos: [], transferencias: [], leiloes: [], tecnicos: [], ofertas: [], trocasDeTecnico: [], semanaTreino: 0, historico: [], hallDaFama: [], filasEstaduais: {}, rebaixadosC: [], reservadosCopa: [] }
   for (const id of [0, 1]) {
     const ids = POSICOES.map((posicao, k) => {
       const j: JogadorM = {
@@ -15,7 +15,7 @@ export function mundoSintetico(forca = 50, reputacao = 5): Mundo {
         titular: true, id: mundo.jogadores.length, time: id, juvenil: false, ex: posicao === 4 ? 1 : posicao === 3 ? k % 2 : k % 2,
         forca, energia: 100, habilidades: null, suspensoes: {}, lesaoAte: 0, jogou: false, valor: 0, salario: 0, contratoAte: 0,
         aVenda: false, preco: 0, paraEmprestimo: false, emprestado: false, timeAnterior: -1, progresso: 0,
-        potencialEstimado: 5, promovidoEm: 0, evolucao: 0, evolucaoJunior: 0, evolucaoHab: [0, 0, 0, 0, 0, 0, 0],
+        potencialEstimado: 5, promovidoEm: 0, evolucao: 0, evolucaoJunior: 0, evolucaoHab: [0, 0, 0, 0, 0, 0, 0], gols: 0, jogos: 0,
       }
       mundo.jogadores.push(j)
       return j.id

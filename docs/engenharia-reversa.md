@@ -356,17 +356,35 @@ senão se 2ºT e minuto≥5: substituições da IA
   - Só existe com 16 ou mais times.
   - 4 grupos de 4 (potes `a_0.ad(4,4)`), dois turnos; os 2 primeiros vão às quartas. Quartas, semi e final em ida e volta. São 12 datas, que batem com as 12 datas de regional.
 
-### Fim de temporada (`f_0.aa`, `f_0.java:524`)
+### Fim de temporada (`f_0.aa`, `f_0.java:524`, port em `packages/engine/src/temporada.ts`)
 
-Acesso e rebaixamento: `am()` → `Z.ee()` (`Z.java:454`). Sobem tantos quantos a divisão de cima rebaixa (`s.ah`, `s.java:1351`). Caem os n últimos, ou os n últimos por grupo com `rebaixadoPeloGrupo` (`s.java:1303`). A última divisão troca times com o pool `dt` (`Z.java:540-585`). Com a Série D vinda dos estaduais, a Série D inteira volta ao pool (`Z.java:591`). Estaduais: `w.ee()` (`w.java:265`). Novo calendário: `ah()` (`f_0.java:1207`).
+Ordem do `aa()` (os passos internacionais e de seleções ficam para a Fase 6):
 
-1. Prêmios e resets.
-2. Novo calendário.
-3. Sorteios internacionais.
-4. Acesso e rebaixamento.
-5. Envelhecimento e aposentadoria.
-6. Juniores.
-7. Rodízio de técnicos da IA.
+| Passo | Original | O que faz |
+|---|---|---|
+| 1 | `ah.kI` → `C.eA` | zera o extrato dos humanos |
+| 2 | `ah()` (:1207) | temporada + 1, calendário do ano novo (`r` + `a.g()`) |
+| 3 | `ag()` (:1184) | reputação do time (`ah.kk`); na IA, lista de sobras (`kp`), elenco por força (`kA`, batedor de falta) e depois por força e idade (`kz`, `ai`); +50 de diretoria e torcida do técnico (`al.cj/ck`); patrocínio dos humanos (`kG`, pela divisão velha) |
+| 4 | `iZ()` | reputação dos técnicos (`al.kk`) |
+| 5 | `Y()` → `Z.y(true)` | os 12 que entram direto na 3ª fase da próxima Copa: Série A e B pela colocação, campeão da B e campeão da Copa na frente (`f_0.afU`) |
+| 6 | `Z()` → `f.I.Ab` | Supercopa (tipo 11): Fase 6 |
+| 7 | `am()` → `Z.ee` (:454) | acesso e rebaixamento nacional |
+| 8 | `ak()` → `w.ee` (:265) | acesso e rebaixamento estadual |
+| 9 | `aj()` → `F.am` | regionais do ano novo pela ordem das séries (`p_0.di`) |
+| 10 | `af()` (:1057) | aniversário, aposentadoria, juniores de 20 anos (`gd`, `gf`) e juniores novos (`c(true)`: quem tem < 15 ganha n+1, n = 2..4 na liga nacional, 0..2 (+1 com Nivel ≥ 20) fora) |
+| 11 | `W()` (`H() ≥ 5`) | transferências com mais de 10 anos saem do histórico (`SR.bo`) |
+| 12 | `ay.zi/zj` | tabelas de propostas de emprego (o port calcula na hora) |
+| 13 | `ag.jO`, `ag.jQ` | janela da IA e demissões de fim de temporada |
+
+- **Quem sobe** (`s.l(n, true)`, `s.java:1185`): o decompilador perde o ramo do mata-mata; lido do bytecode (`javap -c -p -cp original/game.jar f.s`).
+  - Sem mata-mata: os n primeiros da tabela.
+  - Formato 1020 (Série C): campeão e vice da final, depois **todos** os segundos dos grupos (pelo `abn`), e só então o resto dos grupos.
+  - Com mata-mata: os vencedores de cada rodada, da última para a primeira, até n; depois a tabela. Na Série D, isso dá campeão, vice e os outros dois semifinalistas.
+  - O playoff de acesso (`b_0.BR`, `vagasSobemPeloMataMata`) é 0 em todas as séries BR.
+- **Quem cai** (`s.fG`, `s.java:1303`): os n últimos da 1ª fase, do último para cima. Por grupo só com `rebaixadoPeloGrupo` **e** grupos na 1ª fase, o que nenhuma série BR tem. Nos estaduais o `zc()` é sempre falso.
+- **Troca** (`Z.ee`): a divisão i perde `fG(nRebaixados(i))` e ganha `l(nRebaixados(i))` da divisão i + 1, só se as listas têm o mesmo tamanho; `ah.b(at, 0|1)` marca no histórico do time. Os rebaixados da Série C vão para `SR.bY` e entram primeiro na Série D seguinte (`w.Q`). Com estaduais, a Série D inteira volta ao pool (`s.yJ`, `Z.java:591`).
+- **Estaduais** (`w.ee`): a mesma troca entre divisões; a última troca com a fila do estado (`w.dt`): saem os primeiros da fila, os rebaixados vão para o fim.
+- **Hall da fama** (`F.java:1714`, `best.b_0`): ao se aposentar, entra quem tem mais de 0/10/30/50 gols na carreira (temporada < 2/< 10/< 20/depois). Gols (`F.fh`) e jogos (`F.fi`) contam em `I.hh` (titulares e quem entrou; gol contra não conta).
 
 ## Economia (port em `packages/engine/src/economia.ts`)
 

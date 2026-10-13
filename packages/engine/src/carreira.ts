@@ -156,7 +156,7 @@ export function gerarJunior(m: Mundo, base: Base, t: TimeM, posicao: number, rng
     nome: gerarNome(base, pais, rng), pais, idade, posicao: pos, lado: rng.int(2), cr1, cr2, estrela, craque: false, potencial,
     titular: false, time: t.id, juvenil: true, ex: subperfil(pos, cr1, cr2), energia: 100, habilidades: null, suspensoes: {},
     lesaoAte: 0, jogou: false, aVenda: false, preco: 0, paraEmprestimo: false, emprestado: false, timeAnterior: -1, promovidoEm: 0,
-    evolucao: 0, evolucaoJunior: 0, evolucaoHab: [0, 0, 0, 0, 0, 0, 0],
+    evolucao: 0, evolucaoJunior: 0, evolucaoHab: [0, 0, 0, 0, 0, 0, 0], gols: 0, jogos: 0,
   } satisfies Partial<JogadorM>)
   const { forca, n8, n6 } = forcaInicial(j, t, base.paises[t.pais]?.nivel ?? 10, rng)
   j.forca = forca
@@ -385,7 +385,10 @@ export function aposentar(m: Mundo, base: Base, jogadorId: number, rng: Rng): vo
   if (t.batedores.escanteio === j.id) t.batedores.escanteio = null
   j.aVenda = j.paraEmprestimo = j.emprestado = false
   j.time = -1
-  // ponytail: o hall da fama (best.b_0) entra com o histórico da W7
+  // F.java:1714-1721: hall da fama pelos gols na carreira, com a régua subindo com as temporadas
+  const n = m.temporada
+  if (n < 2 ? j.gols > 0 : n < 10 ? j.gols > 10 : n < 20 ? j.gols > 30 : j.gols > 50)
+    m.hallDaFama.push({ nome: j.nome, gols: j.gols, jogos: j.jogos, temporada: n })
   if (!semJunior) {
     const novo = gerarJunior(m, base, t, posicao, rng)
     if (promover) promoverJunior(m, novo.id, rng)
@@ -410,8 +413,8 @@ function querParar(j: JogadorM, rng: Rng): boolean {
 
 /**
  * Virada do ano: todos fazem aniversário; os veteranos da IA se aposentam (os do humano só avisam, ponytail: aviso na
- * caixa de entrada da W8); juniores de 20 anos sobem se valem a vaga ou dão lugar a outro; valor e salário são
- * recalculados. Chamado pela W7. Fonte: best/f_0.java:1056 (af), best/F.java:1572 (gd), :1750 (gf)
+ * caixa de entrada da W8); juniores de 20 anos sobem se valem a vaga ou dão lugar a outro; quem tem menos de 15
+ * juniores ganha de 2 a 5 novos; valor e salário são recalculados. Chamado pela W7. Fonte: best/f_0.java:1056 (af), best/F.java:1572 (gd), :1750 (gf)
  */
 export function envelhecer(m: Mundo, base: Base, rng: Rng): { queremParar: number[] } {
   const queremParar: number[] = []
@@ -439,6 +442,14 @@ export function envelhecer(m: Mundo, base: Base, rng: Rng): { queremParar: numbe
         if (t.juniores.length < 20) gerarJunior(m, base, t, -1, rng)
       }
     } else if (!t.humano) gerarJunior(m, base, t, -1, rng, j)
+  }
+  // f_0.c(true) (f_0.java:1150): juniores novos em quem tem menos de 15
+  for (const t of m.times) {
+    const k = t.juniores.length
+    if (k >= 15) continue
+    let n = t.ligaNacional ? 2 + rng.int(3) : rng.int(3) + (t.nivel >= 20 ? 1 : 0)
+    if (n + k >= 20) n = 20 - k - 2
+    if (n > 0) for (let i = 0; i <= n; i++) gerarJunior(m, base, t, -1, rng)
   }
   for (const j of m.jogadores) {
     const t = m.times[j.time]
