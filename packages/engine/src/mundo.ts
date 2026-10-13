@@ -331,5 +331,9 @@ export function novoJogo(base: Base, opcoes: OpcoesJogo, seed: string): Mundo {
     j.forca = forca
     if (opcoes.habilidadeIndividual) j.habilidades = habilidadesIniciais(j, n8, n6, rngForca)
   }
+  // ah.kp() (ah.java:1155, chamado no aU) embaralha o elenco: é o que desempata a escalação da IA
+  // entre jogadores de mesma força. A lista de transferências do kp() fica para a W4.
+  const rngElenco = derivar(seed, 'novoJogo:elenco')
+  for (const t of mundo.times) rngElenco.shuffle(t.jogadores)
   return mundo
 }

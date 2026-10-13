@@ -253,7 +253,7 @@ Cada fase termina jogável ou testável. Os IDs servem para abrir sessões ("vam
 - **Assets:** 4 nomes com acento vinham corrompidos pelo 7-Zip (bytes Latin-1 em U+EFxx); o `pnpm assets` corrige. 365 times não têm camisa própria (usar as genéricas por matiz da `cor1`); `audaxrj_bra` não tem escudo mini.
 - **F0-6:** `tools/capture-ref.sh` roda o jar *dentro* de `tools/RefShots.java` (Java 17 com `--add-opens`), pilota a UI por um roteiro e desenha as janelas em PNG. 34 telas; faltam as que a versão grátis bloqueia ou que dependem de sorte/tempo (proposta, leilão, fim de temporada, demissão) — ver `docs/ref/README.md`.
 
-### Fase 1 — Motor de partida (`packages/engine`)
+### Fase 1 — Motor de partida (`packages/engine`) — COMPLETE (2026-10-13)
 
 Tickets detalhados e decisões da fase: `docs/fase1.md`.
 
@@ -266,7 +266,12 @@ Tickets detalhados e decisões da fase: `docs/fase1.md`.
 | M5 | Pós-jogo: suspensões, duração de lesão, recuperação, notas, público e bilheteria |
 | M6 | CLI `pnpm sim` que roda N partidas e imprime estatísticas (gols/jogo, % mandante, cartões, lesões) |
 
-**Gate:** testes estatísticos batendo com o original (ver 6.2).
+**Gate:** testes estatísticos batendo com o original (ver 6.2). ✔ `partida.stats.test.ts` contra o `ref-original.json` do oráculo.
+
+**Notas da entrega (F1):**
+- **API:** `novoJogo(base, opcoes, seed)` → `Mundo`; `escalarIA(mundo, time, competicao, rng)` → `Escalacao`; `iniciarPartida(mundo, [m, v], [escM, escV], ctx, rng)` → `Partida`; `simularTempo(p, 1|2, rng)` (segmentável: o intervalo é serializável); `substituir`/`mudarTatica` para o humano no intervalo; `aplicarPosJogo(mundo, p, rng)`, `recuperarEnergia(mundo)`, `publico(...)`. RNG por stream: `derivar(seed, 'partida:<id>:1T')`.
+- **Oráculo:** `pnpm oracle [N]` (precisa de `original/` e Java 17) regenera a referência; `pnpm sim` imprime motor × original. Ver "Oráculo estatístico" no RE.
+- **Ficou para depois (com `ponytail:` no código quando cabe):** contrato, valor e salário (W3); lista de transferências do `kp()` (W4); potencial de juvenil `ga/fZ` e notas/estatísticas de temporada (W5/W7); Série D pelos estaduais (W2); `B()` em seleções usa o lado, não o clube, e Copa do Mundo ×5 na renda (Fase 6); humano lesionado fica em campo até o intervalo (D2 decide o piloto automático).
 
 **Notas vindas da F0:** o motor lê `Base` de `@bolasfoot/data` (não do jsonl). M2 implementa a derivação da divisão BR por `Nivel` (nota da F0). O `tools/RefShots.java` prova que o jogo original roda em processo, sem UI manual, no Java 17: isso torna o `tools/Oracle.java` da M6 (6.2) viável — chamar `c/b.java` direto ou rodar rodadas e ler o resultado.
 

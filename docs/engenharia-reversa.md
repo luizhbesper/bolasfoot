@@ -155,7 +155,7 @@ senão se 2ºT e minuto≥5: substituições da IA
 - Eventos: 2º amarelo = tipo 3, vermelho direto = tipo 4 (a tabela de rótulos `aq.sT` está invertida).
 - A vítima é sorteada por faixa de slots, com distribuições próprias para amarelo, vermelho e lesão.
 - **Energia:** quando `minuto % 7 == 0` (inclusive o minuto 0) todos perdem energia (o goleiro só no 2º tempo). A perda depende da idade: até 20 anos −1, até 25 −2, até 31 −3, até 36 −4, acima −5. Piso 1.
-- **IA:** 5 substituições, só no 2º tempo e no intervalo, com minutos sorteados antes do jogo (`I.java:208-283`). Trocas por cansaço (energia < 60, < 90 depois dos 40') e táticas quando está perdendo. No intervalo o mandante troca perdendo por 1, o visitante só perdendo por 2.
+- **IA:** 5 substituições, só no 2º tempo e no intervalo, com minutos sorteados antes do jogo (`I.java:208-283`; os não sorteados ficam −1). Trocas por cansaço (energia < 60, < 90 depois dos 40') e táticas quando está perdendo. No intervalo o mandante troca perdendo por 1, o visitante só perdendo por 2.
 - **Acréscimos:** 1º tempo `rand(3)`, 2º tempo `rand(5)+1`, minutos a partir de 0. Só no caminho só-IA; partida com humano tinha duração fixa na UI (48/51 ticks). O port usa acréscimo em todas.
 - **Não existe prorrogação.**
 - **Pênaltis:**
@@ -354,6 +354,17 @@ senão se 2ºT e minuto≥5: substituições da IA
 ## Saves
 
 - `sav/<nome>.s22` é Kryo com nomes de classe ofuscados. Importar esses saves no port não vale o esforço; o mundo é recriado a partir dos `.ban`.
+
+## Oráculo estatístico (M6)
+
+`tools/oracle.sh [N]` roda o motor original em processo (`tools/Oracle.java`): cria o mundo com `new c.a()` + `best.p.dd()/dg()` (o que o botão "Novo jogo" faz, sem a UI), monta partidas da Série A com o construtor de debug de `best.I`, preenche a competição (`f.B` tipo 1) e os minutos de substituição (`hb()`) por reflexão, escala com `ah.a(...)` e chama `V()`. Antes de cada jogo: energia 100, sem lesão/amarelos, e a força é restaurada depois (lesão de quem tem ≥35 anos tira 5 de força para sempre e contaminava as partidas seguintes). Saída: `packages/engine/src/ref-original.json`, a referência do teste estatístico do port.
+
+Números do original (20 mil partidas, Série A, temporada 1): 2,65 gols/jogo, mandante 38% / empate 25% / visitante 37%, 27,5 chutes, 9,6% de conversão, 73% no alvo, 1,40 amarelo, 0,18 expulsão, 0,11 lesão e 6,5 substituições por jogo.
+
+**O que o oráculo corrigiu no port:**
+- Minutos de substituição não sorteados valem **−1** (`I.java:113-114`), não 0. Com 0, o intervalo (`m(2, 0)`) fazia trocas a mais.
+- O elenco é **embaralhado** por `ah.kp()` na criação do mundo (`ah.java:1155`); isso desempata a escalação da IA entre jogadores de mesma força.
+- (bug do port) amarelo tratado como lesão.
 
 ## Lacunas ainda não mapeadas
 

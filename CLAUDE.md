@@ -19,7 +19,8 @@ pnpm check             # typecheck + lint + test — tem que ficar verde antes d
 pnpm e2e               # Playwright
 pnpm data:build        # original/data → packages/data/base.json
 pnpm assets            # original/ → apps/web/public/assets
-pnpm sim               # (Fase 1) simula N partidas
+pnpm sim               # simula N partidas e compara com o original (packages/engine/src/ref-original.json)
+pnpm oracle [N]        # roda N partidas no jogo original (Java 17 + original/) e regenera a referência
 pnpm db:migrate | db:seed | db:reset   # (Fase 3)
 ```
 

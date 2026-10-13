@@ -1,0 +1,25 @@
+{
+  "fonte": "tools/oracle.sh (Brasfoot 22-23 original)",
+  "metricas": {
+    "jogos": 20000,
+    "golsJogo": 2.672,
+    "casa": 0.3776,
+    "empate": 0.2528,
+    "fora": 0.3696,
+    "chutesJogo": 27.555,
+    "conversao": 0.097,
+    "noAlvo": 0.7327,
+    "tiposGol": {
+      "normal": 0.9056,
+      "contra": 0.0092,
+      "penalti": 0.051,
+      "falta": 0.0296,
+      "olimpico": 0.0046
+    },
+    "amarelosJogo": 1.3978,
+    "expulsoesJogo": 0.1694,
+    "lesoesJogo": 0.112,
+    "subsJogo": 6.532,
+    "assistPorGol": 0.7343
+  }
+}
