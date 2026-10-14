@@ -173,7 +173,7 @@ Jogar sozinho é só um jogo com um membro: ready imediato, sem esperar ninguém
 ```
             ┌────────────────────────────────────────────────────────┐
             ▼                                                        │
-  PLANEJAMENTO ──(todos ready OU prazo)──► RESOLUÇÃO ──► AO_VIVO_1T  │
+  PLANEJAMENTO ──(ready de quem joga OU prazo)──► RESOLUÇÃO ──► AO_VIVO_1T  │
   · baixa snapshot                         · trava comandos  │       │
   · edita escalação, mercado, etc.         · revela seed     ▼       │
   · ready / unready                        · aplica comandos INTERVALO (só modo live)
@@ -184,6 +184,8 @@ Jogar sozinho é só um jogo com um membro: ready imediato, sem esperar ninguém
 ```
 
 Todos os prazos vêm de `game_settings`.
+
+**Quem precisa ficar pronto:** só os técnicos com jogo na rodada (`tecnicosEmCampo`; no intervalo, os das partidas em andamento). Quem não joga continua editando, e os comandos salvos entram na resolução; na barra, aparece esmaecido com "sem jogo". Parada sem jogo de ninguém (proposta de emprego, virada de temporada): todos.
 
 - **Modo live** (vocês numa call): prazos curtos, todos assistem juntos.
 - **Modo daily:** mesma máquina, prazo = `daily_resolve_at`. Sem intervalo: o time humano usa as regras de substituição da IA (piloto automático, configurável na escalação). O próximo login mostra o **resumo** do que aconteceu desde a última visita (resultados, tabela, eventos do elenco, caixa de entrada).
@@ -442,9 +444,9 @@ Continentais das 6 confederações (fora da CONMEBOL, só IA, porque o Mundial p
 
 **Notas vindas da F0:** todos os estrangeiros (menos ESP) já estão no `base.json`. A seleção dos participantes é por cota de país, não por flag no time (ver `engenharia-reversa.md`, "Dados e seleção de times").
 
-### Fase 6B — Seleções
+### Fase 6B — Seleções — FORA DO MVP (2026-10-14)
 
-Sem tickets ainda. O que já foi mapeado:
+Descartada por ora: não interessa para o MVP. O mapeamento fica para se um dia voltar:
 - **Competições:** Copa do Mundo (`f/q`; no 1º ano, 32 times por cota; depois, 48 vindos das eliminatórias), as eliminatórias das 6 confederações (`f/n`, `f/l_0`, `f/i_0`, `f/j` com a repescagem, `f/k`, `f/m_0`), Copa América (`f/d`), Euro (`f/p`) e as outras copas continentais, Finalíssima (`f/k_0`) e Liga das Nações (`f/M`, `f/n_0`). Os ciclos de 2 e 4 anos estão no `f_0.ac()` (`f_0.java:710-946`). Todas as competições de seleções dividem as 8 datas do tipo 7.
 - **Técnico:** convites `cS`/`cSempregado` (`ay.java:44-155`, tabela pela reputação). O humano treina clube e seleção ao mesmo tempo (`al.fg()` e `al.jo()`); aceitar não tira o clube.
 - **Elenco:** montagem automática `Z.z` (`Z.java:654-796`: 23 por posição e lado, gerando jogadores quando o país tem poucos); convocação do humano `cO` (`a/aP.java`: de 2 a 3 goleiros, de 15 a 27 de linha).
@@ -473,12 +475,14 @@ Uma segunda base, `base-2026.json`, com os elencos de 2026 e os formatos naciona
 
 ### Fase 8 — Polimento
 
-Sons, conquistas/troféus (72 PNGs), ajustes de balanceamento do multiplayer, arte própria aos poucos.
+Sons, conquistas/troféus, ajustes de balanceamento do multiplayer, arte própria aos poucos.
+
+**Entregue (2026-10-14), com a arte do mod "Projeto Brasfoot julho/26"** (receita em `docs/fase7.md`): 296 troféus (o original tem 72), mapa competição → troféu portado do `mA()` (`app/_ui/trofeu.tsx`), sala de troféus no hub e na tela do time, troféus na carreira do técnico, no resumo da temporada e na História; fundos de estádio `e01–e16` esmaecidos no placar e no próximo jogo; sons do mod (44,1 kHz) no lugar dos do original (8 kHz). Balanceamento e arte própria esperam um teste real pedir.
 
 ### Dependências
 
 ```
-F0 ─► M1..M6 ─► W1..W8 ─► U1..U8 ─► I1..I6 ─► 6B ─► D1..D3
+F0 ─► M1..M6 ─► W1..W8 ─► U1..U8 ─► I1..I6 ─► D1..D3   (6B fora do MVP)
  │                  ▲        ▲
  └─► S1..S7 ────────┴────────┘      Fase 7: B1–B4, B8, B9 em paralelo; B5–B7 depois de I1..I6
 ```
