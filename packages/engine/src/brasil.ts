@@ -165,8 +165,8 @@ export function criarCompeticoesBR(mundo: Mundo, base: Base, rng: Rng, estaduais
     comps.push(c)
   }
   mundo.competicoes = comps
-  if (mundo.opcoes.jogaEstadual !== false) comps.push(...criarEstaduais(mundo, base, rng, estaduais))
-  comps.push(...criarRegionais(mundo, base, rng))
+  // sem estaduais também sem regionais (Nordeste, Copa Verde…)
+  if (mundo.opcoes.jogaEstadual !== false) comps.push(...criarEstaduais(mundo, base, rng, estaduais), ...criarRegionais(mundo, base, rng))
   return comps
 }
 

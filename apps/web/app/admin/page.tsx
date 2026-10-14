@@ -54,7 +54,7 @@ export default async function Admin() {
             </label>
             <label className="check"><input type="checkbox" name="habilidadeIndividual" /> Habilidade individual</label>
             <label className="check"><input type="checkbox" name="salarioSemanal" /> Salário semanal</label>
-            <label className="check"><input type="checkbox" name="semEstaduais" /> Pular os estaduais (a temporada começa na liga)</label>
+            <label className="check"><input type="checkbox" name="semEstaduais" /> Pular os estaduais e os regionais (a temporada começa na liga)</label>
             <fieldset>
               <legend>Divisões permitidas na escolha (nenhuma = todas)</legend>
               {[1, 2, 3, 0].map((d) => (
