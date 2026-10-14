@@ -411,11 +411,32 @@ UI **moderna, inspirada** no original, sobre o servidor da fase 3 (em local, com
 | D2 | Piloto automático do time humano (regras de substituição/escalação da IA, configuráveis) |
 | D3 | Resumo no login (o que mudou desde a última visita) |
 
-### Fase 6 — Competições internacionais e seleções
+### Fase 6 — Competições internacionais de clubes
 
-Libertadores, Sul-Americana, Recopa, Mundial de Clubes, Supercopa; ofertas de seleção, eliminatórias e Copa do Mundo. Times estrangeiros só como IA. Entra depois porque o jogo já é jogável sem elas e tem sorteios próprios a mapear.
+Tickets detalhados e decisões da fase: `docs/fase6.md`. Vem antes da Fase 5 (o daily fica para o fim).
+
+Continentais das 6 confederações (fora da CONMEBOL, só IA, porque o Mundial precisa dos 6 campeões), Mundial de Clubes, Recopa e Supercopa. Sem Espanha: as vagas dela são completadas pelo `b.a()`. As datas já estão no calendário (W1).
+
+| ID | Entrega |
+|---|---|
+| I1 | Infra: vagas por cota (`f/b`, `Z.a`, `Z.je`), potes e sorteio, classificados e gols fora das continentais, nome das fases, ganchos no `novoJogo` e no `fimDeTemporada` |
+| I2 | Libertadores e Sul-Americana (`f/r`, `f/H`), com o fluxo de times entre elas e a Libertadores nos reservados da Copa do Brasil |
+| I3 | Outras confederações: Champions, Liga Europa, Conference, CAF, AFC, Concacaf, OFC |
+| I4 | Mundial (evento `cw`), Recopa (da 2ª temporada em diante) e Supercopa BR |
+| I5 | Prêmios, público, reputação e resumo da temporada |
+| I6 | UI: nomes das fases, competições agrupadas em tabelas e história, filtro de estrangeiros |
+
+**Gate:** `pnpm sim --temporadas 10 --mundos 5` com as continentais, contra o `ref-temporadas.json` regenerado com `jogaIntClubes` ligado; o Mundial acontece todo ano; uma rodada de Libertadores jogada no navegador.
 
 **Notas vindas da F0:** todos os estrangeiros (menos ESP) já estão no `base.json`. A seleção dos participantes é por cota de país, não por flag no time (ver `engenharia-reversa.md`, "Dados e seleção de times").
+
+### Fase 6B — Seleções
+
+Sem tickets ainda. O que já foi mapeado:
+- **Competições:** Copa do Mundo (`f/q`; no 1º ano, 32 times por cota; depois, 48 vindos das eliminatórias), as eliminatórias das 6 confederações (`f/n`, `f/l_0`, `f/i_0`, `f/j` com a repescagem, `f/k`, `f/m_0`), Copa América (`f/d`), Euro (`f/p`) e as outras copas continentais, Finalíssima (`f/k_0`) e Liga das Nações (`f/M`, `f/n_0`). Os ciclos de 2 e 4 anos estão no `f_0.ac()` (`f_0.java:710-946`). Todas as competições de seleções dividem as 8 datas do tipo 7.
+- **Técnico:** convites `cS`/`cSempregado` (`ay.java:44-155`, tabela pela reputação). O humano treina clube e seleção ao mesmo tempo (`al.fg()` e `al.jo()`); aceitar não tira o clube.
+- **Elenco:** montagem automática `Z.z` (`Z.java:654-796`: 23 por posição e lado, gerando jogadores quando o país tem poucos); convocação do humano `cO` (`a/aP.java`: de 2 a 3 goleiros, de 15 a 27 de linha).
+- **`ponytail:` que esperam esta fase:** `posjogo.ts:233` (Copa do Mundo ×5 na renda), `partida.ts:257` (o "clube" do jogador nas seleções) e `mercado.ts:590` (`jP`).
 
 ### Fase 7 — Atualização de elencos por API
 
@@ -436,9 +457,9 @@ Sons, conquistas/troféus (72 PNGs), ajustes de balanceamento do multiplayer, ar
 ### Dependências
 
 ```
-F0 ─► M1..M6 ─► W1..W8 ─► U1..U8 ─► D1..D3
+F0 ─► M1..M6 ─► W1..W8 ─► U1..U8 ─► I1..I6 ─► 6B ─► D1..D3
  │                  ▲        ▲
- └─► S1..S7 ────────┴────────┘      Fase 6 depois de W; Fase 7 só depende de F0-4
+ └─► S1..S7 ────────┴────────┘      Fase 7 só depende de F0-4
 ```
 
 A fase 3 (servidor) não depende do motor completo: pode correr em paralelo às fases 1–2 usando um `avançarRodada` falso. U1–U3 podem começar com um mundo só com a Série A.

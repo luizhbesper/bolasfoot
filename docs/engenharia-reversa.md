@@ -263,7 +263,7 @@ senão se 2ºT e minuto≥5: substituições da IA
 | `cO` | convocação | 1º dia de seleções |
 | `cPromocao` | ofertas de emprego (`ay.zw`) | após a rodada 20 da liga |
 | `cD` | monta Copa do Brasil e Série D a partir de estaduais e regionais | 1º dia de liga |
-| `cw` | sorteio internacional | antes do último dia de continental 1 |
+| `cw` | monta o Mundial (`f/a_0.zC`; não é sorteio) | antes do último dia de continental 1 |
 
 - **Pendentes:** o jogo só para em dia de jogo. Depois dos jogos do dia D, `q(0)` roda os eventos de dia (`ds`, `dJ`, `aj`) de todos os dias até D. Em seguida `az()` avança para o próximo dia de jogo D′, e `q(1)` roda os eventos pós-jogo de todos os dias até D′. Por isso o `cD` do 1º dia de liga roda **antes** dos jogos desse dia: a Série D e a Copa já começam nele, com a tabela das séries ainda zerada. A troca de nome é do decompilador: `r()` devolve a lista `q`, e `s()` a lista `r`.
 - Torneios de seleções seguem ciclos de 2 ou 4 anos.
