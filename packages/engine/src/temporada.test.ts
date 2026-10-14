@@ -74,6 +74,6 @@ describe('fim de temporada', () => {
     expect((comp('BR-4').fases[0] as FaseLiga).times).toEqual(expect.arrayContaining(m.historico.filter((x) => x.competicao === 'BR-3')[0]!.cairam))
     fimDeTemporada(m, B)
     expect(m.temporada).toBe(3)
-    expect(criarRng(JSON.stringify(m)).int(1e9)).toMatchInlineSnapshot(`944747567`)
+    expect(criarRng(JSON.stringify(m)).int(1e9)).toMatchInlineSnapshot(`115541320`)
   }, 20_000)
 })

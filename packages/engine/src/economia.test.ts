@@ -3,7 +3,7 @@ import type { Base } from '@bolasfoot/data'
 import { describe, expect, it } from 'vitest'
 import { datas, TIPO } from './calendario.ts'
 import { avancarDia, type FaseLiga } from './competicoes.ts'
-import { abrirCaixa, iniciarObra, orcamentoObra, pagarEmprestimo, pegarEmprestimo, salarioJogador, tetoEstadio, valorJogador } from './economia.ts'
+import { abrirCaixa, iniciarObra, lancamentos, orcamentoObra, pagarEmprestimo, pegarEmprestimo, salarioJogador, tetoEstadio, valorJogador } from './economia.ts'
 import { mundoSintetico } from './fixtures.ts'
 import { novoJogo } from './mundo.ts'
 
@@ -50,12 +50,14 @@ describe('caixa', () => {
     const f = abrirCaixa(m, 0)
     expect(f.caixa).toBe(15_000_000)
     let n = 0
-    while (pegarEmprestimo(t)) n++
+    while (pegarEmprestimo(t, m.dia)) n++
     expect(n).toBe(10)
     expect(f.emprestimo).toBe(5_000_000)
     expect(f.juros).toBe(150_000)
-    expect(pagarEmprestimo(t)).toBe(true)
+    expect(pagarEmprestimo(t, m.dia)).toBe(true)
     expect(f.juros).toBe(135_000)
+    // o empréstimo entra no extrato: caixa = saldo inicial + lançamentos
+    expect(f.caixa - lancamentos(f).reduce((s, l) => s + l.valor, 0)).toBe(15_000_000 - f.receitas.patrocinio)
   })
 
   it('obra: custo por faixa, prazo e teto por temporada (bug do pa[1] corrigido)', () => {
@@ -91,6 +93,13 @@ describe('temporada com um humano', () => {
     expect(meses).toBeLessThanOrEqual(12)
     expect(f.receitas.bilheteria).toBeGreaterThan(0)
     expect(f.caixa).toBe(inicial + Object.values(f.receitas).reduce((a, b) => a + b, 0) - f.receitas.patrocinio - Object.values(f.despesas).reduce((a, b) => a + b, 0))
+  })
+
+  it('o extrato fecha com o caixa, lançamento a lançamento', () => {
+    const l = lancamentos(f)
+    // o 1º lançamento é o patrocínio que já veio no caixa inicial
+    expect(inicial - l[0]!.valor + l.reduce((s, x) => s + x.valor, 0)).toBe(f.caixa)
+    expect(l.filter((x) => x.cat === 'salarios').length).toBe(f.despesas.salarios / l.find((x) => x.cat === 'salarios')!.valor * -1)
   })
 
   it('Série D e Copa começam no 1º dia de liga, com a tabela zerada', () => {

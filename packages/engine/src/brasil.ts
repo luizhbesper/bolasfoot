@@ -178,7 +178,7 @@ export function registrarColocacoes(mundo: Mundo, c: Competicao): void {
   classificacaoFinal(c).forEach((time, i) => {
     const t = mundo.times[time]!
     // ah.a → c (ah.java:803): prêmio de colocação de liga e estadual para humanos
-    if (t.financas) premioColocacao(t, c, i + 1)
+    if (t.financas) premioColocacao(t, c, i + 1, mundo.dia)
     // ah.a → b + al.b: reputação, pontos de carreira e títulos
     colocacaoTecnico(mundo, c, time, i + 1)
     if (c.tipo === TIPO.estadual && t.divisao === 0) mundo.colocacoesEstaduais.push({ uf: c.uf!, divisao: c.divisao, time, pos: i + 1 })
