@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import type { ResumoRodada } from '../../../../lib/game/rodada.ts'
 import { Icone } from '../../../_ui/icones.tsx'
-import { ChipPosicao, Escudo } from '../../../_ui/ui.tsx'
+import { ChipPosicao, Escudo, fundoEstadio } from '../../../_ui/ui.tsx'
 import { enviarComandosAcao } from '../acoes.ts'
 import { BotaoPronto, Prontos, Relogio } from '../casca.tsx'
 import { useJogo, useRelogio, type EstadoFase } from '../contexto.tsx'
@@ -178,7 +178,7 @@ function Placar({ p, pt, m, dias }: { p: PartidaLog; pt: Ponto; m: Mundo | null;
   const sede = p.sede ? m?.times[p.sede.time] : null
   const sobre = [[p.compNome, etapa].filter(Boolean).join(', '), p.sede && `Final em ${p.sede.cidade}`, (sede ?? t(0))?.estadio.nome].filter(Boolean).join(' · ')
   return (
-    <section className={s.placar} style={{ '--c0': t(0)?.cor1 ?? 'transparent', '--c1': t(1)?.cor1 ?? 'transparent' } as CSSProperties}>
+    <section className={s.placar} style={{ '--c0': t(0)?.cor1 ?? 'transparent', '--c1': t(1)?.cor1 ?? 'transparent', '--estadio': fundoEstadio(p.times[0]!) } as CSSProperties}>
       <div className={s.sobre}>{sobre}</div>
       <div className={s.confronto}>
         <div className={s.clube}>

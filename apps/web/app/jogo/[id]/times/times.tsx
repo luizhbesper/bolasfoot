@@ -3,6 +3,7 @@
 import { BRA, folha, type Comando, type Mundo, type TimeM } from '@bolasfoot/engine'
 import { useState } from 'react'
 import { Gaveta } from '../../../_ui/gaveta.tsx'
+import { SalaDeTrofeus } from '../../../_ui/trofeu.tsx'
 import { ChipPosicao, Escudo, Forca, tomForca } from '../../../_ui/ui.tsx'
 import { useComandos, type Comandos } from '../comandos.tsx'
 import { dataLonga, dinheiro, jogadoresDe, NOME_DIVISAO } from '../consultas.ts'
@@ -50,6 +51,7 @@ function ListaTimes({ m, inicial, paises, k }: { m: Mundo; inicial: TimeM | null
   const elenco = t ? jogadoresDe(m, t.jogadores).sort((a, b) => a.posicao - b.posicao || b.forca - a.forca) : []
   const forcas = elenco.map((j) => j.forca)
   const tecnico = t ? m.tecnicos[t.tecnico] : undefined
+  const titulos = t ? m.historico.filter((h) => h.campeao === t.id) : []
   const sel = aberto === null ? null : m.jogadores[aberto]!
 
   return (
@@ -94,6 +96,7 @@ function ListaTimes({ m, inicial, paises, k }: { m: Mundo; inicial: TimeM | null
                 <div>Folha <strong style={{ color: 'var(--text)' }}>{dinheiro(folha(m, t))}</strong></div>
               </div>
             </div>
+            {titulos.length > 0 && <SalaDeTrofeus titulos={titulos} />}
           </div>
           <div className="rolagem">
             <table className="tabela" style={{ minWidth: 560 }}>

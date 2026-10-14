@@ -12,9 +12,15 @@ elencos são os de julho/2026, não os de janeiro. Para refazer:
 3. `pnpm --filter @bolasfoot/data build:2026`: só troca os times. O Brasil entra com Nivel ≥ 8 (273 clubes), e cada país
    estrangeiro com os de maior Nivel até a cota que o original tem nele (461), para o mundo ficar do mesmo tamanho. Países,
    UFs, ligas, estaduais, opções e nomes vêm do original.
-4. Extrair do .rar `teams/{escudos,escudosMini,camisas,camisas2,camisas3}/<fileRef>.png` dos clubes novos para
-   `data-cache/mod26/teams` e rodar `pnpm assets`, que copia sem sobrescrever o original. Ficaram sem escudo 5 clubes com
-   acento no nome do arquivo (capitaopoçppa_br, confiaçapb_br, depcuenca_equ, sãoraimundoam_br, unionsaintgilloise_bel).
+4. Arte do mod (F8): `bsdtar -xf "MOD PROJETO BRASFOOT JULHO 26.rar" -C data-cache/mod26 --exclude '*.exe' 'trofeus/*'
+   'img/*' 'sons/*' 'teams/escudos/*' 'teams/escudosMini/*' 'teams/camisas*/*'`, `sips -Z 1024 -s formatOptions 70 data-cache/mod26/img/e*.jpg`
+   (de ~0,9 MB para ~0,1 MB cada; o fundo vai esmaecido) e `pnpm assets`. O script copia sem
+   sobrescrever o original: os 296 troféus (o original tem 72; nomes acertados para a web, que diferencia caixa:
+   `TR_` → `tr_`, `_D1` → `_d1`, `tur` → `TUR`), os fundos de estádio `img/e01–e16.jpg` (o `f03` do mod é o `f01` do
+   original) e os escudos e camisas dos clubes das duas bases (não os 8.400 do mod). Os acentos vêm em NFD no .rar e são
+   normalizados para NFC; `depcuenca_equ` e `unionsaintgilloise_bel` usam a arte de `deportivocuenca_equ` e `union_bel`.
+   Os 7 sons do mod substituem os do original (44,1 kHz estéreo contra 8 kHz mono, alguns com 0,1 s). Gera também
+   `apps/web/app/_ui/trofeus.json`, a lista que o `trofeu.tsx` usa no lugar do `aq.w` (o arquivo existe?).
 
 Na simulação, a força dos 11 melhores da Série A nasce com ~51 (o original nasce com ~48).
 

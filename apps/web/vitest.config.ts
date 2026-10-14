@@ -11,6 +11,7 @@ url.pathname = '/bolasfoot_test'
 process.env.DATABASE_URL = url.href // globalSetup e workers herdam
 
 export default defineConfig({
+  oxc: { jsx: { runtime: 'automatic' } }, // o tsconfig do Next deixa o JSX em preserve
   test: {
     globalSetup: './lib/db/teste-setup.ts',
     fileParallelism: false, // um banco só para todos os arquivos
