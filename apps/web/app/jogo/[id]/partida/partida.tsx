@@ -8,7 +8,7 @@ import type { ResumoRodada } from '../../../../lib/game/rodada.ts'
 import { Icone } from '../../../_ui/icones.tsx'
 import { ChipPosicao, Escudo } from '../../../_ui/ui.tsx'
 import { enviarComandosAcao } from '../acoes.ts'
-import { BotaoPronto, Relogio } from '../casca.tsx'
+import { BotaoPronto, Prontos, Relogio } from '../casca.tsx'
 import { useJogo, useRelogio, type EstadoFase } from '../contexto.tsx'
 import { dataLonga, etapaDoJogo } from '../consultas.ts'
 import { ESTILOS, JOGADAS, MARCACOES } from '../escalacao/escalacao.tsx'
@@ -127,7 +127,7 @@ export function Partida({ log, pendentes }: { log: Log | null; pendentes: Comand
         <span className={s.titulo}>{log?.resumo.dias[0] !== undefined ? dataLonga(log.resumo.dias[0]) : 'Partida'}</span>
         <span className={`etiqueta ${aoVivo ? 'menta' : noIntervalo ? 'pessego' : ''}`}>{aoVivo && <span className={s.ponto} />}{titulo}</span>
         <span style={{ flex: 1 }} />
-        {!aoVivo && !atrasado && <Relogio />}
+        {noIntervalo ? <Prontos /> : !aoVivo && !atrasado && <Relogio />}
         {noIntervalo && eu.tecnicoId !== null && <BotaoPronto />}
         {!aoVivo && !noIntervalo && !atrasado && <Link href={`/jogo/${jogo}`} className={`${s.cta} primario`}>Continuar <Icone nome="seta" /></Link>}
         <button className={s.som} onClick={() => setSom(!somLigado)} aria-pressed={somLigado} aria-label={somLigado ? 'Desligar som' : 'Ligar som'}
