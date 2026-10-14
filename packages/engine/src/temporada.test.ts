@@ -10,7 +10,7 @@ import { caem, fimDeTemporada, sobem } from './temporada.ts'
 
 const B = base as Base
 let m: Mundo
-let antes: { divisao: number[]; elenco: number; humano: number }
+let antes: { divisao: number[]; elenco: number; humano: number; serieA: number[] }
 const comp = (id: string) => m.competicoes.find((c) => c.id === id)!
 
 beforeAll(() => {
@@ -19,11 +19,16 @@ beforeAll(() => {
   m.times[humano]!.humano = true
   abrirCaixa(m, humano)
   while (avancarDia(m) !== null);
-  antes = { divisao: m.times.map((t) => t.divisao), elenco: m.jogadores.length, humano }
+  antes = { divisao: m.times.map((t) => t.divisao), elenco: m.jogadores.length, humano, serieA: [...(comp('BR-1').fases[0] as FaseLiga).times] }
   fimDeTemporada(m, B)
 })
 
 describe('fim de temporada', () => {
+  it('séries do ano novo na ordem da tabela velha: sai quem caiu, quem subiu vai para o fim (Z.ee)', () => {
+    const h = (id: string) => m.historico.find((x) => x.competicao === id && x.temporada === 1)!
+    expect((comp('BR-1').fases[0] as FaseLiga).times).toEqual([...antes.serieA.filter((t) => !h('BR-1').cairam.includes(t)), ...h('BR-2').subiram])
+  })
+
   it('acesso e rebaixamento: 4 trocas entre A/B, B/C e C/D; a D volta para fora das séries', () => {
     const h = (id: string) => m.historico.find((x) => x.competicao === id && x.temporada === 1)!
     for (const [cima, baixo] of [['BR-1', 'BR-2'], ['BR-2', 'BR-3'], ['BR-3', 'BR-4']] as const) {
@@ -74,6 +79,6 @@ describe('fim de temporada', () => {
     expect((comp('BR-4').fases[0] as FaseLiga).times).toEqual(expect.arrayContaining(m.historico.filter((x) => x.competicao === 'BR-3')[0]!.cairam))
     fimDeTemporada(m, B)
     expect(m.temporada).toBe(3)
-    expect(criarRng(JSON.stringify(m)).int(1e9)).toMatchInlineSnapshot(`532944838`)
+    expect(criarRng(JSON.stringify(m)).int(1e9)).toMatchInlineSnapshot(`36362452`)
   }, 20_000)
 })

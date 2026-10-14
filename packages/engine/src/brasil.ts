@@ -153,13 +153,14 @@ function criarRegionais(mundo: Mundo, base: Base, rng: Rng): Competicao[] {
  * Séries A–C, estaduais e regionais. A Série D (pelos estaduais) e a Copa do Brasil
  * nascem no evento cD, no 1º dia da liga. Fonte: best/Z.java:112-228 (Ar), best/p_0.java:130-150 (dg)
  */
-export function criarCompeticoesBR(mundo: Mundo, base: Base, rng: Rng, estaduais?: Map<number, number[][]>): Competicao[] {
+export function criarCompeticoesBR(mundo: Mundo, base: Base, rng: Rng, estaduais?: Map<number, number[][]>, series?: Map<number, number[]>): Competicao[] {
   const comps: Competicao[] = []
   for (const cfg of base.ligas) {
     const c: Competicao = { id: `BR-${cfg.divisao}`, nome: `${cfg.nome} ${cfg.nomeDivisao}`, tipo: TIPO.liga, divisao: cfg.divisao, fases: [], campeao: null, vice: null, rebaixados: cfg.nRebaixados }
     if (cfg.divisao === 4) c.opcoes = opcoesDaConfig(cfg)
     else {
-      const times = timesBR(mundo).filter((t) => t.divisao === cfg.divisao).map((t) => t.id).sort(porNivel(mundo))
+      // 1ª temporada pelo Nivel; depois, a ordem da tabela velha (Z.ee: remove quem caiu, quem subiu vai para o fim)
+      const times = series?.get(cfg.divisao) ?? timesBR(mundo).filter((t) => t.divisao === cfg.divisao).map((t) => t.id).sort(porNivel(mundo))
       c.fases.push(criarFaseLiga(mundo, c, times, opcoesDaConfig(cfg), mundo.dia, rng))
     }
     comps.push(c)
