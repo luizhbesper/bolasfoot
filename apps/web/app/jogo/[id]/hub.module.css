@@ -43,6 +43,10 @@
 .proximo {
   flex: none;
   padding: 20px 24px;
+  /* o estádio do mandante, esmaecido */
+  background:
+    linear-gradient(color-mix(in srgb, var(--surface) 86%, transparent), color-mix(in srgb, var(--surface) 86%, transparent)),
+    var(--estadio) center 35% / cover var(--surface);
   display: flex;
   flex-direction: column;
   gap: 18px;

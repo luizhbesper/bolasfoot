@@ -11,7 +11,7 @@ import {
 } from './competicoes.ts'
 import { porNivelReputacao } from './brasil.ts'
 import type { Mundo } from './mundo.ts'
-import type { Rng } from './rng.ts'
+import { derivar, type Rng } from './rng.ts'
 
 /** [país, vagas] (components.am). */
 type Cota = readonly [number, number]
@@ -27,6 +27,11 @@ const LIB_GRUPOS: Cota[] = [[BRA, 5], [ARG, 5], [195, 2], [150, 2], [42, 2], [46
 const LIB_PRELIM = c1(26, 60, 150, 151, 195, 198, ARG, 26, BRA, BRA, 42, 42, 46, 46, 60, 150, 151, 195, 198)
 /** f/H.java:28-48 */
 const SUL_GRUPOS: Cota[] = [[BRA, 3], [BRA, 3], [ARG, 6]]
+/** Vagas nominais do Brasil na Libertadores (grupos + preliminar) e na Sul-Americana: a prévia da tabela da Série A. */
+export function vagasContinentaisBR(): { libertadores: number; sulAmericana: number } {
+  const n = (l: readonly Cota[]) => l.reduce((s, [p, k]) => s + (p === BRA ? k : 0), 0)
+  return { libertadores: n(LIB_GRUPOS) + n(LIB_PRELIM), sulAmericana: n(SUL_GRUPOS) }
+}
 const SUL_PRELIM: Cota[] = [26, 42, 46, 60, 150, 151, 195, 198].map((p) => [p, 4] as const)
 /** f/v.java:27-110 */
 const UCL_GRUPOS = c1(97, 65, 104, ALE, FRA, 154, 85, 21, 15, 62, 193, 97, 65, 104, ALE, FRA, 154, 97, 65, 104, ALE, 97, 65, 104)
@@ -208,6 +213,38 @@ const porLinha = (f: FaseLiga) => (a: number, b: number) => compararLinha(f.linh
 
 function competicao(id: string, nome: string, tipo: number, confederacao: number): Competicao {
   return { id, nome, tipo, divisao: 0, fases: [], campeao: null, vice: null, confederacao, listas: {} }
+}
+
+// ── Sede rotativa das finais (mF) ─────────────────────────────────────────
+
+/** País-sede e cidade da final, por temporada ((H()-1) % 10). Fontes: f/r.java:615-630, f/H.java:245-258,
+ * f/v.java:562-575, f/x.java:430-443, f/j_0.java:713-726 (mF e yD) */
+const SEDES: Record<string, { paises: number[]; cidades: string[] }> = {
+  LIB: { paises: [42, 11, 29, 46, 150, 195, 26, 198, 60, 151], cidades: ['Santiago', 'Buenos Aires', 'Rio de Janeiro', 'Bogotá', 'Assunción', 'Montevidéu', 'La Paz', 'Caracas', 'Quito', 'Lima'] },
+  SUL: { paises: [11, 29, 150, 42, 46, 151, 195, 26, 198, 60], cidades: ['Assunção', 'Lima', 'São Paulo', 'Caracas', 'Quito', 'Medellín', 'La Paz', 'Montevidéu', 'Santiago', 'Córdoba'] },
+  UCL: { paises: [192, 162, 3, 104, 154, 97, 72, 152, 65, 52], cidades: ['Istambul', 'São Petersburgo', 'Munique', 'Roma', 'Lisboa', 'Londres', 'Paris', 'Varsóvia', 'Madrid', 'Zagreb'] },
+  UEL: { paises: [152, 65, 52, 31, 21, 154, 3, 72, 162, 97], cidades: ['Gdansk', 'Sevilla', 'Zagreb', 'Sofia', 'Bruxelas', 'Porto', 'Frankfurt', 'Lyon', 'Moscou', 'Liverpool'] },
+  UECL: { paises: [152, 65, 52, 31, 21, 154, 3, 72, 162, 97], cidades: ['Gdansk', 'Sevilla', 'Zagreb', 'Sofia', 'Bruxelas', 'Porto', 'Frankfurt', 'Lyon', 'Moscou', 'Liverpool'] },
+}
+
+/**
+ * Sede da final das continentais (tipos 4/6/12 da UEFA e da CONMEBOL): o estádio de um clube do país-sede, entre os 6
+ * maiores do país (SR.cc, por capacidade). Continental 2 (tipo 6): qualquer um dos 6; as outras: um dos 2 maiores.
+ * Não é campo neutro: o mando continua. Sem clube no país, fica o estádio do mandante (null).
+ * Fonte: best/I.java:187-197, best/Z.java:1295-1322 (C)
+ */
+export function sedeDaFinal(m: Mundo, c: Competicao): { cidade: string; time: number } | null {
+  const s = SEDES[c.id]
+  if (!s || (c.tipo !== TIPO.continental1 && c.tipo !== TIPO.continental2 && c.tipo !== TIPO.conference)) return null
+  const k = (m.temporada - 1) % 10
+  const cap = (id: number) => m.times[id]!.estadio.setores.reduce((a, b) => a + b, 0)
+  const maiores = m.times.filter((t) => t.pais === s.paises[k]).map((t) => t.id).sort((a, b) => cap(b) - cap(a)).slice(0, 6)
+  // um sorteio por final (ida e volta no mesmo estádio), do RNG do motor
+  const rng = derivar(m.seed, `sede:${c.id}:${m.temporada}`)
+  // Z.C(true): nextInt(2) fora da lista dá null no original (o get(0) é descartado); aqui, cai no maior
+  const i = c.tipo === TIPO.continental2 ? (maiores.length ? rng.int(maiores.length) : 0) : rng.int(2)
+  const time = maiores[i] ?? maiores[0]
+  return time === undefined ? null : { cidade: s.cidades[k]!, time }
 }
 
 /** Avisa o técnico humano de cada time (os `as` do original). */

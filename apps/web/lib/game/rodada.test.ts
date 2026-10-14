@@ -3,6 +3,7 @@ import { beforeEach, expect, test } from 'vitest'
 import { db } from '../db/index.ts'
 import { gameMembers, games, roundLogs, rounds, snapshots, users, type FaseRodada } from '../db/schema.ts'
 import { limpar } from '../db/teste.ts'
+import { tecnicosEmCampo } from '@bolasfoot/engine'
 import { criarJogo } from './admin.ts'
 import { base } from './base.ts'
 import { batida, carregarMundo, comandosPendentes, comecarJogo, definirComandos, enviarComandos, marcarReady, pausar, retomar, sha256, transicionar, vigiarPresenca } from './rodada.ts'
@@ -92,6 +93,30 @@ test('todos prontos resolvem; concorrência resolve uma vez; seed revelada confe
   expect((await rodada(4)).seed).toBeNull()
   expect((await db().select().from(snapshots).where(eq(snapshots.n, 4)))).toHaveLength(1)
 })
+
+test('só quem tem jogo precisa ficar pronto', async () => {
+  const membros = await db().select().from(gameMembers).where(eq(gameMembers.gameId, jogo))
+  const tecnico = new Map(membros.map((x) => [x.userId, x.tecnicoId!]))
+  await db().update(games).set({ mode: 'daily' }).where(eq(games.id, jogo)) // sem o ao vivo: menos fases até lá
+  // anda até um planejamento em que só um dos dois joga
+  let emCampo: number[]
+  for (;;) {
+    const g = await jogoAtual()
+    if ((await rodada(g.round)).phase === 'planejamento') {
+      emCampo = tecnicosEmCampo(await carregarMundo(db(), jogo, g.round, 0))
+      if (emCampo.includes(tecnico.get(ana!)!) !== emCampo.includes(tecnico.get(bia!)!)) break
+    }
+    await vencer()
+    await transicionar(db(), jogo)
+  }
+  const [joga, fora] = emCampo.includes(tecnico.get(ana!)!) ? [ana!, bia!] : [bia!, ana!]
+  const n = (await jogoAtual()).round
+  await enviarComandos(db(), jogo, fora, [{ tipo: 'tatica', estilo: 2 }]) // quem não joga ainda mexe
+  await marcarReady(db(), jogo, joga, true)
+  expect((await jogoAtual()).round > n || (await rodada(n)).phase !== 'planejamento').toBe(true)
+  const [log] = await db().select().from(roundLogs).where(and(eq(roundLogs.gameId, jogo), eq(roundLogs.n, n)))
+  expect((log!.data as { resultados: unknown[] }).resultados).toHaveLength(1) // o comando de quem não joga entrou
+}, 60_000)
 
 test('prazo vencido sem pronto automático espera todos; o admin força', async () => {
   const { gameSettings } = await import('../db/schema.ts')

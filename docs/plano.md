@@ -173,7 +173,7 @@ Jogar sozinho é só um jogo com um membro: ready imediato, sem esperar ninguém
 ```
             ┌────────────────────────────────────────────────────────┐
             ▼                                                        │
-  PLANEJAMENTO ──(todos ready OU prazo)──► RESOLUÇÃO ──► AO_VIVO_1T  │
+  PLANEJAMENTO ──(ready de quem joga OU prazo)──► RESOLUÇÃO ──► AO_VIVO_1T  │
   · baixa snapshot                         · trava comandos  │       │
   · edita escalação, mercado, etc.         · revela seed     ▼       │
   · ready / unready                        · aplica comandos INTERVALO (só modo live)
@@ -184,6 +184,8 @@ Jogar sozinho é só um jogo com um membro: ready imediato, sem esperar ninguém
 ```
 
 Todos os prazos vêm de `game_settings`.
+
+**Quem precisa ficar pronto:** só os técnicos com jogo na rodada (`tecnicosEmCampo`; no intervalo, os das partidas em andamento). Quem não joga continua editando, e os comandos salvos entram na resolução; na barra, aparece esmaecido com "sem jogo". Parada sem jogo de ninguém (proposta de emprego, virada de temporada): todos.
 
 - **Modo live** (vocês numa call): prazos curtos, todos assistem juntos.
 - **Modo daily:** mesma máquina, prazo = `daily_resolve_at`. Sem intervalo: o time humano usa as regras de substituição da IA (piloto automático, configurável na escalação). O próximo login mostra o **resumo** do que aconteceu desde a última visita (resultados, tabela, eventos do elenco, caixa de entrada).
@@ -298,7 +300,7 @@ Começa fechando as **lacunas** listadas no fim de `engenharia-reversa.md`, cada
 - **W1:** `calendario.ts`, com datas absolutas (dias desde 1970) e a sequência `a.g()` inteira. Bate data a data com o original em 2022 e 2026 (`tools/calendario.sh <ano>` → `ref-calendario-<ano>.json`). `Mundo.dia` agora é absoluto e o `Mundo.calendario` é o da temporada corrente.
 - **W2:** a parte genérica está em `competicoes.ts`: fase de liga/grupos, mata-mata, tabela, desempate, colocação final e o `avancarDia`. A parte do Brasil está em `brasil.ts`: as Séries A–D (C no formato 1020; D com os 64 que vêm dos estaduais, `w.Q`), os 18 estaduais (fórmulas 0–10 e os grupos reais do Paulistão), os regionais Nordeste e Verde (`jogaRegionaisTodos = [F,F,T,T]`) e a Copa do Brasil no formato novo (12 times entram na 3ª fase; os campeões do Nordeste e da Verde têm prioridade). Uma temporada só com IA joga 25 competições em cerca de 80 dias de jogo, em ~0,5 s.
   - **cD:** roda antes dos jogos do 1º dia de liga (correção na W3; ver RE "Pendentes").
-  - **Ficou para depois:** os rebaixados da Série C entrarem direto na D, e as colocações do ano anterior nos regionais (W7). A tabela de jogos de grupo ímpar, de 6 em dois turnos e de 11 times usa o círculo com folga, não as tabelas fixas do `t.java`: muda a ordem dos jogos, não o formato. O `desempateEstadual` está em 0 em todos os estaduais e não foi portado. O humano escala pela IA até a W8. As vagas da Libertadores na Copa entram na Fase 6.
+  - **Ficou para depois:** o `desempateEstadual` está em 0 em todos os estaduais e não foi portado. O humano escala pela IA até a W8. As vagas da Libertadores na Copa entram na Fase 6.
 - **W3:** `economia.ts`.
   - Valor, salário e contrato do jogador (o mundo já nasce com eles).
   - Caixa só para os times humanos (`abrirCaixa`), com extrato da temporada.
@@ -328,10 +330,10 @@ Começa fechando as **lacunas** listadas no fim de `engenharia-reversa.md`, cada
 - **W7:** `temporada.ts`.
   - `fimDeTemporada(mundo, base)` vira o ano na ordem do `f_0.aa`.
   - Histórico de cada competição (campeão, vice, colocação, quem subiu e caiu) e hall da fama (gols e jogos na carreira).
-  - Acesso e rebaixamento nas séries e nos estaduais. O "quem sobe" (`s.l`) foi lido do bytecode, porque o decompilador perdia o ramo do mata-mata. Os rebaixados da C entram primeiro na D seguinte.
+  - Acesso e rebaixamento nas séries e nos estaduais. O "quem sobe" (`s.l`) foi lido do bytecode, porque o decompilador perdia o ramo do mata-mata. Os rebaixados da C entram primeiro na D seguinte (já feito: `SR.bY`, `timesSerieD`).
   - Os 12 reservados da próxima Copa, o calendário novo, as reputações, a lista da IA, o patrocínio, o envelhecimento com juniores novos, a janela da IA e as demissões.
   - Em 5 temporadas de teste: cerca de 0,6 s por temporada e campeões variados (Série A: Flamengo, Palmeiras ×2, Flamengo, Corinthians). Os juniores sobem ~2,5 por time ao ano até o teto de 15–20 e os elencos ficam em ~21. O piloto da Série A foi de 15M para 200M, quase tudo em prêmios de títulos.
-  - **Ficou para depois:** Supercopa, continentais, seleções e torneio amistoso (Fase 6). As séries do ano novo saem pelo Nivel, não pela ordem da tabela velha (só muda o desempate de quem fica entre os 16 dos regionais). Estatísticas de temporada (artilharia, notas): Fase 4, junto com a tela que as mostra.
+  - **Ficou para depois:** Supercopa, continentais, seleções e torneio amistoso (Fase 6). (Feito depois, na T4: as séries do ano novo saem na ordem da tabela velha, como no `Z.ee`; os regionais recebem as colocações estaduais que sobram depois do cD, `p_0.di`; e as tabelas fixas do `t.java` para 3, 4-7700, 5, 6, 9, 11, 19 e 25 times.) Estatísticas de temporada (artilharia, notas): Fase 4, junto com a tela que as mostra.
 
 - **W8:** `rodada.ts`.
   - `avancarRodada`/`continuarRodada`, `validar` e os comandos tipados (detalhe em `docs/fase2.md`). O dia em dois tempos (`comecarDia`/`terminarDia`) para o intervalo do modo live; sem intervalo, piloto automático.
@@ -437,13 +439,14 @@ Continentais das 6 confederações (fora da CONMEBOL, só IA, porque o Mundial p
 - **Tempo:** a temporada leva ~1,1 s (era ~0,6 s).
 - **Caixa do piloto:** pode passar de 250M em 10 anos com os prêmios continentais.
 - **UI:** a fase ganha nome próprio ("Preliminar Fase 2", "Fase de grupos"). As competições ficam agrupadas (Brasil, América do Sul, Mundial, outras confederações). Os estrangeiros podem ser filtrados por continente, e a caixa de entrada tem o aviso "Competição" (quem cai da Libertadores para a Sul-Americana).
-- **Ficou para depois:** o convidado mexicano da Libertadores (`r.yx`); a sede rotativa das finais (`mF`), que hoje é campo neutro só no Mundial; a Supercopa dos outros países (só o Brasil tem liga). Os rótulos foram conferidos por script; o teste no navegador ficou pendente porque a extensão do Chrome não estava conectada.
+- **Sede rotativa das finais (`mF`), feita na T3:** a final da LIB, SUL, UCL, UEL e UECL vai para o estádio de um clube do país-sede da temporada (um dos 2 maiores; um dos 6 na continental 2). O mando continua; público e renda saem desse estádio, e a tela da partida mostra "Final em <cidade>".
+- **Ficou para depois:** o convidado mexicano da Libertadores (`r.yx`), código morto porque o México não tem vaga; a Supercopa dos outros países, porque nenhum país estrangeiro tem liga no port. Os rótulos foram conferidos por script; o teste no navegador ficou pendente porque a extensão do Chrome não estava conectada.
 
 **Notas vindas da F0:** todos os estrangeiros (menos ESP) já estão no `base.json`. A seleção dos participantes é por cota de país, não por flag no time (ver `engenharia-reversa.md`, "Dados e seleção de times").
 
-### Fase 6B — Seleções
+### Fase 6B — Seleções — FORA DO MVP (2026-10-14)
 
-Sem tickets ainda. O que já foi mapeado:
+Descartada por ora: não interessa para o MVP. O mapeamento fica para se um dia voltar:
 - **Competições:** Copa do Mundo (`f/q`; no 1º ano, 32 times por cota; depois, 48 vindos das eliminatórias), as eliminatórias das 6 confederações (`f/n`, `f/l_0`, `f/i_0`, `f/j` com a repescagem, `f/k`, `f/m_0`), Copa América (`f/d`), Euro (`f/p`) e as outras copas continentais, Finalíssima (`f/k_0`) e Liga das Nações (`f/M`, `f/n_0`). Os ciclos de 2 e 4 anos estão no `f_0.ac()` (`f_0.java:710-946`). Todas as competições de seleções dividem as 8 datas do tipo 7.
 - **Técnico:** convites `cS`/`cSempregado` (`ay.java:44-155`, tabela pela reputação). O humano treina clube e seleção ao mesmo tempo (`al.fg()` e `al.jo()`); aceitar não tira o clube.
 - **Elenco:** montagem automática `Z.z` (`Z.java:654-796`: 23 por posição e lado, gerando jogadores quando o país tem poucos); convocação do humano `cO` (`a/aP.java`: de 2 a 3 goleiros, de 15 a 27 de linha).
@@ -472,12 +475,14 @@ Uma segunda base, `base-2026.json`, com os elencos de 2026 e os formatos naciona
 
 ### Fase 8 — Polimento
 
-Sons, conquistas/troféus (72 PNGs), ajustes de balanceamento do multiplayer, arte própria aos poucos.
+Sons, conquistas/troféus, ajustes de balanceamento do multiplayer, arte própria aos poucos.
+
+**Entregue (2026-10-14), com a arte do mod "Projeto Brasfoot julho/26"** (receita em `docs/fase7.md`): 296 troféus (o original tem 72), mapa competição → troféu portado do `mA()` (`app/_ui/trofeu.tsx`), sala de troféus no hub e na tela do time, troféus na carreira do técnico, no resumo da temporada e na História; fundos de estádio `e01–e16` esmaecidos no placar e no próximo jogo; sons do mod (44,1 kHz) no lugar dos do original (8 kHz). Balanceamento e arte própria esperam um teste real pedir.
 
 ### Dependências
 
 ```
-F0 ─► M1..M6 ─► W1..W8 ─► U1..U8 ─► I1..I6 ─► 6B ─► D1..D3
+F0 ─► M1..M6 ─► W1..W8 ─► U1..U8 ─► I1..I6 ─► D1..D3   (6B fora do MVP)
  │                  ▲        ▲
  └─► S1..S7 ────────┴────────┘      Fase 7: B1–B4, B8, B9 em paralelo; B5–B7 depois de I1..I6
 ```

@@ -4,16 +4,17 @@
 // é o caminho do celular, onde o arraste nativo não existe.
 // Cada mudança é salva sozinha (escalar + tática + batedores) e validada pelo motor no servidor.
 import {
-  derivar, disponivel, escalarIA, escolherParaSlot, foraDePosicao, FORMACOES, NOMES_FORMACAO, porForca,
+  derivar, disponivel, escalarIA, escolherParaSlot, foraDePosicao, FORMACOES, NOMES_FORMACAO, porForca, SLOTS,
   type Comando, type JogadorM, type Mundo, type TimeM,
 } from '@bolasfoot/engine'
 import { useEffect, useRef, useState, type HTMLAttributes } from 'react'
 import { Camisa } from '../../../_ui/camisa.tsx'
-import { ChipPosicao, Energia, Forca, tomForca } from '../../../_ui/ui.tsx'
+import { Gaveta } from '../../../_ui/gaveta.tsx'
+import { ChipPosicao, Energia, Forca, POSICOES, tomForca } from '../../../_ui/ui.tsx'
 import { definirComandosAcao } from '../acoes.ts'
-import { alerta, proximoJogo } from '../consultas.ts'
+import { alerta, dinheiro, proximoJogo } from '../consultas.ts'
 import { useJogo } from '../contexto.tsx'
-import { caracteristicas } from '../elenco/elenco.tsx'
+import { caracteristicas, Ficha, lado } from '../elenco/elenco.tsx'
 import { Carregando, SemClube } from '../hub.tsx'
 import s from './escalacao.module.css'
 
@@ -63,21 +64,23 @@ function inicial(m: Mundo, t: TimeM, pendentes: Comando[], comp: string): Estado
   }
 }
 
-export function Escalacao({ pendentes }: { pendentes: Comando[] }) {
+export function Escalacao({ pendentes, paises }: { pendentes: Comando[]; paises: string[] }) {
   const { mundo: m, meuTime: t, fase } = useJogo()
   if (!m) return <Carregando />
   if (!t) return <SemClube />
-  const editavel = fase.status === 'running' && fase.fase === 'planejamento'
+  // pausado também: só o relógio para
+  const editavel = (fase.status === 'running' || fase.status === 'paused') && fase.fase === 'planejamento'
   // nova fase = novo snapshot: recomeça do que o servidor tem
-  return <Editor key={`${fase.rodada}:${fase.fase}`} m={m} t={t} pendentes={pendentes} editavel={editavel} />
+  return <Editor key={`${fase.rodada}:${fase.fase}`} m={m} t={t} pendentes={pendentes} editavel={editavel} paises={paises} />
 }
 
-function Editor({ m, t, pendentes, editavel }: { m: Mundo; t: TimeM; pendentes: Comando[]; editavel: boolean }) {
+function Editor({ m, t, pendentes, editavel, paises }: { m: Mundo; t: TimeM; pendentes: Comando[]; editavel: boolean; paises: string[] }) {
   const { jogo } = useJogo()
   const prox = proximoJogo(m, t.id)
   const comp = prox?.compId ?? ''
   const [e, setE] = useState(() => inicial(m, t, pendentes, comp))
   const [sel, setSel] = useState<number | null>(null)
+  const [ficha, setFicha] = useState<number | null>(null)
   const [salvo, setSalvo] = useState<'nada' | 'ok' | 'salvando' | string>('nada')
   const mudou = useRef(false)
 
@@ -257,7 +260,8 @@ function Editor({ m, t, pendentes, editavel }: { m: Mundo; t: TimeM; pendentes: 
                       <span className={`${s.selo} ${foraDePosicao(j.posicao, slot) ? s.foraPos : ''}`}>{j.forca}</span>
                       {!disponivel(j, comp, m.dia) && <span className={s.ausente} title="Não pode jogar">!</span>}
                     </span>
-                    <span className={s.nomeCampo}>{nomeCurto(j)}</span>
+                    <span className={s.nomeCampo}>{nomeCurto(j)}
+                      <span className={`${s.posCampo} ${foraDePosicao(j.posicao, slot) ? s.posFora : ''}`}>{POSICOES[j.posicao]}</span></span>
                   </>
                 ) : <span className={s.vazio}>+</span>}
               </button>
@@ -266,7 +270,7 @@ function Editor({ m, t, pendentes, editavel }: { m: Mundo; t: TimeM; pendentes: 
         </div>
         <p className="mudo" style={{ margin: 0, fontSize: 13 }}>
           {editavel ? (sel === null ? 'Arraste um jogador (ou toque nele e depois no destino) para uma posição, o banco ou outro jogador.' : `${m.jogadores[sel]!.nome} selecionado: escolha para onde ele vai.`)
-            : 'A escalação só muda no planejamento.'}
+            : 'Travada enquanto a rodada roda: as trocas do jogo são no intervalo, na tela da partida. Abre de novo no planejamento.'}
           {' '}Força <strong style={{ color: 'var(--text)' }}>{total}</strong>
           {fora > 0 && <> · <span style={{ color: 'var(--pessego)' }}>{fora} fora de posição</span></>}
         </p>
@@ -274,6 +278,8 @@ function Editor({ m, t, pendentes, editavel }: { m: Mundo; t: TimeM; pendentes: 
       </section>
 
       <section className={s.listas}>
+        {sel !== null && <Cartao m={m} t={t} j={m.jogadores[sel]!} slot={slotDe(e, sel)} banco={e.banco.includes(sel)} forcas={forcas}
+          comp={comp} aoFechar={() => setSel(null)} aoAbrirFicha={() => setFicha(sel)} />}
         <div className={`card ${s.lista} ${sobre === 'banco' ? s.sobreLista : ''}`}
           {...soltavel('banco', (a) => !('banco' in (lugar(e, a) ?? {})) && e.banco.length < MAX_BANCO && mover(a, { banco: e.banco.length }))}>
           <div className="cabecalho">
@@ -300,6 +306,9 @@ function Editor({ m, t, pendentes, editavel }: { m: Mundo; t: TimeM; pendentes: 
           )}
         </div>
 
+        <Gaveta aberta={ficha !== null} titulo={ficha === null ? '' : m.jogadores[ficha]!.nome} aoFechar={() => setFicha(null)}>
+          {ficha !== null && <Ficha m={m} j={m.jogadores[ficha]!} pais={paises[m.jogadores[ficha]!.pais] ?? ''} forcas={forcas} />}
+        </Gaveta>
         <div className="card secao">
           <h2>Batedores</h2>
           <div className={s.taticas}>
@@ -318,6 +327,50 @@ function Editor({ m, t, pendentes, editavel }: { m: Mundo; t: TimeM; pendentes: 
           </div>
         </div>
       </section>
+    </div>
+  )
+}
+
+const slotDe = (e: Estado, id: number) => {
+  const x = Object.entries(e.titulares).find(([, v]) => v === id)
+  return x ? Number(x[0]) : null
+}
+
+/** Cartão do jogador tocado: quem é, onde joga e onde está escalado (para entender o "fora de posição"). */
+function Cartao({ m, t, j, slot, banco, forcas, comp, aoFechar, aoAbrirFicha }: {
+  m: Mundo; t: TimeM; j: JogadorM; slot: number | null; banco: boolean; forcas: number[]; comp: string; aoFechar: () => void; aoAbrirFicha: () => void
+}) {
+  const a = alerta(m, j)
+  const deSlot = slot === null ? null : SLOTS[slot]![0]
+  const fora = slot !== null && foraDePosicao(j.posicao, slot)
+  const gols = Object.values(j.estatisticas ?? {}).reduce((s, x) => s + x[1], 0)
+  return (
+    <div className={`card secao ${s.cartao}`} role="region" aria-label={`Jogador ${j.nome}`}>
+      <div className="linha" style={{ gap: 12, flexWrap: 'nowrap' }}>
+        <Camisa fileRef={t.fileRef} cor1={t.cor1} goleiro={j.posicao === 0} tamanho={40} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <h2 style={{ fontSize: 17, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{j.nome}</h2>
+          <div className="mudo" style={{ fontSize: 12 }}>{j.idade} anos · lado {lado(j) === 'D' ? 'direito' : 'esquerdo'} · {caracteristicas(j)}</div>
+        </div>
+        <button className="fantasma" onClick={aoFechar} aria-label="Fechar">✕</button>
+      </div>
+      <div className="linha" style={{ gap: 8 }}>
+        <ChipPosicao posicao={j.posicao} />
+        {deSlot !== null
+          ? fora
+            ? <span style={{ color: 'var(--pessego)', fontSize: 13 }}>fora de posição: escalado de <strong>{POSICOES[deSlot]}</strong></span>
+            : <span className="mudo" style={{ fontSize: 13 }}>titular na posição dele</span>
+          : <span className="mudo" style={{ fontSize: 13 }}>{banco ? 'no banco' : 'fora do jogo'}</span>}
+        {a && <span className={`etiqueta ${a.cor === 'manteiga' ? '' : a.cor}`}>{a.texto}</span>}
+        {!disponivel(j, comp, m.dia) && !a && <span className="etiqueta rosa">não pode jogar</span>}
+      </div>
+      <div className={s.numerosCartao}>
+        <div><span>Força</span><Forca valor={j.forca} tom={tomForca(j.forca, forcas)} /></div>
+        <div><span>Energia</span><strong>{j.energia}%</strong><div style={{ width: '100%' }}><Energia valor={j.energia} /></div></div>
+        <div><span>Gols</span><strong>{gols}</strong></div>
+        <div><span>Valor</span><strong>{dinheiro(j.valor)}</strong></div>
+      </div>
+      <button onClick={aoAbrirFicha} style={{ alignSelf: 'flex-start' }}>Ficha completa</button>
     </div>
   )
 }

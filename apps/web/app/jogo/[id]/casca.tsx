@@ -109,13 +109,14 @@ function Barra({ titulo }: { titulo: string }) {
   )
 }
 
-/** Quem já está pronto (um avatar por técnico) e o prazo da fase. */
+/** Quem já está pronto (um avatar por técnico com jogo; quem não joga, esmaecido) e o prazo da fase. */
 export function Prontos() {
-  const { membros, prontos } = useJogo()
-  const tecnicos = membros.filter((m) => m.teamRef)
+  const { membros, prontos, joga } = useJogo()
+  const tecnicos = membros.filter((m) => m.tecnicoId !== null)
+  const jogam = tecnicos.filter((m) => joga(m.tecnicoId))
   return (
-    <div className={s.presenca} aria-label={`Técnicos prontos: ${prontos.length} de ${tecnicos.length}`}>
-      {tecnicos.map((m) => <Avatar key={m.id} nome={m.nome} pronto={prontos.includes(m.id)} />)}
+    <div className={s.presenca} aria-label={`Técnicos prontos: ${jogam.filter((m) => prontos.includes(m.id)).length} de ${jogam.length}`}>
+      {tecnicos.map((m) => <Avatar key={m.id} nome={m.nome} pronto={prontos.includes(m.id)} semJogo={!joga(m.tecnicoId)} />)}
       <Relogio />
     </div>
   )
@@ -140,9 +141,10 @@ export function Relogio() {
   return <span className={s.pilula} aria-live="off">{Math.floor(resta / 60)}:{String(resta % 60).padStart(2, '0')}</span>
 }
 
-/** Pronto / não pronto da fase (planejamento e intervalo). */
+/** Pronto / não pronto da fase (planejamento e intervalo); quem não joga não precisa. */
 export function BotaoPronto() {
-  const { jogo, fase, eu, prontos } = useJogo()
+  const { jogo, fase, eu, prontos, joga } = useJogo()
+  if (!joga(eu.tecnicoId)) return <span className="fraco">Sem jogo nesta rodada</span>
   const pronto = prontos.includes(eu.id)
   return (
     <form action={readyAcao}>
@@ -170,11 +172,11 @@ function BotaoPausa() {
 }
 
 function AcaoDaFase() {
-  const { jogo, fase, eu, meuTime } = useJogo()
+  const { jogo, fase, eu, joga } = useJogo()
   if (fase.status !== 'running') return null
   if (fase.fase === 'planejamento') return eu.tecnicoId === null ? null : <BotaoPronto />
   const ir = (texto: string) => <Link href={`/jogo/${jogo}/partida`} className={`${s.cta} primario`}>{texto} <Icone nome="seta" /></Link>
-  if (fase.fase === 'intervalo') return meuTime ? ir('Voltar ao intervalo') : <BotaoPronto />
+  if (fase.fase === 'intervalo') return joga(eu.tecnicoId) ? ir('Voltar ao intervalo') : <BotaoPronto />
   if (fase.fase?.startsWith('ao_vivo')) return ir('Ir para a partida')
   if (fase.fase === 'resultados') return ir('Ver resultados')
   return null

@@ -348,3 +348,15 @@ button.perigo {
   gap: 8px;
   white-space: nowrap;
 }
+
+/* cabeçalho de tabela que ordena ao clicar (elenco, procurar jogadores) */
+.ordenar {
+  height: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
+}

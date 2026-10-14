@@ -19,17 +19,6 @@
   color: var(--text);
 }
 
-.ordenar {
-  height: auto;
-  padding: 0;
-  border: 0;
-  background: none;
-  font: inherit;
-  letter-spacing: inherit;
-  text-transform: inherit;
-  color: inherit;
-}
-
 .linha {
   cursor: pointer;
 }

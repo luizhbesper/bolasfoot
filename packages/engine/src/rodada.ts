@@ -82,7 +82,14 @@ const TIPOS = new Set<string>([
 ] satisfies Comando['tipo'][])
 const inteiro = (n: unknown, min = 0) => typeof n === 'number' && Number.isInteger(n) && n >= min
 
-const humanoJoga = (m: Mundo) => jogosDoDia(m).some(({ jogo }) => m.times[jogo.casa]!.humano || m.times[jogo.fora]!.humano)
+/** Técnicos humanos com time em campo agora: no intervalo, os das partidas em jogo; senão, os dos jogos do dia. */
+export function tecnicosEmCampo(m: Mundo): number[] {
+  const times = m.emJogo ? m.emJogo.partidas.flatMap(({ partida: p }) => [p.lados[0].time, p.lados[1].time])
+    : jogosDoDia(m).flatMap(({ jogo }) => [jogo.casa, jogo.fora])
+  return times.filter((t) => m.times[t]!.humano).map((t) => m.times[t]!.tecnico)
+}
+
+const humanoJoga = (m: Mundo) => tecnicosEmCampo(m).length > 0
 
 /** Partida e lado do time do técnico no intervalo. */
 function noIntervalo(m: Mundo, timeId: number): { p: Partida; l: 0 | 1 } | null {

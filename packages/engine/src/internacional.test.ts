@@ -2,6 +2,7 @@ import base from '@bolasfoot/data/base.json' with { type: 'json' }
 import type { Base } from '@bolasfoot/data'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { avancarDia, type Competicao, type FaseLiga, type FaseMataMata } from './competicoes.ts'
+import { sedeDaFinal } from './internacional.ts'
 import { BRA, novoJogo, type Mundo } from './mundo.ts'
 import { fimDeTemporada } from './temporada.ts'
 
@@ -32,6 +33,18 @@ describe('continentais', () => {
     const reservados = (comp(m, 'CB').fases[0] as FaseMataMata).reservados
     expect(reservados).toHaveLength(12)
     expect(lib.listas!.YF!.filter((t) => inicio.times[t]!.pais === BRA).every((t) => reservados.includes(t))).toBe(true)
+  })
+
+  it('final em sede rotativa (mF): 1ª temporada da Libertadores no Chile, num dos 2 maiores estádios', () => {
+    const lib = comp(m, 'LIB')
+    const s = sedeDaFinal(m, lib)!
+    expect(s.cidade).toBe('Santiago')
+    const cap = (id: number) => m.times[id]!.estadio.setores.reduce((a, b) => a + b, 0)
+    const chilenos = m.times.filter((t) => t.pais === 42).map((t) => t.id).sort((a, b) => cap(b) - cap(a))
+    expect(chilenos.slice(0, 2)).toContain(s.time)
+    expect(sedeDaFinal(m, comp(m, 'MUN'))).toBeNull()
+    // a final é a rodada de um confronto só (jogosDoDia põe a sede no ctx)
+    for (const id of ['LIB', 'SUL', 'UCL', 'UEL', 'UECL']) expect(chave(comp(m, id)).rodadas.at(-1)!.confrontos, id).toHaveLength(1)
   })
 
   it('a Europa monta as três com as vagas cheias', () => {

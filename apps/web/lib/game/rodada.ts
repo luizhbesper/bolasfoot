@@ -7,7 +7,7 @@
 //                                                  └─ ninguém em campo (proposta de emprego, virada) ─► planejamento n+1
 //   resultados ─(prazo)─► planejamento n+1
 import {
-  avancarRodada, continuarRodada, contratarTecnicoHumano, novoJogo, possePct, validar,
+  avancarRodada, continuarRodada, contratarTecnicoHumano, novoJogo, possePct, tecnicosEmCampo, validar,
   type Comando, type ComandoDe, type Mundo, type Partida, type Rodada,
 } from '@bolasfoot/engine'
 import { and, eq, isNotNull, or } from 'drizzle-orm'
@@ -126,6 +126,8 @@ const resumo = (m: Mundo, r: Rodada) => ({
       comp, compNome: m.competicoes.find((c) => c.id === comp)?.nome ?? comp,
       times: [p.lados[0].time, p.lados[1].time], nomes: [m.times[p.lados[0].time]!.nome, m.times[p.lados[1].time]!.nome],
       placar: p.placar, acrescimos: p.acrescimos,
+      // final em sede rotativa: cidade e o clube dono do estádio
+      sede: p.ctx.sede ?? null,
       numeros: p.lados.map((l, i) => ({ posse: posse[i]!, chutes: l.chutes, noAlvo: l.noAlvo, fora: l.fora, desarmes: l.desarmes, passesErrados: l.passesErrados })),
       eventos: p.eventos.map((e) => ({ ...e, nome: e.jogador === null ? null : nome(e.jogador), nome2: nome(e.jogador2) })),
       penaltis: p.penaltis && { placar: p.penaltis.placar, vencedor: p.penaltis.vencedor },
@@ -185,7 +187,11 @@ export async function transicionar(d: Db, gameId: number, forcar = false): Promi
     switch (r.phase) {
       case 'planejamento':
       case 'intervalo': {
-        const membros = await jogadoresDe(tx, gameId)
+        // só espera quem tem jogo agora; parada sem jogo (emprego, virada): todos
+        // ponytail: descomprime o snapshot a cada pronto; guardar o conjunto em `rounds` se ficar lento
+        const emCampo = new Set(tecnicosEmCampo(await carregarMundo(tx, gameId, r.n, r.phase === 'intervalo' ? 1 : 0)))
+        const jogadores = await jogadoresDe(tx, gameId)
+        const membros = emCampo.size ? jogadores.filter((x) => emCampo.has(x.tecnicoId!)) : jogadores
         const todos = membros.length > 0 && membros.every((x) => x.ready)
         if (!todos && !vencido) return false
         if (!todos && !forcar && !s.autoReadyOnTimeout) {
@@ -228,7 +234,8 @@ const etapaDa = (phase: FaseRodada | undefined) => (phase === 'planejamento' ? 0
 export async function enviarComandos(d: Db, gameId: number, userId: number, lista: unknown): Promise<{ erro: string } | { erros: (string | null)[] }> {
   return d.transaction(async (tx) => {
     const [g] = await tx.select().from(games).where(eq(games.id, gameId)).for('share')
-    if (g?.status !== 'running') return { erro: 'o jogo não está rodando' }
+    // pausado (alguém caiu ou o admin parou) ainda dá para mexer: só o relógio para
+    if (g?.status !== 'running' && g?.status !== 'paused') return { erro: 'o jogo não está rodando' }
     const [mb] = await tx.select().from(gameMembers).where(and(eq(gameMembers.gameId, gameId), eq(gameMembers.userId, userId)))
     if (mb?.tecnicoId == null) return { erro: 'você não joga neste jogo' }
     const r = await rodadaDe(tx, gameId, g.round)
@@ -247,7 +254,7 @@ export async function enviarComandos(d: Db, gameId: number, userId: number, list
 /** Comandos já guardados pelo membro na fase corrente (vazio fora do planejamento/intervalo). */
 export async function comandosPendentes(q: Q, gameId: number, userId: number): Promise<Comando[]> {
   const [g] = await q.select().from(games).where(eq(games.id, gameId))
-  if (g?.status !== 'running') return []
+  if (g?.status !== 'running' && g?.status !== 'paused') return []
   const etapa = etapaDa((await rodadaDe(q, gameId, g.round))?.phase)
   if (etapa === null) return []
   const [c] = await q.select({ list: commands.list }).from(commands).innerJoin(gameMembers, eq(gameMembers.id, commands.memberId))

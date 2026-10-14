@@ -11,6 +11,12 @@ import { Ficha } from '../elenco/elenco.tsx'
 import { Carregando, SemClube } from '../hub.tsx'
 
 const PRECOS = [0, 500_000, 1_000_000, 3_000_000, 10_000_000]
+type Coluna = 'posicao' | 'nome' | 'idade' | 'forca' | 'time' | 'valor'
+const COLUNAS: { chave: Coluna; rotulo: string; num?: boolean }[] = [
+  { chave: 'posicao', rotulo: 'Pos' }, { chave: 'nome', rotulo: 'Jogador' }, { chave: 'idade', rotulo: 'Idade', num: true },
+  { chave: 'forca', rotulo: 'Força', num: true }, { chave: 'time', rotulo: 'Time' }, { chave: 'valor', rotulo: 'Valor', num: true },
+]
+const ATALHOS: [string, number][] = [['+100 mil', 100_000], ['+500 mil', 500_000], ['+1 mi', 1_000_000], ['+10 mi', 10_000_000]]
 
 export function Procura({ pendentes, paises }: { pendentes: Comando[]; paises: string[] }) {
   const { mundo: m, meuTime: t } = useJogo()
@@ -23,6 +29,7 @@ export function Procura({ pendentes, paises }: { pendentes: Comando[]; paises: s
   const [soVenda, setSoVenda] = useState(false)
   const [soEmprestimo, setSoEmprestimo] = useState(false)
   const [aberto, setAberto] = useState<number | null>(null)
+  const [ordem, setOrdem] = useState<{ col: Coluna; desc: boolean }>({ col: 'forca', desc: true })
   if (!m) return <Carregando />
   if (!t) return <SemClube />
 
@@ -30,7 +37,13 @@ export function Procura({ pendentes, paises }: { pendentes: Comando[]; paises: s
   const lista = m.jogadores.filter((j) => j.time >= 0 && j.time !== t.id && !j.juvenil &&
     (pos === null || j.posicao === pos) && j.forca >= forcaMin && j.idade <= idadeMax &&
     (!precoMax || (j.aVenda ? j.preco : j.valor) <= precoMax) && (!soVenda || j.aVenda) && (!soEmprestimo || j.paraEmprestimo) &&
-    (!q || j.nome.toLowerCase().includes(q))).sort((a, b) => b.forca - a.forca || a.valor - b.valor).slice(0, 100)
+    (!q || j.nome.toLowerCase().includes(q))).sort((a, b) => {
+    // ordena antes de cortar nos 100: "mais baratos" são os mais baratos de todos com esses filtros
+    const va = ordem.col === 'time' ? m.times[a.time]!.nome : a[ordem.col], vb = ordem.col === 'time' ? m.times[b.time]!.nome : b[ordem.col]
+    const c = typeof va === 'string' ? va.localeCompare(vb as string, 'pt-BR') : (va as number) - (vb as number)
+    return (ordem.desc ? -c : c) || b.forca - a.forca || a.valor - b.valor
+  }).slice(0, 100)
+  const ordenar = (col: Coluna) => setOrdem((o) => ({ col, desc: o.col === col ? !o.desc : col === 'forca' || col === 'valor' }))
   const sel = aberto === null ? null : m.jogadores[aberto]!
 
   return (
@@ -55,7 +68,16 @@ export function Procura({ pendentes, paises }: { pendentes: Comando[]; paises: s
       <Pendentes k={k} tipos={['comprar', 'pedirEmprestado']} />
       <div className="card rolagem">
         <table className="tabela" style={{ minWidth: 760 }}>
-          <thead><tr><th>Pos</th><th>Jogador</th><th className="num">Idade</th><th className="num">Força</th><th>Time</th><th className="num">Valor</th><th /></tr></thead>
+          <thead>
+            <tr>
+              {COLUNAS.map((c) => (
+                <th key={c.chave} className={c.num ? 'num' : undefined} aria-sort={ordem.col === c.chave ? (ordem.desc ? 'descending' : 'ascending') : undefined}>
+                  <button className="ordenar" onClick={() => ordenar(c.chave)}>{c.rotulo}{ordem.col === c.chave && (ordem.desc ? ' ↓' : ' ↑')}</button>
+                </th>
+              ))}
+              <th />
+            </tr>
+          </thead>
           <tbody>
             {lista.map((j) => {
               const dono = m.times[j.time]!
@@ -108,7 +130,8 @@ function previa(m: Mundo, j: JogadorM, t: TimeM, oferta: number): { texto: strin
 
 export function Proposta({ m, j, t, k }: { m: Mundo; j: JogadorM; t: TimeM; k: Comandos }) {
   const dono = m.times[j.time]!
-  const [valor, setValor] = useState(j.aVenda ? j.preco : dono.humano ? j.valor : precoVendaIA(m, j))
+  // começa do zero: o valor é decisão sua (o preço pedido fica num atalho)
+  const [valor, setValor] = useState(0)
   const [aceitar, setAceitar] = useState(false)
   const amigo = dono.humano ? m.tecnicos[dono.tecnico]?.nome : null
   const p = amigo ? null : previa(m, j, t, valor)
@@ -121,9 +144,16 @@ export function Proposta({ m, j, t, k }: { m: Mundo; j: JogadorM; t: TimeM; k: C
       {amigo
         ? <p className="mudo" style={{ margin: 0, fontSize: 13 }}>{dono.nome} é do <strong>{amigo}</strong>: a proposta vai para a caixa dele, que responde na próxima rodada.</p>
         : <p className="fraco" style={{ margin: 0, fontSize: 12 }}>Se um amigo propuser pelo mesmo jogador nesta rodada, leva a maior oferta.</p>}
-      <label className="linha" style={{ justifyContent: 'space-between' }}>Valor (R$)
-        <input type="number" min={1} step={10_000} value={valor} onChange={(e) => setValor(Math.max(0, Math.trunc(Number(e.target.value) || 0)))} style={{ width: 160, textAlign: 'right' }} />
+      <label className="linha" style={{ justifyContent: 'space-between' }}>Valor (R$ milhões)
+        <input type="number" min={0} step={0.1} inputMode="decimal" value={valor ? valor / 1e6 : ''} placeholder="0"
+          onChange={(e) => setValor(Math.max(0, Math.round((Number(e.target.value.replace(',', '.')) || 0) * 1e6)))} style={{ width: 140, textAlign: 'right' }} />
       </label>
+      <div className="chips" style={{ justifyContent: 'flex-end' }}>
+        {ATALHOS.map(([r, v]) => <button key={r} onClick={() => setValor((x) => x + v)}>{r}</button>)}
+        {j.aVenda && <button onClick={() => setValor(j.preco)}>Pedido {dinheiro(j.preco)}</button>}
+        <button onClick={() => setValor(0)} disabled={!valor}>Zerar</button>
+      </div>
+      <strong style={{ alignSelf: 'flex-end', fontSize: 18 }}>{dinheiro(valor)}</strong>
       {p && <span className={`etiqueta ${p.cor}`} style={{ alignSelf: 'flex-start', whiteSpace: 'normal' }}>{p.texto}</span>}
       {!amigo && <label className="check"><input type="checkbox" checked={aceitar} onChange={(e) => setAceitar(e.target.checked)} /> Aceitar a contraproposta, se houver</label>}
       {pendente && (

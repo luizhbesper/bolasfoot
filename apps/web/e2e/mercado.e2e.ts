@@ -40,6 +40,7 @@ test('pede empréstimo, obra e proposta; vê o resultado depois da rodada', asyn
   await page.locator('tbody tr').first().click()
   await expect(page.getByRole('heading', { name: 'Proposta' })).toBeVisible()
   await foto('procura')
+  await page.getByRole('button', { name: '+1 mi' }).click() // a proposta começa do zero
   await page.getByRole('button', { name: 'Fazer proposta' }).click()
   await expect(page.getByText(/^Proposta de R\$/)).toBeVisible()
   await page.keyboard.press('Escape')

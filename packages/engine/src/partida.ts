@@ -13,6 +13,8 @@ export interface ContextoPartida {
   temporada: number
   /** campo neutro; padrão: Mundial (5) e seleções (7). Fonte: I.java:1484 (hX) */
   neutro?: boolean
+  /** final em sede rotativa (mF): cidade e o clube dono do estádio; o mando não muda. Fonte: best/I.java:187-197 */
+  sede?: { cidade: string; time: number }
   /** jogo eliminatório que pode ir para os pênaltis */
   mataMata?: {
     /** gols da ida [do mandante de hoje, do visitante de hoje]; ausente = jogo único */
@@ -608,12 +610,13 @@ function registrar(p: Partida, tipo: 2 | 3 | 4 | 5, l: 0 | 1, j: JogadorPartida,
     if (j.slot <= 13 && lado.subs > 0 && !algumHumano(p)) repor(p, l, j, true, false, tempo, minuto, rng)
   } else if (tipo === 5) {
     ev.dias = j.lesao = duracaoLesao(j, rng)
-    // ponytail: humano lesionado segue em campo até ele trocar no intervalo; piloto automático na D2. Partida com humano:
-    // ele só troca no intervalo, então a IA também (regra do port; troca no `intervaloIA`)
+    // Partida com humano (regra do port, igual para os dois lados): lesão no 1º tempo segue em campo até o intervalo, onde
+    // o humano escolhe a troca (a IA troca no `intervaloIA`); no 2º tempo não há mais pausa, então o médico tira na hora
+    // e entra o melhor do banco para a posição. Sem substituição sobrando, ele termina o jogo.
     if (!algumHumano(p)) {
       remover(lado.emCampo, j.id)
       if (lado.subs > 0) repor(p, l, j, false, true, tempo, minuto, rng)
-    }
+    } else if (tempo === 2 && lado.subs > 0) repor(p, l, j, false, true, tempo, minuto, rng)
   }
 }
 

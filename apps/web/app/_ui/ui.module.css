@@ -1,8 +1,38 @@
 .escudo,
 .camisa,
-.bandeira {
+.bandeira,
+.trofeu {
   object-fit: contain;
   flex: none;
+}
+
+/* sala de troféus */
+.sala {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sala li {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  width: 76px;
+  text-align: center;
+}
+
+.vezes {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.nomeTrofeu {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.2;
 }
 
 .chip {
@@ -84,4 +114,8 @@
 .pronto {
   color: var(--text);
   box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--menta);
+}
+
+.semJogo {
+  opacity: 0.4;
 }

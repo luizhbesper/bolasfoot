@@ -79,15 +79,21 @@
 
 .placar {
   flex: none;
-  margin: 0 20px;
+  /* alinhado com a grade (1600px menos o padding dela), centralizado no ultra-wide */
+  width: calc(100% - 40px);
+  max-width: 1560px;
+  margin: 0 auto;
   padding: 18px 28px 16px;
   border-radius: var(--raio-card);
   border: 1px solid var(--line);
+  /* cores dos clubes nas laterais sobre o estádio do mandante, esmaecido */
   background:
     linear-gradient(90deg,
-      color-mix(in srgb, var(--c0) 30%, var(--surface)) 0%,
-      var(--surface) 34%, var(--surface) 66%,
-      color-mix(in srgb, var(--c1) 30%, var(--surface)) 100%);
+      color-mix(in srgb, var(--c0) 30%, transparent) 0%,
+      transparent 34%, transparent 66%,
+      color-mix(in srgb, var(--c1) 30%, transparent) 100%),
+    linear-gradient(color-mix(in srgb, var(--surface) 86%, transparent), color-mix(in srgb, var(--surface) 86%, transparent)),
+    var(--estadio, none) center 35% / cover var(--surface);
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -105,12 +111,14 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
-  gap: 24px;
+  gap: 32px;
 }
 
 .clube {
   display: flex;
   align-items: center;
+  /* escudo e nome encostam no placar (em tela larga não ficam perdidos nas pontas) */
+  justify-content: flex-end;
   gap: 16px;
   min-width: 0;
   font-family: var(--font-bricolage), sans-serif;
@@ -635,4 +643,18 @@
   height: 36px;
   background: var(--surface);
   color: var(--text);
+}
+
+/* lesionado do 1º tempo no intervalo: a troca sugerida em destaque */
+.lesao {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  border-radius: var(--raio);
+  border: 1px solid var(--rosa);
+  background: color-mix(in srgb, var(--rosa) 10%, transparent);
+  font-size: 13px;
 }
