@@ -4,11 +4,13 @@
   "type": "module",
   "exports": {
     ".": "./src/types.ts",
-    "./base.json": "./base.json"
+    "./base.json": "./base.json",
+    "./base-2026.json": "./base-2026.json"
   },
   "scripts": {
     "build": "node src/build.ts",
     "typecheck": "tsc -p .",
-    "clubes:2026": "node src/clubes-2026.ts"
+    "clubes:2026": "node src/clubes-2026.ts",
+    "importar:2026": "node src/importar-2026.ts"
   }
 }

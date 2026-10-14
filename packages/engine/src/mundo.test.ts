@@ -59,3 +59,14 @@ test('novoJogo: divisões, carga e determinismo', () => {
   expect(JSON.stringify(novoJogo(base, { habilidadeIndividual: true }, 'seed-teste'))).toBe(JSON.stringify(m))
   expect(novoJogo(base, { habilidadeIndividual: false }, 'outra').jogadores[0]!.habilidades).toBeNull()
 })
+
+test('novoJogo: força dada pela base vale; o resto do mundo não muda (B4)', () => {
+  const comForca: Base = structuredClone(base)
+  const alvo = comForca.times.find((t) => t.fileRef === 'flarj')!.jogadores[0]!
+  alvo.forca = 77
+  const [m0, m1] = [novoJogo(base, { habilidadeIndividual: true }, 's'), novoJogo(comForca, { habilidadeIndividual: true }, 's')]
+  const i = m1.jogadores.findIndex((j) => j.nome === alvo.nome && m1.times[j.time]!.fileRef === 'flarj')
+  expect(m1.jogadores[i]!.forca).toBe(77)
+  expect(novoJogo(comForca, { habilidadeIndividual: true, forcaDaBase: false }, 's').jogadores[i]!.forca).toBe(m0.jogadores[i]!.forca)
+  expect(m1.jogadores.filter((_, k) => k !== i).map((j) => j.forca)).toEqual(m0.jogadores.filter((_, k) => k !== i).map((j) => j.forca))
+})

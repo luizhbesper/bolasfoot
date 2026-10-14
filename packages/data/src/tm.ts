@@ -10,7 +10,11 @@ const API = process.env.TM_API ?? 'http://localhost:8000'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function tm<T = any>(path: string): Promise<T> {
   const f = new URL(path.replace(/[^\w.-]+/g, '_') + '.json', CACHE)
-  if (existsSync(f)) return JSON.parse(readFileSync(f, 'utf8'))
+  if (existsSync(f)) {
+    const j = JSON.parse(readFileSync(f, 'utf8'))
+    if (j === null) throw new Error(`TM ${path}: falhou antes (apague o cache para tentar de novo)`)
+    return j
+  }
   for (let tentativa = 0; ; tentativa++) {
     const r = await fetch(API + path)
     if (r.ok) {
@@ -19,7 +23,11 @@ export async function tm<T = any>(path: string): Promise<T> {
       writeFileSync(f, JSON.stringify(j))
       return j
     }
-    if (r.status === 404 || tentativa === 4) throw new Error(`TM ${path}: ${r.status}`)
+    if (r.status === 404 || r.status === 502 || tentativa === 4) {
+      mkdirSync(CACHE, { recursive: true })
+      writeFileSync(f, 'null') // sem dados no TM (404/502): não pergunta de novo
+      throw new Error(`TM ${path}: ${r.status}`)
+    }
     await new Promise((ok) => setTimeout(ok, 2000 * 2 ** tentativa)) // 503 = o TM recusou: espera e tenta de novo
   }
 }

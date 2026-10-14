@@ -79,6 +79,12 @@ Contrato: o elenco é o de **2026-01-15**, remontado pelas transferências datad
 Também gera `diff.ts`: por time, quem entrou, quem saiu e o que mudou, contra a 2022, para revisar antes do commit.
 Fora de escopo: `forca` (B4), escudos (B8).
 Testes: `base.test.ts` da 2026 com invariantes (todo time tem ≥ 18 jogadores e ≥ 2 goleiros; 20/20/20 nas séries A–C; nenhum `pais` fora do índice; `nivel` 1–20).
+**Feito** (`pnpm --filter @bolasfoot/data importar:2026`):
+- 736 times (275 BR), 16,5 mil jogadores.
+- Valor em 15/01 vem do dataset (CSV com aspas!) e, sem ele, do elenco atual.
+- Clube sem dados no TM: o importador cacheia a falha (404/502) e completa o elenco primeiro com os jogadores do original, depois com gerados. As Séries A e B ficaram sem nenhum gerado.
+- Os estrangeiros mantidos vêm iguais aos da 2022.
+- O diff para revisar sai em `data-cache/diff-2026.md`.
 
 ## B4 — Força real
 Objetivo: o craque real nasce craque.
@@ -86,6 +92,11 @@ Fonte original: `mundo.ts:257-271` (`forcaInicial`, port de `F.java`).
 Contrato: `Jogador.forca?` (opcional). O importador a deriva do valor de mercado: percentil por idade e posição, mapeado para a distribuição de força por divisão que a 2022 produz (medida no próprio `novoJogo`). Com `forca`, o `forcaInicial` só aplica o teto, sem os bônus de titular e estrela. Sem `forca`, nada muda.
 Fora de escopo: habilidades (continuam semeadas a partir da `forca`, `mundo.ts:276`).
 Testes: unitário no `forcaInicial` (com e sem o campo); na 2026, média e desvio da força dos 11 melhores por divisão perto da 2022.
+**Feito:**
+- A força sai do ranking global do valor ajustado pela idade, casado com a força dos profissionais no `novoJogo` da 2022.
+- O motor usa a força dada, mas roda a fórmula assim mesmo, para o sorteio não mudar.
+- No admin, a opção "Força dos jogadores pelo valor de mercado" (`config.forcaDaBase`, `OpcoesJogo.forcaDaBase`) vem marcada; desmarcada, vale a fórmula do original.
+- Força dos 11 melhores: Flamengo 41, Palmeiras 40, Remo 30, Manchester City 53. A Série A da 2022 nascia com ~48: o B10 decide se escala.
 
 ## B5 — Divisões e estaduais explícitos
 Objetivo: a 1ª temporada da base 2026 começa com os clubes reais em cada divisão.

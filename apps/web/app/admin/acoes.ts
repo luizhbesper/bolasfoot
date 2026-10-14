@@ -22,6 +22,7 @@ export async function criarJogoAcao(f: FormData) {
   const g = await criarJogo(db(), u.id, txt(f, 'nome'), txt(f, 'modo') === 'daily' ? 'daily' : ('live' satisfies ModoJogo), {
     habilidadeIndividual: f.get('habilidadeIndividual') === 'on',
     salarioMensal: f.get('salarioSemanal') !== 'on',
+    forcaDaBase: f.get('forcaDaBase') === 'on',
     proibidos: txt(f, 'proibidos').split(/[\s,]+/).filter(Boolean),
     divisoes: f.getAll('divisoes').map(Number),
     base: Object.hasOwn(bases, txt(f, 'base')) ? txt(f, 'base') : '2022',

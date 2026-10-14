@@ -22,6 +22,8 @@ export interface Jogador {
   potencial: number
   /** Status == 1 */
   titular: boolean
+  /** Força inicial dada pela base (2026: do valor de mercado); sem ela, o motor usa a fórmula do original. */
+  forca?: number
 }
 
 export interface Time {

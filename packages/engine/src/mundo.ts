@@ -135,6 +135,8 @@ export interface OpcoesJogo {
   habilidadeIndividual: boolean
   /** salário pago no dia 2 (padrão do original) ou todo domingo */
   salarioMensal?: boolean
+  /** usa a `forca` que a base traz (base 2026); falso = fórmula do original para todos. Padrão: verdadeiro */
+  forcaDaBase?: boolean
 }
 
 export interface Mundo {
@@ -421,6 +423,8 @@ export function novoJogo(base: Base, opcoes: OpcoesJogo, seed: string): Mundo {
   // ponytail: empate de Nivel segue a ordem do base.json (o original usa a ordem dos arquivos)
   const ordenados = base.times.map((t, i) => [t, i] as const).sort((x, y) => y[0].nivel - x[0].nivel || x[1] - y[1]).map(([t]) => t)
   const porPais = new Map<number, number>()
+  /** força que a base dá pronta (base 2026, docs/fase7.md B4), por id do jogador */
+  const forcaDada = new Map<number, number>()
   for (const t of ordenados) {
     const n = porPais.get(t.pais) ?? 0
     if (t.pais !== BRA && n >= 15) continue
@@ -460,6 +464,7 @@ export function novoJogo(base: Base, opcoes: OpcoesJogo, seed: string): Mundo {
         jogos: 0,
       }
       mundo.jogadores.push(jm)
+      if (j.forca !== undefined && opcoes.forcaDaBase !== false) forcaDada.set(jm.id, j.forca)
       return jm.id
     }
     const { jogadores, juniores, estadio, tecnico, ...resto } = t
@@ -497,7 +502,7 @@ export function novoJogo(base: Base, opcoes: OpcoesJogo, seed: string): Mundo {
   for (const j of ordem) {
     const t = mundo.times[j.time]!
     const { forca, n8, n6 } = forcaInicial(j, t, base.paises[t.pais]!.nivel, rngForca)
-    j.forca = forca
+    j.forca = forcaDada.get(j.id) ?? forca // a fórmula roda mesmo assim: o sorteio segue na mesma ordem
     if (opcoes.habilidadeIndividual) j.habilidades = habilidadesIniciais(j, n8, n6, rngForca)
   }
   // F.fI (F.java:655-658): progresso inicial e potencial estimado dos juniores

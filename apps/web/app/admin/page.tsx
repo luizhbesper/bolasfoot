@@ -50,6 +50,7 @@ export default async function Admin() {
             </label>
             <label className="check"><input type="checkbox" name="habilidadeIndividual" /> Habilidade individual</label>
             <label className="check"><input type="checkbox" name="salarioSemanal" /> Salário semanal</label>
+            <label className="check"><input type="checkbox" name="forcaDaBase" defaultChecked /> Força dos jogadores pelo valor de mercado <span className="fraco" style={{ fontSize: 12 }}>(só na base 2026; sem ela, a fórmula do original)</span></label>
             <fieldset>
               <legend>Divisões permitidas na escolha (nenhuma = todas)</legend>
               {[1, 2, 3, 0].map((d) => (
