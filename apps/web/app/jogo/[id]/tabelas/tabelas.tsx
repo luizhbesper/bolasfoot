@@ -3,7 +3,7 @@
 import type { Competicao, FaseLiga, FaseMataMata, Jogo, Mundo } from '@bolasfoot/engine'
 import { useState } from 'react'
 import { Escudo, Forma } from '../../../_ui/ui.tsx'
-import { artilharia, dataLonga, jogosDaComp, NOME_RODADA, participa, proximoJogo, resultadoPara, type Resultado } from '../consultas.ts'
+import { artilharia, dataLonga, grupoCompeticao, GRUPOS_COMPETICAO, jogosDaComp, NOME_RODADA, nomeFase, nomeRodada, participa, proximoJogo, resultadoPara, type Resultado } from '../consultas.ts'
 import { useJogo } from '../contexto.tsx'
 import { Carregando } from '../hub.tsx'
 
@@ -33,7 +33,10 @@ export function Tabelas() {
         {atalhos.map((x) => <button key={x.id} aria-pressed={x === c} onClick={() => trocar(x.id)}>{x.nome}</button>)}
         <select aria-label="Outras competições" value="" onChange={(e) => e.target.value && trocar(e.target.value)}>
           <option value="">Outras competições…</option>
-          {m.competicoes.filter((x) => !atalhos.includes(x)).map((x) => <option key={x.id} value={x.id}>{x.nome}</option>)}
+          {GRUPOS_COMPETICAO.map((g) => {
+            const lista = m.competicoes.filter((x) => !atalhos.includes(x) && grupoCompeticao(x) === g)
+            return lista.length > 0 && <optgroup key={g} label={g}>{lista.map((x) => <option key={x.id} value={x.id}>{x.nome}</option>)}</optgroup>
+          })}
         </select>
       </div>
 
@@ -41,7 +44,7 @@ export function Tabelas() {
         <section className="coluna">
           {c.fases.length > 1 && (
             <div className="chips" role="group" aria-label="Fases">
-              {c.fases.map((_, i) => <button key={i} aria-pressed={i === nFase} onClick={() => setFaseSel(i)}>{i + 1}ª fase</button>)}
+              {c.fases.map((_, i) => <button key={i} aria-pressed={i === nFase} onClick={() => setFaseSel(i)}>{nomeFase(c, i)}</button>)}
             </div>
           )}
           {!f ? <div className="card secao"><p className="mudo" style={{ margin: 0 }}>Ainda não começou.</p></div>
@@ -138,7 +141,7 @@ function MataMata({ m, f, eu }: { m: Mundo; f: FaseMataMata; eu: number }) {
         const n = r.confrontos.length
         return (
           <div key={ri} className="card" style={{ overflow: 'hidden' }}>
-            <div className="cabecalho"><h2>{NOME_RODADA[n] ?? `${f.rodadas.length - ri}ª fase`}</h2><span className="fraco" style={{ fontSize: 12 }}>{r.idaVolta ? 'ida e volta' : 'jogo único'}</span></div>
+            <div className="cabecalho"><h2>{f.nomes || r.terceiro ? nomeRodada(f, f.rodadas.length - 1 - ri) : NOME_RODADA[n] ?? `${f.rodadas.length - ri}ª fase`}</h2><span className="fraco" style={{ fontSize: 12 }}>{r.idaVolta ? 'ida e volta' : 'jogo único'}</span></div>
             <div className="rolagem">
               <table className="tabela" style={{ minWidth: 480 }}>
                 <tbody>

@@ -575,7 +575,7 @@ function munAl(x: Ctx, c: Competicao, venc: number[], desde: number): void {
   c.colocacaoDesde = c.fases.length
   const f = criarFaseMataMata(x.m, c, [ZP, venc[0]!, ZO, venc[1]!], [false, false], desde)
   f.terceiro = true
-  f.nomes = ['Semifinal', 'Final e 3º lugar']
+  f.nomes = ['Semifinal', 'Final']
   c.fases.push(f)
 }
 

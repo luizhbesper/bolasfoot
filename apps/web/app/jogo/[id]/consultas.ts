@@ -1,5 +1,5 @@
 // Leituras do mundo e formatos usados pelas telas (só cliente/servidor web; o motor não formata).
-import type { Competicao, JogadorM, Jogo, Linha, Mundo } from '@bolasfoot/engine'
+import type { Competicao, FaseMataMata, JogadorM, Jogo, Linha, Mundo } from '@bolasfoot/engine'
 
 const DIA_MS = 86_400_000
 const SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
@@ -24,6 +24,30 @@ export function dinheiro(v: number): string {
 
 export const NOME_RODADA: Record<number, string> = { 1: 'Final', 2: 'Semifinal', 4: 'Quartas de final', 8: 'Oitavas de final' }
 
+/** Competição internacional (tem confederação): fases com nome próprio, sem "2ª fase". */
+const internacional = (c: Competicao) => c.confederacao !== undefined
+
+/** Nome de uma fase: "Fase de grupos", "Preliminar Fase 1", "Mata-mata"; nas nacionais, "2ª fase". */
+export function nomeFase(c: Competicao, fi: number): string {
+  const f = c.fases[fi]
+  if (!f || !internacional(c)) return `${fi + 1}ª fase`
+  if (f.tipo === 'liga') return 'Fase de grupos'
+  return f.rodadasMax !== undefined ? f.nomes?.[0] ?? `${fi + 1}ª fase` : fi > 0 ? 'Mata-mata' : f.nomes?.[0] ?? 'Mata-mata'
+}
+
+/** Nome de uma rodada de mata-mata: o da fase (preliminares), senão pelo nº de confrontos. */
+export function nomeRodada(f: FaseMataMata, ri: number): string {
+  const r = f.rodadas[ri]!
+  return f.nomes?.[ri] ?? NOME_RODADA[r.terceiro ? 1 : r.confrontos.length] ?? `${ri + 1}ª fase`
+}
+
+/** Grupo da competição nos seletores: Brasil, América do Sul, Mundial, outras confederações. */
+export function grupoCompeticao(c: Pick<Competicao, 'confederacao'>): string {
+  const conf = c.confederacao
+  return conf === undefined || conf === 29 ? 'Brasil' : conf === 1 ? 'América do Sul' : conf === 7 ? 'Mundial' : 'Outras confederações'
+}
+export const GRUPOS_COMPETICAO = ['Brasil', 'América do Sul', 'Mundial', 'Outras confederações']
+
 /**
  * O que é o jogo dentro da competição: "7ª rodada", "Grupo B, 3ª rodada", "2ª fase, 4ª rodada",
  * "Oitavas de final, ida". Vazio se não achar o jogo (casa × fora no dia).
@@ -32,7 +56,7 @@ export function etapaDoJogo(m: Mundo, compId: string, casa: number, fora: number
   const c = m.competicoes.find((x) => x.id === compId)
   if (!c) return ''
   for (const [fi, f] of c.fases.entries()) {
-    const prefixo = c.fases.length > 1 ? [`${fi + 1}ª fase`] : []
+    const prefixo = c.fases.length > 1 && !internacional(c) ? [`${fi + 1}ª fase`] : []
     if (f.tipo === 'liga') {
       if (!f.jogos.some((j) => j.dia === dia && j.casa === casa && j.fora === fora)) continue
       // a rodada do time: quantos jogos ele tem nessa fase até esse dia
@@ -43,7 +67,7 @@ export function etapaDoJogo(m: Mundo, compId: string, casa: number, fora: number
     for (const [ri, r] of f.rodadas.entries()) {
       const k = r.jogos.findIndex((j) => j.dia === dia && j.casa === casa && j.fora === fora)
       if (k < 0) continue
-      const nome = NOME_RODADA[r.confrontos.length] ?? `${ri + 1}ª fase`
+      const nome = r.terceiro && k % r.confrontos.length === 1 ? 'Decisão do 3º lugar' : internacional(c) ? nomeRodada(f, ri) : NOME_RODADA[r.confrontos.length] ?? `${ri + 1}ª fase`
       return [nome, ...(r.idaVolta ? [k < r.confrontos.length ? 'ida' : 'volta'] : [])].join(', ')
     }
   }

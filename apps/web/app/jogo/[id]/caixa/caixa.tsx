@@ -17,6 +17,7 @@ const TIPOS: Record<TipoAviso, { rotulo: string; cor: string }> = {
   aposentadoria: { rotulo: 'Aposentadoria', cor: 'pessego' },
   mercado: { rotulo: 'Mercado', cor: 'ceu' },
   temporada: { rotulo: 'Temporada', cor: '' },
+  competicao: { rotulo: 'Competição', cor: 'ceu' },
 }
 
 export function Caixa({ pendentes }: { pendentes: Comando[] }) {
