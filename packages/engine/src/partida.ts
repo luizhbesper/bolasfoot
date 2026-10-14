@@ -519,7 +519,7 @@ export function tick(p: Partida, tempo: 1 | 2, minuto: number, rng: Rng): void {
 /** Simula um tempo inteiro. Fonte: best/I.java:1036-1123 (V) */
 export function simularTempo(p: Partida, tempo: 1 | 2, rng: Rng): Partida {
   if (p.tempo !== tempo - 1) throw new Error(`tempo ${tempo} fora de ordem (último: ${p.tempo})`)
-  if (tempo === 2) subsIA(p, 0, rng) // intervalo: m(2, 0)
+  if (tempo === 2) { if (algumHumano(p)) intervaloIA(p, rng); subsIA(p, 0, rng) } // intervalo: m(2, 0)
   for (let minuto = 0; minuto < 45 + p.acrescimos[tempo - 1]!; minuto++) {
     incidentes(p, tempo, minuto, rng)
     tick(p, tempo, minuto, rng)
@@ -580,7 +580,7 @@ function incidentes(p: Partida, tempo: 1 | 2, minuto: number, rng: Rng): void {
     c.lesoes++
     const v = sortearNaFaixa(lista, FAIXAS_VITIMA[vitimaLesao(rng.int(500))]!, rng)
     if (v) registrar(p, 5, l, v, tempo, minuto, rng)
-  } else if (tempo === 2 && minuto >= 5) subsIA(p, minuto, rng)
+  } else if (tempo === 2 && minuto >= 5 && !algumHumano(p)) subsIA(p, minuto, rng)
 }
 
 /** Dias de lesão; ≥35 anos perde 5 de força. Fonte: best/F.java:2116-2162 (p) */
@@ -605,11 +605,12 @@ function registrar(p: Partida, tipo: 2 | 3 | 4 | 5, l: 0 | 1, j: JogadorPartida,
   const lado = p.lados[l]
   if (tipo === 3 || tipo === 4) {
     remover(lado.emCampo, j.id)
-    if (j.slot <= 13 && !lado.humano && lado.subs > 0) repor(p, l, j, true, false, tempo, minuto, rng)
+    if (j.slot <= 13 && lado.subs > 0 && !algumHumano(p)) repor(p, l, j, true, false, tempo, minuto, rng)
   } else if (tipo === 5) {
     ev.dias = j.lesao = duracaoLesao(j, rng)
-    // ponytail: humano lesionado segue em campo até ele trocar no intervalo; piloto automático na D2
-    if (!lado.humano) {
+    // ponytail: humano lesionado segue em campo até ele trocar no intervalo; piloto automático na D2. Partida com humano:
+    // ele só troca no intervalo, então a IA também (regra do port; troca no `intervaloIA`)
+    if (!algumHumano(p)) {
       remover(lado.emCampo, j.id)
       if (lado.subs > 0) repor(p, l, j, false, true, tempo, minuto, rng)
     }
@@ -653,6 +654,15 @@ function trocar(p: Partida, l: 0 | 1, sai: JogadorPartida, entra: JogadorPartida
 
 /** l perde por pelo menos n gols. Fonte: best/I.java:883 (n) */
 const perdendo = (p: Partida, l: 0 | 1, n: number) => p.placar[outro(l)] - p.placar[l] >= n
+
+/** Intervalo da IA contra humano (ver `registrar`): tira os lesionados e até 2 cansados, o que o original faria durante o 2º tempo. */
+function intervaloIA(p: Partida, rng: Rng): void {
+  for (const l of [0, 1] as const) {
+    if (p.lados[l].humano) continue
+    for (const j of emCampo(p, l)) if (j.lesao > 0 && p.lados[l].subs > 0) repor(p, l, j, false, true, 2, 0, rng)
+    for (let i = 0; i < 2 && p.lados[l].subs > 0; i++) if (!trocaIA(p, l, 'cansaco', 0, rng)) break
+  }
+}
 
 /** Fonte: best/I.java:808-838 (m). Só no 2º tempo; minuto 0 = intervalo. */
 function subsIA(p: Partida, minuto: number, rng: Rng): void {

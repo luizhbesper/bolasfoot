@@ -171,3 +171,14 @@ test('substituição manual: válida e inválidas', () => {
   expect(() => substituir(p, 0, sai, p.lados[0].banco[0]!)).toThrow()
   expect(p.eventos.at(-1)).toMatchObject({ tipo: 6, tempo: 2, minuto: 0, jogador: sai, jogador2: entra })
 })
+
+test('contra humano, a IA só troca no intervalo (nem lesão nem expulsão com a bola rolando)', () => {
+  for (let i = 0; i < 40; i++) {
+    const p = partidaSintetica(liga, `h${i}`)
+    p.lados[0].humano = true
+    simularTempo(p, 1, derivar(`h${i}`, '1T'))
+    simularTempo(p, 2, derivar(`h${i}`, '2T'))
+    expect(p.eventos.filter((e) => e.tipo === 6 && (e.tempo === 1 || e.minuto > 0))).toEqual([])
+    expect(p.lados[1].subs).toBeGreaterThanOrEqual(0)
+  }
+})
