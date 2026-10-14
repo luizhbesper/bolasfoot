@@ -106,12 +106,15 @@ function previa(m: Mundo, j: JogadorM, t: TimeM, oferta: number): { texto: strin
   return { texto: `O clube quer ${dinheiro(pedido)}, mais do que seu caixa.`, cor: 'rosa' }
 }
 
-function Proposta({ m, j, t, k }: { m: Mundo; j: JogadorM; t: TimeM; k: Comandos }) {
+export function Proposta({ m, j, t, k }: { m: Mundo; j: JogadorM; t: TimeM; k: Comandos }) {
   const dono = m.times[j.time]!
   const [valor, setValor] = useState(j.aVenda ? j.preco : dono.humano ? j.valor : precoVendaIA(m, j))
   const [aceitar, setAceitar] = useState(false)
   const amigo = dono.humano ? m.tecnicos[dono.tecnico]?.nome : null
   const p = amigo ? null : previa(m, j, t, valor)
+  // uma por jogador: mandar de novo substitui a pendente
+  const pendente = k.pendentes.find((c): c is Extract<Comando, { tipo: 'comprar' | 'pedirEmprestado' }> =>
+    (c.tipo === 'comprar' || c.tipo === 'pedirEmprestado') && c.jogador === j.id)
   return (
     <div className="card secao" style={{ gap: 10, background: 'var(--bg)' }}>
       <h2>Proposta</h2>
@@ -123,9 +126,15 @@ function Proposta({ m, j, t, k }: { m: Mundo; j: JogadorM; t: TimeM; k: Comandos
       </label>
       {p && <span className={`etiqueta ${p.cor}`} style={{ alignSelf: 'flex-start', whiteSpace: 'normal' }}>{p.texto}</span>}
       {!amigo && <label className="check"><input type="checkbox" checked={aceitar} onChange={(e) => setAceitar(e.target.checked)} /> Aceitar a contraproposta, se houver</label>}
+      {pendente && (
+        <div className="linha" style={{ justifyContent: 'space-between' }}>
+          <span className="etiqueta lavanda">{pendente.tipo === 'comprar' ? `Proposta enviada: ${dinheiro(pendente.valor)}` : 'Pedido de empréstimo enviado'}</span>
+          <button disabled={!k.aberto || k.ocupado} onClick={() => void k.tirar(pendente)}>Cancelar</button>
+        </div>
+      )}
       <div className="linha">
         <button className="primario" disabled={!k.aberto || k.ocupado || valor <= 0}
-          onClick={() => void k.mandar({ tipo: 'comprar', jogador: j.id, valor, ...(aceitar ? { aceitarContraproposta: true } : {}) })}>Fazer proposta</button>
+          onClick={() => void k.mandar({ tipo: 'comprar', jogador: j.id, valor, ...(aceitar ? { aceitarContraproposta: true } : {}) })}>{pendente ? 'Atualizar proposta' : 'Fazer proposta'}</button>
         {j.paraEmprestimo && <button disabled={!k.aberto || k.ocupado} onClick={() => void k.mandar({ tipo: 'pedirEmprestado', jogador: j.id })}>Pedir emprestado</button>}
       </div>
       {k.erro && <p role="alert" style={{ margin: 0, color: 'var(--rosa)' }}>{k.erro}</p>}
