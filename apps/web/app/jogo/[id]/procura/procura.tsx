@@ -11,6 +11,11 @@ import { Ficha } from '../elenco/elenco.tsx'
 import { Carregando, SemClube } from '../hub.tsx'
 
 const PRECOS = [0, 500_000, 1_000_000, 3_000_000, 10_000_000]
+type Coluna = 'posicao' | 'nome' | 'idade' | 'forca' | 'time' | 'valor'
+const COLUNAS: { chave: Coluna; rotulo: string; num?: boolean }[] = [
+  { chave: 'posicao', rotulo: 'Pos' }, { chave: 'nome', rotulo: 'Jogador' }, { chave: 'idade', rotulo: 'Idade', num: true },
+  { chave: 'forca', rotulo: 'Força', num: true }, { chave: 'time', rotulo: 'Time' }, { chave: 'valor', rotulo: 'Valor', num: true },
+]
 const ATALHOS: [string, number][] = [['+100 mil', 100_000], ['+500 mil', 500_000], ['+1 mi', 1_000_000], ['+10 mi', 10_000_000]]
 
 export function Procura({ pendentes, paises }: { pendentes: Comando[]; paises: string[] }) {
@@ -24,6 +29,7 @@ export function Procura({ pendentes, paises }: { pendentes: Comando[]; paises: s
   const [soVenda, setSoVenda] = useState(false)
   const [soEmprestimo, setSoEmprestimo] = useState(false)
   const [aberto, setAberto] = useState<number | null>(null)
+  const [ordem, setOrdem] = useState<{ col: Coluna; desc: boolean }>({ col: 'forca', desc: true })
   if (!m) return <Carregando />
   if (!t) return <SemClube />
 
@@ -31,7 +37,13 @@ export function Procura({ pendentes, paises }: { pendentes: Comando[]; paises: s
   const lista = m.jogadores.filter((j) => j.time >= 0 && j.time !== t.id && !j.juvenil &&
     (pos === null || j.posicao === pos) && j.forca >= forcaMin && j.idade <= idadeMax &&
     (!precoMax || (j.aVenda ? j.preco : j.valor) <= precoMax) && (!soVenda || j.aVenda) && (!soEmprestimo || j.paraEmprestimo) &&
-    (!q || j.nome.toLowerCase().includes(q))).sort((a, b) => b.forca - a.forca || a.valor - b.valor).slice(0, 100)
+    (!q || j.nome.toLowerCase().includes(q))).sort((a, b) => {
+    // ordena antes de cortar nos 100: "mais baratos" são os mais baratos de todos com esses filtros
+    const va = ordem.col === 'time' ? m.times[a.time]!.nome : a[ordem.col], vb = ordem.col === 'time' ? m.times[b.time]!.nome : b[ordem.col]
+    const c = typeof va === 'string' ? va.localeCompare(vb as string, 'pt-BR') : (va as number) - (vb as number)
+    return (ordem.desc ? -c : c) || b.forca - a.forca || a.valor - b.valor
+  }).slice(0, 100)
+  const ordenar = (col: Coluna) => setOrdem((o) => ({ col, desc: o.col === col ? !o.desc : col === 'forca' || col === 'valor' }))
   const sel = aberto === null ? null : m.jogadores[aberto]!
 
   return (
@@ -56,7 +68,16 @@ export function Procura({ pendentes, paises }: { pendentes: Comando[]; paises: s
       <Pendentes k={k} tipos={['comprar', 'pedirEmprestado']} />
       <div className="card rolagem">
         <table className="tabela" style={{ minWidth: 760 }}>
-          <thead><tr><th>Pos</th><th>Jogador</th><th className="num">Idade</th><th className="num">Força</th><th>Time</th><th className="num">Valor</th><th /></tr></thead>
+          <thead>
+            <tr>
+              {COLUNAS.map((c) => (
+                <th key={c.chave} className={c.num ? 'num' : undefined} aria-sort={ordem.col === c.chave ? (ordem.desc ? 'descending' : 'ascending') : undefined}>
+                  <button className="ordenar" onClick={() => ordenar(c.chave)}>{c.rotulo}{ordem.col === c.chave && (ordem.desc ? ' ↓' : ' ↑')}</button>
+                </th>
+              ))}
+              <th />
+            </tr>
+          </thead>
           <tbody>
             {lista.map((j) => {
               const dono = m.times[j.time]!

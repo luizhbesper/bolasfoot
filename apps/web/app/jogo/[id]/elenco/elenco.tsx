@@ -55,7 +55,7 @@ export function Elenco({ paises, pendentes }: { paises: string[]; pendentes: Com
             <tr>
               {COLUNAS.map((c) => (
                 <th key={c.chave} className={c.num ? 'num' : undefined} aria-sort={ordem.col === c.chave ? (ordem.desc ? 'descending' : 'ascending') : undefined}>
-                  <button className={s.ordenar} onClick={() => ordenar(c.chave)}>
+                  <button className="ordenar" onClick={() => ordenar(c.chave)}>
                     {c.rotulo}{ordem.col === c.chave && (ordem.desc ? ' ↓' : ' ↑')}
                   </button>
                 </th>
