@@ -135,6 +135,8 @@ export interface OpcoesJogo {
   habilidadeIndividual: boolean
   /** salário pago no dia 2 (padrão do original) ou todo domingo */
   salarioMensal?: boolean
+  /** estaduais no começo do ano (padrão); sem eles, Série D e Copa saem por Nivel. Fonte: best/Z.java:177, best/a.java:589 */
+  jogaEstadual?: boolean
 }
 
 export interface Mundo {

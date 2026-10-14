@@ -1,8 +1,8 @@
-// Vence os prazos: a cada segundo, chama `transicionar` nos jogos com prazo vencido. Um por processo (§2.2).
+// A cada segundo: pausa/retoma pela presença e chama `transicionar` nos jogos com prazo vencido. Um por processo (§2.2).
 import { and, inArray, lte } from 'drizzle-orm'
 import { db } from '../db/index.ts'
 import { games } from '../db/schema.ts'
-import { transicionar } from './rodada.ts'
+import { transicionar, vigiarPresenca } from './rodada.ts'
 
 export async function vencerPrazos() {
   const vencidos = await db().select({ id: games.id }).from(games)
@@ -18,6 +18,7 @@ export function iniciarAgendador() {
     if (ocupado) return
     ocupado = true
     try {
+      await vigiarPresenca(db())
       await vencerPrazos()
     } catch (e) {
       console.error('agendador:', e)

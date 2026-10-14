@@ -109,8 +109,8 @@ const div = (t: TimeM) => (t.divisao >= 0 && t.divisao <= 4 ? t.divisao : 0)
 export function abrirCaixa(mundo: Mundo, timeId: number): Financas {
   const t = mundo.times[timeId]!
   let caixa = CAIXA_INICIAL[div(t)]!
-  // estrangeiro com estaduais ligados: +3,2 folhas (ah.java:1702)
-  if (t.pais !== 29) caixa = Math.round(caixa + 3.2 * folha(mundo, t))
+  // estrangeiro com estaduais ligados: +3,2 folhas (ah.java:1702, isJogaEstadual)
+  if (t.pais !== 29 && mundo.opcoes.jogaEstadual !== false) caixa = Math.round(caixa + 3.2 * folha(mundo, t))
   t.financas = {
     caixa,
     emprestimo: 0,
@@ -137,7 +137,7 @@ export function pagar(t: TimeM, valor: number, cat: keyof Financas['despesas']):
 /** Patrocínio anual, pago na virada da temporada (W7). Fonte: best/ah.java:1692-1698 (kG) */
 export function receberPatrocinio(mundo: Mundo, t: TimeM): void {
   if (!t.financas) return
-  if (t.pais !== 29) t.financas.caixa = Math.round(t.financas.caixa + 3.2 * folha(mundo, t))
+  if (t.pais !== 29 && mundo.opcoes.jogaEstadual !== false) t.financas.caixa = Math.round(t.financas.caixa + 3.2 * folha(mundo, t))
   receber(t, PATROCINIO[div(t)]!, 'patrocinio')
 }
 

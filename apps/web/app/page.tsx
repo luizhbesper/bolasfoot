@@ -5,7 +5,7 @@ import { db } from '../lib/db/index.ts'
 import { gameMembers, games, rounds, type FaseRodada, type StatusJogo } from '../lib/db/schema.ts'
 import { base } from '../lib/game/base.ts'
 import { Pagina } from './_ui/pagina.tsx'
-import { Escudo } from './_ui/ui.tsx'
+import { Escudo, Marca } from './_ui/ui.tsx'
 import s from './inicio.module.css'
 
 const FASE: Record<FaseRodada, string> = {
@@ -28,7 +28,7 @@ export default async function Home() {
     .where(eq(gameMembers.userId, u.id)).orderBy(games.id)
   return (
     <Pagina usuario={u}>
-      <h1>Bolasfoot</h1>
+      <h1><Marca tamanho={48} /></h1>
       <h2 className="mudo" style={{ fontSize: 15, fontWeight: 500 }}>Seus jogos</h2>
       {meus.length === 0 ? (
         <div className="card secao">
