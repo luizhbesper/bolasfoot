@@ -9,6 +9,9 @@ export function Escudo({ fileRef, tamanho = 24, mini }: { fileRef: string; taman
   return <img className={s.escudo} src={`${ASSETS}/${mini ? 'escudos-mini' : 'escudos'}/${fileRef}.png`} alt="" width={tamanho} height={tamanho} />
 }
 
+/** Fundo de estádio do mod (e01–e16), fixo por time: para `--estadio` num background. */
+export const fundoEstadio = (time: number) => `url(${ASSETS}/img/e${String(time % 16 + 1).padStart(2, '0')}.jpg)`
+
 /** A logo com o nome ao lado. */
 export function Marca({ tamanho = 28 }: { tamanho?: number }) {
   return (

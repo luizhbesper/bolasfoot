@@ -2,9 +2,11 @@
 // Visão geral do clube: próximo jogo, avisos do elenco, confiança, tabela e o que os amigos fizeram na última rodada.
 import { folha } from '@bolasfoot/engine'
 import Link from 'next/link'
+import type { CSSProperties } from 'react'
 import type { ResumoRodada } from '../../../lib/game/rodada.ts'
 import { Erro } from '../../_ui/pagina.tsx'
-import { ChipPosicao, Energia, Escudo, Forca, Forma } from '../../_ui/ui.tsx'
+import { SalaDeTrofeus } from '../../_ui/trofeu.tsx'
+import { ChipPosicao, Energia, Escudo, Forca, Forma, fundoEstadio } from '../../_ui/ui.tsx'
 import { alerta, dataLonga, dinheiro, etapaDoJogo, forma, jogadoresDe, proximoJogo, tabelaDoTime } from './consultas.ts'
 import { useJogo } from './contexto.tsx'
 import s from './hub.module.css'
@@ -48,7 +50,7 @@ export function Hub({ ultima, erro }: { ultima: { n: number; resumo: ResumoRodad
           </div>
         )}
         {prox && adv ? (
-          <div className={`card ${s.proximo}`}>
+          <div className={`card ${s.proximo}`} style={{ '--estadio': fundoEstadio(mandante!.id) } as CSSProperties}>
             <div className="linha mudo" style={{ fontSize: 13 }}>
               <span className="etiqueta ceu">Próximo jogo</span>
               <strong style={{ color: 'var(--text)' }}>{[prox.comp, etapaDoJogo(m, prox.compId, mandante!.id, prox.casa ? adv.id : t.id, prox.dia)].filter(Boolean).join(', ')}</strong>
@@ -106,6 +108,11 @@ export function Hub({ ultima, erro }: { ultima: { n: number; resumo: ResumoRodad
             {t.financas && <div><span>Caixa</span><strong>{dinheiro(t.financas.caixa)}</strong></div>}
             <div><span>Folha</span><strong>{dinheiro(folha(m, t))}</strong></div>
           </div>
+        </div>
+
+        <div className="card secao">
+          <h2>Sala de troféus</h2>
+          <SalaDeTrofeus titulos={m.historico.filter((h) => h.campeao === t.id)} />
         </div>
 
         {tabela && (

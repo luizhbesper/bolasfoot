@@ -1,8 +1,9 @@
 'use client'
 // Caixa de entrada: o que o original mostrava em modais (propostas de amigos, ofertas de emprego, demissão,
 // aposentadoria, mercado, fim de temporada) vira lista com filtros e um detalhe com a ação, quando houver.
-import type { Aviso, Comando, Mundo, TipoAviso } from '@bolasfoot/engine'
+import { ANO_INICIAL, type Aviso, type Comando, type Mundo, type TipoAviso } from '@bolasfoot/engine'
 import { useEffect, useState } from 'react'
+import { SalaDeTrofeus } from '../../../_ui/trofeu.tsx'
 import { Escudo } from '../../../_ui/ui.tsx'
 import { Fechado, Pendentes, useComandos, type Comandos } from '../comandos.tsx'
 import { dataLonga, dinheiro, NOME_DIVISAO } from '../consultas.ts'
@@ -155,11 +156,23 @@ function Detalhe({ m, a, k, tecnico }: { m: Mundo; a: Aviso; k: Comandos; tecnic
         <span className="fraco" style={{ fontSize: 12 }}>{dataLonga(a.dia)}</span>
       </div>
       <p style={{ margin: 0, lineHeight: 1.5 }}>{a.texto}</p>
+      {a.tipo === 'temporada' && <TitulosDaTemporada m={m} a={a} tecnico={tecnico} />}
       {acao}
       {acao && <Fechado k={k} />}
     </div>
   )
 }
+
+/** Os títulos do técnico na temporada do resumo; o ano vem no texto ("Fim da temporada 2026", rodada.ts). */
+function TitulosDaTemporada({ m, a, tecnico }: { m: Mundo; a: Aviso; tecnico: number | null }) {
+  const ano = Number(/temporada (\d+)/.exec(a.texto)?.[1])
+  const titulos = (tecnico === null ? [] : m.tecnicos[tecnico]!.titulos).filter((x) => ANO_INICIAL + x.temporada - 1 === ano)
+  return titulos.length > 0 && <SalaDeTrofeus titulos={comNome(m, titulos)} />
+}
+
+const comNome = (m: Mundo, titulos: { competicao: string; temporada: number }[]) => titulos.map((x) => ({
+  ...x, nome: m.historico.find((h) => h.competicao === x.competicao)?.nome ?? m.competicoes.find((c) => c.id === x.competicao)?.nome ?? x.competicao,
+}))
 
 /** Pedir demissão (com confirmação: o clube não volta). */
 function Carreira({ m, k, tecnico }: { m: Mundo; k: Comandos; tecnico: number | null }) {
@@ -175,6 +188,7 @@ function Carreira({ m, k, tecnico }: { m: Mundo; k: Comandos; tecnico: number | 
       <p className="mudo" style={{ margin: 0, fontSize: 13 }}>
         {tc.temporadas} temporada{tc.temporadas === 1 ? '' : 's'} no {m.times[tc.time]!.nome} · {tc.jogos} jogos, {tc.vitorias} vitórias · {tc.titulos.length} título{tc.titulos.length === 1 ? '' : 's'}
       </p>
+      {tc.titulos.length > 0 && <SalaDeTrofeus titulos={comNome(m, tc.titulos)} />}
       {!pedida && (
         <>
           <label className="check"><input type="checkbox" checked={certeza} onChange={(e) => setCerteza(e.target.checked)} /> Quero sair do clube</label>

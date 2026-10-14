@@ -2,6 +2,7 @@
 // História: campeões, vices e artilheiros de cada competição por temporada, e o hall da fama.
 import { ANO_INICIAL } from '@bolasfoot/engine'
 import { useState } from 'react'
+import { Trofeu } from '../../../_ui/trofeu.tsx'
 import { Escudo } from '../../../_ui/ui.tsx'
 import { grupoCompeticao, GRUPOS_COMPETICAO } from '../consultas.ts'
 import { useJogo } from '../contexto.tsx'
@@ -21,6 +22,7 @@ export function Historia() {
     <div className="grade2">
       <section className="card" style={{ overflow: 'hidden' }}>
         <div className="cabecalho">
+          {comps.length > 0 && <Trofeu competicao={comp} tamanho={40} />}
           <h2>Campeões</h2>
           {comps.length > 0 && (
             <select aria-label="Competição" value={comp} onChange={(e) => setComp(e.target.value)} style={{ height: 34 }}>
