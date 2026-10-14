@@ -32,8 +32,10 @@ export type Settings = Omit<typeof gameSettings.$inferInsert, 'gameId'>
 
 /** Valida e grava; devolve o erro, se houver. Vale a partir da próxima fase. */
 export async function editarSettings(d: Db, gameId: number, s: Required<Settings>): Promise<string | null> {
-  const ints = [s.planningTimeoutS, s.halftimeTimeoutS, s.resultsPauseS, s.msPerMinute]
-  if (!ints.every((n) => Number.isInteger(n) && n > 0)) return 'prazos e velocidade devem ser inteiros positivos'
+  // prazo 0 = sem limite
+  const prazos = [s.planningTimeoutS, s.halftimeTimeoutS, s.resultsPauseS]
+  if (!prazos.every((n) => Number.isInteger(n) && n >= 0)) return 'prazos devem ser inteiros (0 = sem limite)'
+  if (!(Number.isInteger(s.msPerMinute) && s.msPerMinute > 0)) return 'velocidade deve ser um inteiro positivo'
   if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(s.dailyResolveAt)) return 'horário no formato HH:MM'
   try {
     new Intl.DateTimeFormat('pt-BR', { timeZone: s.timezone })

@@ -124,8 +124,9 @@ export function Prontos() {
 
 /** Prazo da fase em pêssego; durante o jogo, o minuto. */
 export function Relogio() {
-  const { fase, msPorMinuto, membros } = useJogo()
+  const { fase, msPorMinuto, membros, processando } = useJogo()
   const agora = useRelogio()
+  if (processando) return <span className={`${s.pilula} ${s.processando}`} role="status">Processando rodada…</span>
   if (fase.aguardando) {
     const quem = membros.filter((m) => fase.offline.includes(m.id)).map((m) => m.nome).join(', ')
     return <span className={s.pilula} title="A liga só anda com todos online">Aguardando {quem || 'todos'}</span>
@@ -136,23 +137,30 @@ export function Relogio() {
     const min = Math.min(45, Math.max(0, Math.floor((agora - fase.inicio) / msPorMinuto))) + (fase.fase === 'ao_vivo_2t' ? 45 : 0)
     return <span className={`${s.pilula} ${s.vivo}`}>{min}&apos;</span>
   }
-  if (fase.prazo === null) return null
+  // fim de rodada sem contagem: o resumo tem "Continuar" (o prazo, se houver, segue valendo no servidor)
+  if (fase.prazo === null || fase.fase === 'resultados') return null
   const resta = Math.max(0, Math.ceil((fase.prazo - agora) / 1000))
   return <span className={s.pilula} aria-live="off">{Math.floor(resta / 60)}:{String(resta % 60).padStart(2, '0')}</span>
 }
 
-/** Pronto / não pronto da fase (planejamento e intervalo); quem não joga não precisa. */
-export function BotaoPronto() {
+/** Pronto / não pronto da fase (planejamento, intervalo e o "Continuar" dos resultados); quem não joga não precisa.
+ * Nos resultados o mundo já é o da rodada seguinte, então qualquer técnico pode continuar (o servidor só espera quem jogou). */
+export function BotaoPronto({ depois }: { depois?: string } = {}) {
   const { jogo, fase, eu, prontos, joga } = useJogo()
-  if (!joga(eu.tecnicoId)) return <span className="fraco">Sem jogo nesta rodada</span>
+  const router = useRouter()
+  const resultados = fase.fase === 'resultados'
+  if (!resultados && !joga(eu.tecnicoId)) return <span className="fraco">Sem jogo nesta rodada</span>
   const pronto = prontos.includes(eu.id)
+  const texto = resultados ? (pronto ? 'Esperando os outros…' : 'Continuar')
+    : pronto ? 'Não estou pronto' : fase.fase === 'intervalo' ? 'Voltar para o 2º tempo' : 'Estou pronto'
   return (
-    <form action={readyAcao}>
+    <form action={async (f) => {
+      await readyAcao(f)
+      if (depois) router.push(depois)
+    }}>
       <input type="hidden" name="jogo" value={jogo} />
       <input type="hidden" name="ready" value={pronto ? '0' : '1'} />
-      <button className={pronto ? undefined : 'primario'}>
-        {pronto ? 'Não estou pronto' : fase.fase === 'intervalo' ? 'Voltar para o 2º tempo' : 'Estou pronto'}
-      </button>
+      <button className={pronto ? undefined : 'primario'}>{texto}</button>
     </form>
   )
 }
@@ -178,6 +186,6 @@ function AcaoDaFase() {
   const ir = (texto: string) => <Link href={`/jogo/${jogo}/partida`} className={`${s.cta} primario`}>{texto} <Icone nome="seta" /></Link>
   if (fase.fase === 'intervalo') return joga(eu.tecnicoId) ? ir('Voltar ao intervalo') : <BotaoPronto />
   if (fase.fase?.startsWith('ao_vivo')) return ir('Ir para a partida')
-  if (fase.fase === 'resultados') return ir('Ver resultados')
+  if (fase.fase === 'resultados') return eu.tecnicoId === null ? ir('Ver resultados') : <BotaoPronto />
   return null
 }

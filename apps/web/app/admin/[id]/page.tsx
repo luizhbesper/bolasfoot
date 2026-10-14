@@ -115,6 +115,7 @@ export default async function AdminJogo({ params, searchParams }: { params: Prom
                   <label>Resolução diária <input name="dailyResolveAt" defaultValue={cfg.dailyResolveAt} /></label>
                   <label>Fuso <input name="timezone" defaultValue={cfg.timezone} /></label>
                 </div>
+                <p className="fraco" style={{ margin: 0, fontSize: 12 }}>Prazo 0 = sem limite: a fase anda quando todos ficam prontos.</p>
                 <label className="check"><input type="checkbox" name="autoReadyOnTimeout" defaultChecked={cfg.autoReadyOnTimeout} /> Pronto automático no prazo</label>
                 <button>Salvar</button>
               </form>

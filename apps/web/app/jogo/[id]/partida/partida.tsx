@@ -112,6 +112,7 @@ export function Partida({ log, pendentes }: { log: Log | null; pendentes: Comand
 
   const aoVivo = log?.n === fase.rodada && (fase.fase === 'ao_vivo_1t' || fase.fase === 'ao_vivo_2t')
   const noIntervalo = log?.n === fase.rodada && fase.fase === 'intervalo'
+  const resultados = log?.n === fase.rodada && fase.fase === 'resultados'
   // a fase chega pelo SSE antes do log novo (refresh do servidor): sem isso aparecia "Encerrada" com o relógio correndo
   const atrasado = fase.fase !== null && fase.fase !== 'planejamento' && (log?.n ?? 0) < fase.rodada
   const titulo = atrasado ? 'Carregando…' : !log ? 'Partida' : fase.aguardando ? 'Aguardando todos online' : fase.status === 'paused' ? 'Pausado'
@@ -127,9 +128,10 @@ export function Partida({ log, pendentes }: { log: Log | null; pendentes: Comand
         <span className={s.titulo}>{log?.resumo.dias[0] !== undefined ? dataLonga(log.resumo.dias[0]) : 'Partida'}</span>
         <span className={`etiqueta ${aoVivo ? 'menta' : noIntervalo ? 'pessego' : ''}`}>{aoVivo && <span className={s.ponto} />}{titulo}</span>
         <span style={{ flex: 1 }} />
-        {noIntervalo ? <Prontos /> : !aoVivo && !atrasado && <Relogio />}
+        {noIntervalo || resultados ? <Prontos /> : !aoVivo && !atrasado && <Relogio />}
         {noIntervalo && eu.tecnicoId !== null && <BotaoPronto />}
-        {!aoVivo && !noIntervalo && !atrasado && <Link href={`/jogo/${jogo}`} className={`${s.cta} primario`}>Continuar <Icone nome="seta" /></Link>}
+        {resultados && eu.tecnicoId !== null ? <BotaoPronto depois={`/jogo/${jogo}`} />
+          : !aoVivo && !noIntervalo && !atrasado && <Link href={`/jogo/${jogo}`} className={`${s.cta} primario`}>Continuar <Icone nome="seta" /></Link>}
         <button className={s.som} onClick={() => setSom(!somLigado)} aria-pressed={somLigado} aria-label={somLigado ? 'Desligar som' : 'Ligar som'}
           title={somLigado ? 'Som ligado' : 'Som desligado'}>
           <Icone nome={somLigado ? 'som' : 'mudo'} />

@@ -29,7 +29,8 @@ export const seedDaRodada = (gameSeed: string, n: number) => sha256(`${gameSeed}
 /** O mundo vai para o cliente: a seed dele não pode ser a do jogo, de onde saem as das rodadas. */
 export const seedDoMundo = (gameSeed: string) => sha256(`${gameSeed}:mundo`)
 
-const daqui = (s: number) => new Date(Date.now() + s * 1000)
+/** Prazo da fase; 0 s = sem limite (anda quando todos ficam prontos ou o admin força). */
+const daqui = (s: number) => (s > 0 ? new Date(Date.now() + s * 1000) : null)
 
 // --- snapshots -------------------------------------------------------------------------------------------------------
 
@@ -108,7 +109,7 @@ async function abrirRodada(tx: Tx, g: Jogo, n: number, s: Settings) {
 async function mudarFase(tx: Tx, g: Jogo, n: number, phase: FaseRodada, deadline: Date | null, startedAt: Date | null = null) {
   await tx.update(rounds).set({ phase, startedAt }).where(and(eq(rounds.gameId, g.id), eq(rounds.n, n)))
   await tx.update(games).set({ deadline }).where(eq(games.id, g.id))
-  if (phase === 'intervalo') await tx.update(gameMembers).set({ ready: false }).where(eq(gameMembers.gameId, g.id))
+  if (phase === 'intervalo' || phase === 'resultados') await tx.update(gameMembers).set({ ready: false }).where(eq(gameMembers.gameId, g.id))
 }
 
 /** Quando o tempo ao vivo acaba no relógio do cliente: 45 + o maior acréscimo entre todas as partidas do dia (a tela mostra todas). */
@@ -162,6 +163,15 @@ async function resolver(tx: Tx, g: Jogo, n: number, etapa: 0 | 1, s: Settings) {
   return abrirRodada(tx, g, n + 1, s)
 }
 
+/** Todos que têm jogo nesta rodada estão prontos; parada sem jogo (emprego, virada): todos os técnicos.
+ * ponytail: descomprime o snapshot a cada pronto; guardar o conjunto em `rounds` se ficar lento */
+async function todosProntos(tx: Tx, gameId: number, n: number, etapa: 0 | 1) {
+  const emCampo = new Set(tecnicosEmCampo(await carregarMundo(tx, gameId, n, etapa)))
+  const jogadores = await jogadoresDe(tx, gameId)
+  const membros = emCampo.size ? jogadores.filter((x) => emCampo.has(x.tecnicoId!)) : jogadores
+  return membros.length > 0 && membros.every((x) => x.ready)
+}
+
 /**
  * Avança a fase se der: todos prontos ou prazo vencido (`forcar` = o admin manda). Idempotente: chamar de novo sem
  * nada mudar não faz nada. Devolve se mudou.
@@ -187,12 +197,7 @@ export async function transicionar(d: Db, gameId: number, forcar = false): Promi
     switch (r.phase) {
       case 'planejamento':
       case 'intervalo': {
-        // só espera quem tem jogo agora; parada sem jogo (emprego, virada): todos
-        // ponytail: descomprime o snapshot a cada pronto; guardar o conjunto em `rounds` se ficar lento
-        const emCampo = new Set(tecnicosEmCampo(await carregarMundo(tx, gameId, r.n, r.phase === 'intervalo' ? 1 : 0)))
-        const jogadores = await jogadoresDe(tx, gameId)
-        const membros = emCampo.size ? jogadores.filter((x) => emCampo.has(x.tecnicoId!)) : jogadores
-        const todos = membros.length > 0 && membros.every((x) => x.ready)
+        const todos = await todosProntos(tx, gameId, r.n, r.phase === 'intervalo' ? 1 : 0)
         if (!todos && !vencido) return false
         if (!todos && !forcar && !s.autoReadyOnTimeout) {
           // prazo vencido sem pronto automático: espera todos (ou o admin)
@@ -211,7 +216,8 @@ export async function transicionar(d: Db, gameId: number, forcar = false): Promi
         await mudarFase(tx, g, r.n, 'resultados', daqui(s.resultsPauseS))
         return true
       case 'resultados':
-        if (!vencido) return false
+        // "Continuar" do resumo marca pronto: anda quando todos que jogaram continuam (ou o prazo, se houver)
+        if (!vencido && !(await todosProntos(tx, gameId, r.n, 0))) return false
         await abrirRodada(tx, g, r.n + 1, s)
         return true
     }
@@ -285,7 +291,8 @@ export async function definirComandos(d: Db, gameId: number, userId: number, nov
 export async function marcarReady(d: Db, gameId: number, userId: number, ready: boolean, resolver = true): Promise<void> {
   const [g] = await d.select().from(games).where(eq(games.id, gameId))
   const naEscolha = g?.status === 'picking'
-  if (!naEscolha && (g?.status !== 'running' || etapaDa((await rodadaDe(d, gameId, g.round))?.phase) === null)) return
+  const phase = g?.status === 'running' ? (await rodadaDe(d, gameId, g.round))?.phase : undefined
+  if (!naEscolha && etapaDa(phase) === null && phase !== 'resultados') return
   const onde = and(eq(gameMembers.gameId, gameId), eq(gameMembers.userId, userId))
   // na escolha, só fica pronto quem já tem time
   await d.update(gameMembers).set({ ready }).where(naEscolha ? and(onde, isNotNull(gameMembers.teamRef)) : onde)
@@ -318,7 +325,8 @@ export async function retomar(d: Db, gameId: number) {
     const s = await settingsDe(tx, gameId)
     // sem prazo guardado (pausa antiga, ou esperando todos prontos): o prazo inteiro da fase
     const prazo = { planejamento: s.planningTimeoutS, intervalo: s.halftimeTimeoutS, resultados: s.resultsPauseS, ao_vivo_1t: 0, ao_vivo_2t: 0 }[r.phase]
-    const deadline = g.deadline ? new Date(g.deadline.getTime() + parado) : daqui(prazo)
+    // ao vivo sem prazo: vence na hora (o fim do tempo é recalculado pelo relógio)
+    const deadline = g.deadline ? new Date(g.deadline.getTime() + parado) : r.phase.startsWith('ao_vivo') ? new Date() : daqui(prazo)
     if (r.startedAt) await tx.update(rounds).set({ startedAt: new Date(r.startedAt.getTime() + parado) }).where(and(eq(rounds.gameId, gameId), eq(rounds.n, r.n)))
     await tx.update(games).set({ status: 'running', deadline, pausedAt: null, autoPaused: false }).where(eq(games.id, gameId))
     return true

@@ -127,6 +127,22 @@ test('prazo vencido sem pronto automático espera todos; o admin força', async 
   expect(await transicionar(db(), jogo, true)).toBe(true)
 })
 
+test('prazo 0 = sem limite; nos resultados, quem jogou continua e a rodada abre', async () => {
+  const { gameSettings } = await import('../db/schema.ts')
+  await db().update(gameSettings).set({ resultsPauseS: 0 })
+  for (let i = 0; i < 40 && (await rodada((await jogoAtual()).round)).phase !== 'resultados'; i++) {
+    await vencer()
+    await transicionar(db(), jogo)
+  }
+  const n = (await jogoAtual()).round
+  expect((await rodada(n)).phase).toBe('resultados')
+  expect((await jogoAtual()).deadline).toBeNull()
+  expect(await transicionar(db(), jogo)).toBe(false) // sem prazo, ninguém pronto: espera
+  await marcarReady(db(), jogo, ana!, true)
+  await marcarReady(db(), jogo, bia!, true)
+  expect((await jogoAtual()).round).toBe(n + 1)
+}, 60_000)
+
 test('presença: alguém offline pausa sozinho; todos de volta retomam; pausa do admin não se desfaz', async () => {
   const membros = await db().select().from(gameMembers).where(eq(gameMembers.gameId, jogo))
   const [a, b] = membros.map((m) => m.id) as [number, number]

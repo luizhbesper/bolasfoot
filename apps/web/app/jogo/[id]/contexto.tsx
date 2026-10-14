@@ -25,6 +25,8 @@ interface Jogo {
   joga: (tecnicoId: number | null) => boolean
   /** relógio do servidor menos o local, em ms */
   offset: number
+  /** todos que jogam estão prontos (o motor está rodando) ou o mundo da fase nova ainda está chegando */
+  processando: boolean
 }
 
 const Ctx = createContext<Jogo | null>(null)
@@ -58,6 +60,7 @@ export function JogoProvider({ children, ...p }: {
   const [mundo, setMundo] = useState<Mundo | null>(null)
   const [offset, setOffset] = useState<number | null>(null)
   const versao = useRef<string | null>(null)
+  const [baixando, setBaixando] = useState(false)
 
   useEffect(() => {
     const es = new EventSource(`/api/games/${p.jogo}/eventos`)
@@ -85,21 +88,25 @@ export function JogoProvider({ children, ...p }: {
     // corpo não lido segura a conexão: com o SSE aberto, 5 snapshots esquecidos esgotam as 6 conexões HTTP/1.1 do
     // navegador e toda navegação fica na fila ("Rendering…" para sempre). Por isso aborta ao sair e cancela o que sobra.
     const ctl = new AbortController()
+    setBaixando(true)
     fetch(`/api/games/${p.jogo}/snapshot`, { signal: ctl.signal }).then(async (r) => {
       const v = r.headers.get('X-Rodada')
       if (!r.ok || v === versao.current) return void r.body?.cancel()
       const m = (await r.json()) as Mundo
       versao.current = v
       setMundo(m)
-    }).catch(() => {}) // abortado
+    }).catch(() => {}).finally(() => setBaixando(false)) // abortado
     return () => ctl.abort()
   }, [p.jogo, temMundo, fase.rodada, fase.fase])
 
   const emCampo = useMemo(() => new Set(mundo ? tecnicosEmCampo(mundo) : []), [mundo])
   const joga = (tc: number | null) => tc !== null && (emCampo.size === 0 || emCampo.has(tc))
+  const jogam = p.membros.filter((x) => joga(x.tecnicoId))
+  const esperaPronto = fase.status === 'running' && (fase.fase === 'planejamento' || fase.fase === 'intervalo')
+  const processando = (esperaPronto && jogam.length > 0 && jogam.every((x) => prontos.includes(x.id))) || (baixando && mundo !== null && !fase.fase?.startsWith('ao_vivo'))
   const meuTime = mundo && p.eu.tecnicoId !== null ? mundo.times.find((t) => t.tecnico === p.eu.tecnicoId) ?? null : null
   return (
-    <Ctx.Provider value={{ jogo: p.jogo, msPorMinuto: p.msPorMinuto, eu: p.eu, membros: p.membros, fase, prontos, mundo, meuTime, joga, offset: offset ?? 0 }}>
+    <Ctx.Provider value={{ jogo: p.jogo, msPorMinuto: p.msPorMinuto, eu: p.eu, membros: p.membros, fase, prontos, mundo, meuTime, joga, offset: offset ?? 0, processando }}>
       {children}
     </Ctx.Provider>
   )

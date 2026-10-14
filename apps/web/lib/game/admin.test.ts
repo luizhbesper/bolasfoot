@@ -28,6 +28,8 @@ test('criar jogo, convidar, revogar, configurar e apagar', async () => {
   const s = { planningTimeoutS: 60, halftimeTimeoutS: 20, resultsPauseS: 5, msPerMinute: 100, dailyResolveAt: '22:30', timezone: 'America/Sao_Paulo', autoReadyOnTimeout: false }
   expect(await editarSettings(db(), g, { ...s, timezone: 'Marte/Base' })).toBe('fuso inválido')
   expect(await editarSettings(db(), g, { ...s, dailyResolveAt: '25:00' })).toBe('horário no formato HH:MM')
+  expect(await editarSettings(db(), g, { ...s, msPerMinute: 0 })).toBe('velocidade deve ser um inteiro positivo')
+  expect(await editarSettings(db(), g, { ...s, planningTimeoutS: 0 })).toBeNull() // 0 = sem limite
   expect(await editarSettings(db(), g, s)).toBeNull()
   expect((await db().select().from(gameSettings))[0]).toMatchObject(s)
 
