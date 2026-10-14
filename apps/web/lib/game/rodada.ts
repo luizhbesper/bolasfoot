@@ -228,7 +228,8 @@ const etapaDa = (phase: FaseRodada | undefined) => (phase === 'planejamento' ? 0
 export async function enviarComandos(d: Db, gameId: number, userId: number, lista: unknown): Promise<{ erro: string } | { erros: (string | null)[] }> {
   return d.transaction(async (tx) => {
     const [g] = await tx.select().from(games).where(eq(games.id, gameId)).for('share')
-    if (g?.status !== 'running') return { erro: 'o jogo não está rodando' }
+    // pausado (alguém caiu ou o admin parou) ainda dá para mexer: só o relógio para
+    if (g?.status !== 'running' && g?.status !== 'paused') return { erro: 'o jogo não está rodando' }
     const [mb] = await tx.select().from(gameMembers).where(and(eq(gameMembers.gameId, gameId), eq(gameMembers.userId, userId)))
     if (mb?.tecnicoId == null) return { erro: 'você não joga neste jogo' }
     const r = await rodadaDe(tx, gameId, g.round)
@@ -247,7 +248,7 @@ export async function enviarComandos(d: Db, gameId: number, userId: number, list
 /** Comandos já guardados pelo membro na fase corrente (vazio fora do planejamento/intervalo). */
 export async function comandosPendentes(q: Q, gameId: number, userId: number): Promise<Comando[]> {
   const [g] = await q.select().from(games).where(eq(games.id, gameId))
-  if (g?.status !== 'running') return []
+  if (g?.status !== 'running' && g?.status !== 'paused') return []
   const etapa = etapaDa((await rodadaDe(q, gameId, g.round))?.phase)
   if (etapa === null) return []
   const [c] = await q.select({ list: commands.list }).from(commands).innerJoin(gameMembers, eq(gameMembers.id, commands.memberId))

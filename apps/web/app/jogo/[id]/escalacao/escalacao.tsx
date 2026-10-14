@@ -67,7 +67,8 @@ export function Escalacao({ pendentes }: { pendentes: Comando[] }) {
   const { mundo: m, meuTime: t, fase } = useJogo()
   if (!m) return <Carregando />
   if (!t) return <SemClube />
-  const editavel = fase.status === 'running' && fase.fase === 'planejamento'
+  // pausado também: só o relógio para
+  const editavel = (fase.status === 'running' || fase.status === 'paused') && fase.fase === 'planejamento'
   // nova fase = novo snapshot: recomeça do que o servidor tem
   return <Editor key={`${fase.rodada}:${fase.fase}`} m={m} t={t} pendentes={pendentes} editavel={editavel} />
 }
@@ -345,6 +346,11 @@ function Status({ salvo, editavel, indisponiveis }: { salvo: string; editavel: b
     <>
       {indisponiveis.length > 0 && (
         <p className={s.aviso}>Não podem jogar o próximo jogo: {indisponiveis.join(', ')}. O motor troca pelo melhor disponível.</p>
+      )}
+      {!editavel && (
+        <p className="fraco" style={{ margin: 0, fontSize: 12 }}>
+          Travada enquanto a rodada roda (jogos e resultados): as trocas do jogo são no intervalo, na tela da partida. Abre de novo no planejamento.
+        </p>
       )}
       {editavel && salvo !== 'nada' && (
         <p className="fraco" style={{ margin: 0, fontSize: 12 }} aria-live="polite">

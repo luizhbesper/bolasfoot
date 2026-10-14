@@ -13,7 +13,7 @@ export function useComandos(pendentes: Comando[]) {
   const router = useRouter()
   const [erro, setErro] = useState<string | null>(null)
   const [ocupado, setOcupado] = useState(false)
-  const aberto = fase.status === 'running' && fase.fase === 'planejamento'
+  const aberto = (fase.status === 'running' || fase.status === 'paused') && fase.fase === 'planejamento'
   async function rodar(f: () => Promise<string | null>) {
     setOcupado(true)
     const e = await f()
