@@ -1,6 +1,7 @@
 import { expect, test } from 'vitest'
 import type { Base } from '@bolasfoot/data'
 import baseJson from '@bolasfoot/data/base.json' with { type: 'json' }
+import base2026 from '@bolasfoot/data/base-2026.json' with { type: 'json' }
 import { forcaInicial, habilidadesIniciais, novoJogo, setoresEstadio, subperfil, BRA } from './mundo.ts'
 import type { Rng } from './rng.ts'
 
@@ -58,6 +59,15 @@ test('novoJogo: divisões, carga e determinismo', () => {
   for (const t of m.times) expect(t.jogadores.every((id) => m.jogadores[id]!.time === t.id)).toBe(true)
   expect(JSON.stringify(novoJogo(base, { habilidadeIndividual: true }, 'seed-teste'))).toBe(JSON.stringify(m))
   expect(novoJogo(base, { habilidadeIndividual: false }, 'outra').jogadores[0]!.habilidades).toBeNull()
+})
+
+test('novoJogo: base 2026 nasce com as Séries A–C reais (B5)', () => {
+  const b = base2026 as Base
+  const m = novoJogo(b, { habilidadeIndividual: false }, 's')
+  const serie = (d: number) => m.times.filter((t) => t.pais === BRA && t.divisao === d).map((t) => t.nome)
+  for (const d of [1, 2, 3]) expect(serie(d)).toHaveLength(20)
+  expect(serie(1)).toEqual(expect.arrayContaining(['Flamengo', 'Palmeiras', 'Remo', 'Chapecoense', 'Mirassol']))
+  expect(serie(1)).not.toContain('América-MG')
 })
 
 test('novoJogo: força dada pela base vale; o resto do mundo não muda (B4)', () => {

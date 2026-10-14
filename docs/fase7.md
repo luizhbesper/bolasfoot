@@ -103,6 +103,10 @@ Objetivo: a 1ª temporada da base 2026 começa com os clubes reais em cada divis
 Fonte original: `mundo.ts:489` (ranking por nivel), `brasil.ts:78-89` (estaduais).
 Contrato: `Time.divisao?` e `Time.estadual?` (divisão e grupo) opcionais. Com eles, o mundo nasce com as divisões dadas; sem eles, segue o ranking por nivel (a 2022 não muda). Da 2ª temporada em diante, acesso e rebaixamento como estão.
 Testes: o mundo da 2026 tem a Série A dos fatos acima; o da 2022 é idêntico ao de hoje (golden).
+**Feito:**
+- Os campos são `Time.divisaoInicial` (1–3) e `Time.estadualInicial`.
+- A Série D continua saindo dos estaduais, com 64 vagas, até a B6.
+- `pnpm sim --temporadas N --base 2026` roda temporadas com a base nova.
 
 ## B6 — Formatos nacionais 2026
 Objetivo: Séries, Copa e estaduais jogados como em 2026.

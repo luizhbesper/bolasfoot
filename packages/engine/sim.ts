@@ -1,9 +1,11 @@
 // pnpm sim [--n 10000] [--seed x] [--divisao 1] [--habilidade] [--ref packages/engine/src/ref-original.json]
-// pnpm sim --temporadas 10 [--mundos 5] [--saida x.json]: temporadas completas (gate da Fase 2), uma linha por temporada.
+// pnpm sim --temporadas 10 [--mundos 5] [--base 2026] [--saida x.json]: temporadas completas (gate da Fase 2), uma linha por temporada.
 // Simula N partidas só da IA e imprime as métricas (lado a lado com o original, se houver referência).
 // --oraculo <jsonl> --saida <json>: converte a saída do tools/Oracle.java em referência (usado por tools/oracle.sh).
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { parseArgs } from 'node:util'
+import type { Base } from '@bolasfoot/data'
+import base2026 from '@bolasfoot/data/base-2026.json' with { type: 'json' }
 import { metricas, resumo, simularLote, simularTemporadas, type Metricas } from './src/estatisticas.ts'
 
 const { values } = parseArgs({
@@ -17,6 +19,7 @@ const { values } = parseArgs({
     saida: { type: 'string' },
     temporadas: { type: 'string' },
     mundos: { type: 'string', default: '1' },
+    base: { type: 'string', default: '2022' },
   },
 })
 
@@ -25,7 +28,7 @@ if (values.temporadas) {
   for (let k = 0; k < +values.mundos; k++) {
     const seed = `${values.seed}-${k + 1}`
     const t0 = performance.now()
-    const r = simularTemporadas(+values.temporadas, seed)
+    const r = simularTemporadas(+values.temporadas, seed, values.base === '2026' ? base2026 as Base : undefined)
     console.log(`mundo ${seed}: ${r.length} temporadas em ${Math.round(performance.now() - t0)} ms`)
     for (const x of r)
       console.log(`  T${x.temporada} A:${x.campeoes.A} CB:${x.campeoes.CB} LIB:${x.campeoes.LIB} SUL:${x.campeoes.SUL} MUN:${x.campeoes.MUN} ρ=${x.spearmanA} gols=${x.golsJogo} top11=${x.forcaTop11.join('/')} piloto ${x.piloto.time ?? 'desempregado'} ${x.piloto.posicao ?? '-'}º caixa ${(x.piloto.caixa / 1e6).toFixed(1)}M${x.piloto.demissoes ? ' (demitido)' : ''}`)

@@ -496,6 +496,8 @@ export function novoJogo(base: Base, opcoes: OpcoesJogo, seed: string): Mundo {
   // Z.Ar(): ordena por Nivel e desempate, A/B/C = blocos de 20. A Série D vem dos estaduais (Z.java:177).
   const br = mundo.times.filter((t) => t.pais === BRA).sort((x, y) => y.nivel - x.nivel || y.desempate - x.desempate)
   br.forEach((t, i) => (t.divisao = i < 60 ? Math.floor(i / 20) + 1 : 0))
+  // base 2026 (docs/fase7.md B5): a divisão real de cada clube na 1ª temporada
+  if (br.some((t) => t.divisaoInicial)) for (const t of br) t.divisao = t.divisaoInicial ?? 0
 
   // f_0.aU(): força de todos os jogadores, depois dos juniores (mesma ordem do original)
   const ordem = [...mundo.jogadores.filter((j) => !j.juvenil), ...mundo.jogadores.filter((j) => j.juvenil)]

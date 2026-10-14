@@ -46,6 +46,10 @@ export interface Time {
   tecNac: number
   jogadores: Jogador[]
   juniores: Jogador[]
+  /** Série (1–3) na 1ª temporada (base 2026); sem o campo, a divisão sai do ranking por Nivel, como no original */
+  divisaoInicial?: number
+  /** está na 1ª divisão do estadual na 1ª temporada (base 2026); entra antes dos outros da UF */
+  estadualInicial?: boolean
 }
 
 export interface Pais {

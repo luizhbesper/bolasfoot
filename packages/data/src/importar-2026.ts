@@ -190,6 +190,8 @@ for (const c of clubes) {
     tecnico: p.coach?.name ?? o?.tecnico ?? '', tecNac: c.pais,
     jogadores: brutos.get(c)!.sort((a, b) => a.posicao - b.posicao || b.valor - a.valor).map((j): Jogador => { const { id, valor, ...resto } = j; void id; void valor; return resto }),
     juniores: [],
+    ...(c.divisao >= 1 && c.divisao <= 3 && { divisaoInicial: c.divisao }),
+    ...(c.estadual && { estadualInicial: true }),
   })
 }
 for (const f of mantidos) times.push(original.get(f)!)
