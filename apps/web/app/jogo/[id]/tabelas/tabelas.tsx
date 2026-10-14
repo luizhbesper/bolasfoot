@@ -1,11 +1,12 @@
 'use client'
 // Tabelas: classificação (liga e grupos, de FaseLiga.linhas) ou chaves do mata-mata, artilharia e a próxima rodada.
-import type { Competicao, FaseLiga, FaseMataMata, Jogo, Mundo } from '@bolasfoot/engine'
+import { zonasDaTabela, type Competicao, type FaseLiga, type FaseMataMata, type Jogo, type Mundo } from '@bolasfoot/engine'
 import { useState } from 'react'
 import { Escudo, Forma } from '../../../_ui/ui.tsx'
 import { artilharia, dataLonga, grupoCompeticao, GRUPOS_COMPETICAO, jogosDaComp, NOME_RODADA, nomeFase, nomeRodada, participa, proximoJogo, resultadoPara, type Resultado } from '../consultas.ts'
 import { useJogo } from '../contexto.tsx'
 import { Carregando } from '../hub.tsx'
+import { Legenda, Ponto, zonas } from './zonas.tsx'
 
 const VAZIA = { pts: 0, j: 0, v: 0, e: 0, d: 0, gp: 0, gc: 0 }
 
@@ -48,8 +49,8 @@ export function Tabelas() {
             </div>
           )}
           {!f ? <div className="card secao"><p className="mudo" style={{ margin: 0 }}>Ainda não começou.</p></div>
-            : f.tipo === 'liga' ? <Liga m={m} c={c} f={f} eu={eu} />
-            : <MataMata m={m} f={f} eu={eu} />}
+            : f.tipo === 'liga' ? <Liga m={m} c={c} f={f} nFase={nFase} eu={eu} />
+            : <MataMata m={m} f={f} eu={eu} sobem={zonasDaTabela(m, c.id, nFase).sobem} />}
           {c.campeao !== null && (
             <div className="card secao">
               <div className="linha"><span className="etiqueta lavanda">Campeão</span><Escudo fileRef={m.times[c.campeao]!.fileRef} tamanho={28} /><strong>{m.times[c.campeao]!.nome}</strong>
@@ -66,18 +67,7 @@ export function Tabelas() {
   )
 }
 
-/** Zona de cada posição: classifica/sobe (menta) ou cai (rosa). */
-function zonas(c: Competicao, f: FaseLiga, tamanho: number): { legenda: [string, string][]; de: (i: number) => 'menta' | 'rosa' | null } {
-  if (f.avancam > 0) return { legenda: [['menta', 'Classifica']], de: (i) => (i < f.avancam ? 'menta' : null) }
-  const sobe = c.id.startsWith('BR-') && c.divisao >= 2 ? 4 : 0 // Séries B, C e D: sobem 4
-  const cai = c.rebaixados ?? 0
-  const legenda: [string, string][] = []
-  if (sobe) legenda.push(['menta', 'Acesso'])
-  if (cai) legenda.push(['rosa', 'Rebaixamento'])
-  return { legenda, de: (i) => (i < sobe ? 'menta' : i >= tamanho - cai ? 'rosa' : null) }
-}
-
-function Liga({ m, c, f, eu }: { m: Mundo; c: Competicao; f: FaseLiga; eu: number }) {
+function Liga({ m, c, f, nFase, eu }: { m: Mundo; c: Competicao; f: FaseLiga; nFase: number; eu: number }) {
   const grupos = f.grupos.length ? f.grupos : [f.times]
   const rodada = Math.max(0, ...Object.values(f.linhas).map((l) => l.j))
   // forma na fase: os resultados de cada time nos jogos desta fase, em ordem
@@ -90,12 +80,12 @@ function Liga({ m, c, f, eu }: { m: Mundo; c: Competicao; f: FaseLiga; eu: numbe
   return (
     <>
       {grupos.map((g, gi) => {
-        const z = zonas(c, f, g.length)
+        const z = zonas(m, c, nFase, g.length)
         return (
           <div key={gi} className="card" style={{ overflow: 'hidden' }}>
-            <div className="cabecalho">
+            <div className="cabecalho" style={{ flexWrap: 'wrap' }}>
               <h2>{grupos.length > 1 ? `Grupo ${String.fromCharCode(65 + gi)}` : c.nome} {gi === 0 && rodada > 0 && <span className="fraco" style={{ fontWeight: 400 }}>· {rodada}ª rodada</span>}</h2>
-              {z.legenda.map(([cor, txt]) => <span key={txt} className="linha mudo" style={{ gap: 6, fontSize: 12 }}><Ponto cor={cor} />{txt}</span>)}
+              <Legenda z={z} />
             </div>
             <div className="rolagem">
               <table className="tabela" style={{ minWidth: 620 }}>
@@ -129,11 +119,7 @@ function Liga({ m, c, f, eu }: { m: Mundo; c: Competicao; f: FaseLiga; eu: numbe
   )
 }
 
-function Ponto({ cor }: { cor: string | null }) {
-  return <span style={{ width: 7, height: 7, borderRadius: '50%', flex: 'none', background: cor ? `var(--${cor})` : 'transparent' }} />
-}
-
-function MataMata({ m, f, eu }: { m: Mundo; f: FaseMataMata; eu: number }) {
+function MataMata({ m, f, eu, sobem }: { m: Mundo; f: FaseMataMata; eu: number; sobem: number }) {
   if (!f.rodadas.length) return <div className="card secao"><p className="mudo" style={{ margin: 0 }}>Chaves ainda não sorteadas.</p></div>
   return (
     <>
@@ -141,7 +127,7 @@ function MataMata({ m, f, eu }: { m: Mundo; f: FaseMataMata; eu: number }) {
         const n = r.confrontos.length
         return (
           <div key={ri} className="card" style={{ overflow: 'hidden' }}>
-            <div className="cabecalho"><h2>{f.nomes || r.terceiro ? nomeRodada(f, f.rodadas.length - 1 - ri) : NOME_RODADA[n] ?? `${f.rodadas.length - ri}ª fase`}</h2><span className="fraco" style={{ fontSize: 12 }}>{r.idaVolta ? 'ida e volta' : 'jogo único'}</span></div>
+            <div className="cabecalho"><h2>{f.nomes || r.terceiro ? nomeRodada(f, f.rodadas.length - 1 - ri) : NOME_RODADA[n] ?? `${f.rodadas.length - ri}ª fase`}</h2><span className="linha fraco" style={{ gap: 8, fontSize: 12 }}>{n === sobem && <span className="etiqueta menta">Vencedores sobem</span>}{r.idaVolta ? 'ida e volta' : 'jogo único'}</span></div>
             <div className="rolagem">
               <table className="tabela" style={{ minWidth: 480 }}>
                 <tbody>

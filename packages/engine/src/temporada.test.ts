@@ -6,11 +6,12 @@ import { avancarDia, type FaseLiga } from './competicoes.ts'
 import { abrirCaixa } from './economia.ts'
 import { novoJogo, type Mundo } from './mundo.ts'
 import { criarRng } from './rng.ts'
-import { caem, fimDeTemporada, sobem } from './temporada.ts'
+import { caem, fimDeTemporada, sobem, zonasDaTabela, type Zonas } from './temporada.ts'
 
 const B = base as Base
 let m: Mundo
 let antes: { divisao: number[]; elenco: number; humano: number }
+let zonasFinais: Zonas[]
 const comp = (id: string) => m.competicoes.find((c) => c.id === id)!
 
 beforeAll(() => {
@@ -19,8 +20,28 @@ beforeAll(() => {
   m.times[humano]!.humano = true
   abrirCaixa(m, humano)
   while (avancarDia(m) !== null);
+  zonasFinais = [zonasDaTabela(m, 'BR-3', 1), zonasDaTabela(m, 'BR-4', 1)]
   antes = { divisao: m.times.map((t) => t.divisao), elenco: m.jogadores.length, humano }
   fimDeTemporada(m, B)
+})
+
+describe('zonasDaTabela', () => {
+  it('mundo novo: A com vagas continentais e queda, B sobe e cai, C classifica e cai, D não cai', () => {
+    const n = novoJogo(B, { habilidadeIndividual: false }, 'zonas')
+    const z = (id: string, f = 0) => zonasDaTabela(n, id, f)
+    expect(z('BR-1')).toEqual({ sobem: 0, caem: 4, libertadores: 7, sulAmericana: 6 })
+    expect(z('BR-2')).toEqual({ sobem: 4, caem: 4, libertadores: 0, sulAmericana: 0 })
+    expect(z('BR-3')).toEqual({ sobem: 0, caem: 4, libertadores: 0, sulAmericana: 0 })
+    expect(z('BR-4')).toEqual({ sobem: 0, caem: 0, libertadores: 0, sulAmericana: 0 })
+    const est = n.competicoes.filter((c) => c.id.startsWith('EST-')).map((c) => [c.id, c.rebaixados ?? 0] as const)
+    expect(est.length).toBeGreaterThan(0)
+    for (const [id, r] of est) expect(z(id)).toMatchObject({ caem: r, libertadores: 0 })
+    expect(z('CB')).toEqual({ sobem: 0, caem: 0, libertadores: 0, sulAmericana: 0 })
+  })
+
+  it('2ª fase: grupos da C sobem 2 cada; no mata-mata da D sobem 4 (os semifinalistas)', () => {
+    expect(zonasFinais.map((z) => z.sobem)).toEqual([2, 4])
+  })
 })
 
 describe('fim de temporada', () => {

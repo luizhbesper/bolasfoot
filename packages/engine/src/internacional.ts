@@ -27,6 +27,11 @@ const LIB_GRUPOS: Cota[] = [[BRA, 5], [ARG, 5], [195, 2], [150, 2], [42, 2], [46
 const LIB_PRELIM = c1(26, 60, 150, 151, 195, 198, ARG, 26, BRA, BRA, 42, 42, 46, 46, 60, 150, 151, 195, 198)
 /** f/H.java:28-48 */
 const SUL_GRUPOS: Cota[] = [[BRA, 3], [BRA, 3], [ARG, 6]]
+/** Vagas nominais do Brasil na Libertadores (grupos + preliminar) e na Sul-Americana: a prévia da tabela da Série A. */
+export function vagasContinentaisBR(): { libertadores: number; sulAmericana: number } {
+  const n = (l: readonly Cota[]) => l.reduce((s, [p, k]) => s + (p === BRA ? k : 0), 0)
+  return { libertadores: n(LIB_GRUPOS) + n(LIB_PRELIM), sulAmericana: n(SUL_GRUPOS) }
+}
 const SUL_PRELIM: Cota[] = [26, 42, 46, 60, 150, 151, 195, 198].map((p) => [p, 4] as const)
 /** f/v.java:27-110 */
 const UCL_GRUPOS = c1(97, 65, 104, ALE, FRA, 154, 85, 21, 15, 62, 193, 97, 65, 104, ALE, FRA, 154, 97, 65, 104, ALE, 97, 65, 104)

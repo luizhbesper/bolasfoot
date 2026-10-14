@@ -8,6 +8,7 @@ import { ChipPosicao, Energia, Escudo, Forca, Forma } from '../../_ui/ui.tsx'
 import { alerta, dataLonga, dinheiro, etapaDoJogo, forma, jogadoresDe, proximoJogo, tabelaDoTime } from './consultas.ts'
 import { useJogo } from './contexto.tsx'
 import s from './hub.module.css'
+import { Legenda, Ponto, zonas } from './tabelas/zonas.tsx'
 
 export function Carregando() {
   return <p className="mudo">Carregando o mundo…</p>
@@ -32,6 +33,8 @@ export function Hub({ ultima, erro }: { ultima: { n: number; resumo: ResumoRodad
   const mandante = prox ? (prox.casa ? t : adv!) : null
   const tecnico = m.tecnicos[t.tecnico]!
   const tabela = prox ? tabelaDoTime(m, prox.compId, t.id) : null
+  const compTabela = prox && m.competicoes.find((c) => c.id === prox.compId)
+  const z = tabela && compTabela ? zonas(m, compTabela, compTabela.fases.length - 1, tabela.linhas.length) : null
   const elenco = jogadoresDe(m, t.jogadores).sort((a, b) => a.posicao - b.posicao || b.forca - a.forca)
   // técnico humano de cada time, para o feed
   const humanos = new Map(membros.filter((x) => x.teamRef).map((x) => [m.times.find((tt) => tt.fileRef === x.teamRef)?.id, x.nome]))
@@ -110,13 +113,13 @@ export function Hub({ ultima, erro }: { ultima: { n: number; resumo: ResumoRodad
 
         {tabela && (
           <div className="card" style={{ overflow: 'hidden' }}>
-            <div className="secao" style={{ paddingBottom: 6 }}><h2>{tabela.nome}</h2></div>
+            <div className="secao" style={{ paddingBottom: 6 }}><h2>{tabela.nome}</h2>{z && z.legenda.length > 0 && <Legenda z={z} />}</div>
             <table className="tabela">
               <thead><tr><th>#</th><th>Clube</th><th className="num">J</th><th className="num">Pts</th></tr></thead>
               <tbody>
                 {tabela.linhas.map((l) => (
                   <tr key={l.time} className={l.time === t.id ? 'eu' : undefined}>
-                    <td className="fraco">{l.pos}</td>
+                    <td><span className="linha fraco" style={{ gap: 6, flexWrap: 'nowrap' }}><Ponto cor={z?.de(l.pos - 1) ?? null} />{l.pos}</span></td>
                     <td><span className="linha" style={{ gap: 8, flexWrap: 'nowrap' }}><Escudo fileRef={m.times[l.time]!.fileRef} tamanho={18} mini />{m.times[l.time]!.nome}</span></td>
                     <td className="num mudo">{l.linha.j}</td>
                     <td className="num" style={{ fontWeight: 700 }}>{l.linha.pts}</td>
