@@ -165,7 +165,8 @@ export function criarCompeticoesBR(mundo: Mundo, base: Base, rng: Rng, estaduais
     comps.push(c)
   }
   mundo.competicoes = comps
-  comps.push(...criarEstaduais(mundo, base, rng, estaduais), ...criarRegionais(mundo, base, rng))
+  if (mundo.opcoes.jogaEstadual !== false) comps.push(...criarEstaduais(mundo, base, rng, estaduais))
+  comps.push(...criarRegionais(mundo, base, rng))
   return comps
 }
 
@@ -210,8 +211,11 @@ function timesSerieD(mundo: Mundo, n: number): number[] {
   // os rebaixados da Série C (SR.bY) entram primeiro
   const lista = mundo.rebaixadosC.filter((t) => mundo.times[t]!.divisao === 0)
   for (const e of [SB, SC, SD, SE, SF, SB, SB, SB, SC, SC, SD, SE, SB, SB, SB, SC, SC, SD, SE]) porEstado(col, e, lista)
-  // ponytail: o original completa na ordem de Z.hv (lista de times do país); aqui, a ordem do mundo
-  for (const t of timesBR(mundo)) if (lista.length < n && t.divisao === 0 && !lista.includes(t.id)) lista.push(t.id)
+  // ponytail: o original completa na ordem de Z.hv (lista de times do país); aqui, a ordem do mundo.
+  // Sem estaduais a D inteira sai daqui, por Nivel (best/Z.java:177)
+  const resto = timesBR(mundo).map((t) => t.id)
+  if (mundo.opcoes.jogaEstadual === false) resto.sort(porNivel(mundo))
+  for (const t of resto) if (lista.length < n && mundo.times[t]!.divisao === 0 && !lista.includes(t)) lista.push(t)
   return lista.slice(0, n).sort((a, b) => regiaoD(mundo.times[a]!) - regiaoD(mundo.times[b]!))
 }
 
@@ -232,7 +236,8 @@ export function eventoCD(mundo: Mundo, desde: number, rng: Rng): void {
     for (const t of times) mundo.times[t]!.divisao = 4
     d.fases.push(criarFaseLiga(mundo, d, times, d.opcoes, desde, rng))
   }
-  const lista = [1, 2, 3].flatMap((div) => tabelaSerie(mundo, div))
+  // sem estaduais: todos os brasileiros por Nivel (criaCopaBRAposRegionais, best/a.java:649-657)
+  const lista = mundo.opcoes.jogaEstadual === false ? timesBR(mundo).map((t) => t.id).sort(porNivel(mundo)) : [1, 2, 3].flatMap((div) => tabelaSerie(mundo, div))
   for (const t of timesCopaEstaduais(mundo)) if (!lista.includes(t)) lista.push(t)
   mundo.competicoes.push(criarCopa(mundo, lista, desde, rng))
   mundo.colocacoesEstaduais = []

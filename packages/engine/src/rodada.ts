@@ -299,7 +299,7 @@ function executar(m: Mundo, base: Base, tc: number, t: TimeM | null, c: Comando,
 
 /**
  * Aplica os comandos na ordem de envio. As compras de jogadores da IA vêm por último, da maior oferta para a menor
- * (empate: quem mandou primeiro); a que chega depois de o jogador já ter mudado de time falha (plano §3.4).
+ * (empate: a ordem em que chegam, hoje a do membro); a que chega depois de o jogador já ter mudado de time falha (plano §3.4).
  */
 function aplicarComandos(m: Mundo, base: Base, comandos: readonly ComandoDe[], rng: Rng): ResultadoComando[] {
   const compraIA = (x: ComandoDe) => x.comando.tipo === 'comprar' && !m.times[m.jogadores[x.comando.jogador]?.time ?? -1]?.humano

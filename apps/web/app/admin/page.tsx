@@ -46,12 +46,13 @@ export default async function Admin() {
             </label>
             <label className="check"><input type="checkbox" name="habilidadeIndividual" /> Habilidade individual</label>
             <label className="check"><input type="checkbox" name="salarioSemanal" /> Salário semanal</label>
+            <label className="check"><input type="checkbox" name="semEstaduais" /> Pular os estaduais (a temporada começa na liga)</label>
             <fieldset>
               <legend>Divisões permitidas na escolha (nenhuma = todas)</legend>
               {[1, 2, 3, 0].map((d) => (
                 <label key={d} className="check"><input type="checkbox" name="divisoes" value={d} /> {d ? `Série ${'ABC'[d - 1]}` : 'Fora das séries'}</label>
               ))}
-              <span className="fraco" style={{ fontSize: 12 }}>A Série D sai dos estaduais no meio do ano.</span>
+              <span className="fraco" style={{ fontSize: 12 }}>A Série D sai dos estaduais no meio do ano (sem estaduais, por força).</span>
             </fieldset>
             <label>Times proibidos <input name="proibidos" placeholder="flarj, palmeiras" /></label>
             <button className="primario">Criar jogo</button>

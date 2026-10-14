@@ -134,3 +134,16 @@ describe('temporada BR só com IA', () => {
     expect(m2.competicoes.map((c) => c.campeao)).toEqual(mundo.competicoes.map((c) => c.campeao))
   })
 })
+
+describe('temporada sem estaduais', () => {
+  it('nenhum estadual; Série D com 64 e Copa no formato novo, tudo jogado', () => {
+    const m = novoJogo(base as Base, { habilidadeIndividual: false, jogaEstadual: false }, 'sem-estaduais')
+    expect(m.competicoes.some((c) => c.tipo === 3)).toBe(false)
+    while (avancarDia(m) !== null);
+    const d = m.competicoes.find((c) => c.id === 'BR-4')!
+    expect((d.fases[0] as FaseLiga).times).toHaveLength(64)
+    const cb = m.competicoes.find((c) => c.id === 'CB')!
+    expect((cb.fases[0] as FaseMataMata).rodadas[0]!.confrontos).toHaveLength(40)
+    expect([d.campeao, cb.campeao]).not.toContain(null)
+  })
+})

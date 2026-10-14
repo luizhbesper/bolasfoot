@@ -31,6 +31,8 @@ export type StatusJogo = 'lobby' | 'picking' | 'running' | 'paused' | 'finished'
 export interface ConfigJogo {
   habilidadeIndividual: boolean
   salarioMensal: boolean
+  /** ausente = joga (jogos antigos) */
+  jogaEstadual?: boolean
   /** fileRef dos times que ninguém pode escolher */
   proibidos: string[]
   /** divisões BR permitidas (1–3 = Série A–C; 0 = fora das séries, de onde sai a D); vazio = todas */
