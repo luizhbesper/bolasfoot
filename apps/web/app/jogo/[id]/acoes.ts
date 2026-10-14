@@ -1,9 +1,9 @@
 'use server'
 import { revalidatePath } from 'next/cache'
-import { exigirUsuario } from '../../../lib/auth/sessao.ts'
+import { exigirAdmin, exigirUsuario } from '../../../lib/auth/sessao.ts'
 import { db } from '../../../lib/db/index.ts'
 import { escolherTime } from '../../../lib/game/escolha.ts'
-import { definirComandos, enviarComandos, marcarReady, transicionar } from '../../../lib/game/rodada.ts'
+import { definirComandos, enviarComandos, marcarReady, pausar, retomar, transicionar } from '../../../lib/game/rodada.ts'
 import type { Comando } from '@bolasfoot/engine'
 import { redirect } from 'next/navigation'
 import { after } from 'next/server'
@@ -15,6 +15,13 @@ export async function readyAcao(f: FormData) {
   await marcarReady(db(), jogo, u.id, ready, false)
   // o motor roda depois da resposta: o botão volta na hora e o SSE leva a fase nova a todos
   if (ready) after(() => transicionar(db(), jogo))
+}
+
+/** O admin pausa/retoma de dentro do jogo. */
+export async function pausaAcao(f: FormData) {
+  await exigirAdmin()
+  const jogo = Number(f.get('jogo'))
+  await (f.get('pausar') === '1' ? pausar(db(), jogo) : retomar(db(), jogo))
 }
 
 export async function escolherAcao(f: FormData) {

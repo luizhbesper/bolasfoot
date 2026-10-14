@@ -4,7 +4,7 @@ import { exigirAdmin } from '../../lib/auth/sessao.ts'
 import { db } from '../../lib/db/index.ts'
 import { gameMembers, games } from '../../lib/db/schema.ts'
 import { Pagina } from '../_ui/pagina.tsx'
-import { criarJogoAcao } from './acoes.ts'
+import { criarJogoAcao, pausarTodosAcao } from './acoes.ts'
 import s from './admin.module.css'
 import { STATUS } from './status.ts'
 
@@ -14,7 +14,11 @@ export default async function Admin() {
     .from(games).leftJoin(gameMembers, eq(gameMembers.gameId, games.id)).groupBy(games.id).orderBy(games.id)
   return (
     <Pagina usuario={u}>
-      <h1>Admin</h1>
+      <div className="linha" style={{ gap: 10 }}>
+        <h1>Admin</h1>
+        <form action={pausarTodosAcao} style={{ marginLeft: 'auto' }}><input type="hidden" name="pausar" value="1" /><button>Pausar todos</button></form>
+        <form action={pausarTodosAcao}><input type="hidden" name="pausar" value="0" /><button>Retomar todos</button></form>
+      </div>
       <div className={s.colunas}>
         <section className="card" style={{ overflow: 'hidden' }}>
           <div className="secao" style={{ paddingBottom: 6 }}><h2>Jogos</h2></div>

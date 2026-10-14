@@ -5,7 +5,7 @@ import { gameMembers, games, roundLogs, rounds, snapshots, users, type FaseRodad
 import { limpar } from '../db/teste.ts'
 import { criarJogo } from './admin.ts'
 import { base } from './base.ts'
-import { carregarMundo, comandosPendentes, comecarJogo, definirComandos, enviarComandos, marcarReady, sha256, transicionar } from './rodada.ts'
+import { batida, carregarMundo, comandosPendentes, comecarJogo, definirComandos, enviarComandos, marcarReady, pausar, retomar, sha256, transicionar, vigiarPresenca } from './rodada.ts'
 
 let jogo: number, ana: number, bia: number
 const [t1, t2] = base.times.filter((t) => t.pais === 29).sort((a, b) => b.nivel - a.nivel)
@@ -90,4 +90,28 @@ test('prazo vencido sem pronto automático espera todos; o admin força', async 
   expect(await transicionar(db(), jogo)).toBe(false)
   expect((await jogoAtual()).deadline).toBeNull()
   expect(await transicionar(db(), jogo, true)).toBe(true)
+})
+
+test('presença: alguém offline pausa sozinho; todos de volta retomam; pausa do admin não se desfaz', async () => {
+  const membros = await db().select().from(gameMembers).where(eq(gameMembers.gameId, jogo))
+  const [a, b] = membros.map((m) => m.id) as [number, number]
+  await batida(db(), a)
+  await vigiarPresenca(db()) // a Bia nunca conectou
+  expect(await jogoAtual()).toMatchObject({ status: 'paused', autoPaused: true })
+  await batida(db(), b)
+  await vigiarPresenca(db())
+  expect(await jogoAtual()).toMatchObject({ status: 'running', autoPaused: false, pausedAt: null })
+  await pausar(db(), jogo)
+  await vigiarPresenca(db())
+  expect((await jogoAtual()).status).toBe('paused')
+})
+
+test('retomar: o prazo anda o tempo parado', async () => {
+  const antes = (await jogoAtual()).deadline!.getTime()
+  await pausar(db(), jogo)
+  await db().update(games).set({ pausedAt: new Date(Date.now() - 60_000) }).where(eq(games.id, jogo))
+  await retomar(db(), jogo)
+  const depois = (await jogoAtual()).deadline!.getTime()
+  expect(depois - antes).toBeGreaterThanOrEqual(60_000)
+  expect(depois - antes).toBeLessThan(65_000)
 })

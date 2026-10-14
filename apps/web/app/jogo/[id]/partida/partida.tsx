@@ -114,7 +114,7 @@ export function Partida({ log, pendentes }: { log: Log | null; pendentes: Comand
   const noIntervalo = log?.n === fase.rodada && fase.fase === 'intervalo'
   // a fase chega pelo SSE antes do log novo (refresh do servidor): sem isso aparecia "Encerrada" com o relógio correndo
   const atrasado = fase.fase !== null && fase.fase !== 'planejamento' && (log?.n ?? 0) < fase.rodada
-  const titulo = atrasado ? 'Carregando…' : !log ? 'Partida' : fase.status === 'paused' ? 'Pausado'
+  const titulo = atrasado ? 'Carregando…' : !log ? 'Partida' : fase.aguardando ? 'Aguardando todos online' : fase.status === 'paused' ? 'Pausado'
     : aoVivo ? `Ao vivo, ${fase.fase === 'ao_vivo_1t' ? '1º' : '2º'} tempo` : noIntervalo ? 'Intervalo' : 'Encerrada'
 
   const humanos = new Map(membros.filter((x) => x.teamRef).map((x) => [m?.times.find((t) => t.fileRef === x.teamRef)?.id, x.nome]))

@@ -13,7 +13,7 @@ export interface Membro { id: number; nome: string; teamRef: string | null }
 interface Jogo {
   jogo: number
   msPorMinuto: number
-  eu: { id: number; tecnicoId: number | null }
+  eu: { id: number; tecnicoId: number | null; admin?: boolean }
   membros: Membro[]
   fase: EstadoFase
   prontos: number[]
@@ -33,9 +33,10 @@ export function useJogo(): Jogo {
   return c
 }
 
-/** Agora no relógio do servidor, atualizado a cada `ms`; null no render do servidor (evita divergir na hidratação). */
+/** Agora no relógio do servidor, atualizado a cada `ms`; null no render do servidor (evita divergir na hidratação).
+ * Pausado, congela no instante da pausa. */
 export function useRelogio(ms = 250): number | null {
-  const { offset } = useJogo()
+  const { offset, fase } = useJogo()
   const [agora, setAgora] = useState<number | null>(null)
   useEffect(() => {
     const tick = () => setAgora(Date.now())
@@ -43,7 +44,7 @@ export function useRelogio(ms = 250): number | null {
     const t = setInterval(tick, ms)
     return () => clearInterval(t)
   }, [ms])
-  return agora === null ? null : agora + offset
+  return agora === null ? null : fase.status === 'paused' && fase.pausa !== null ? fase.pausa : agora + offset
 }
 
 export function JogoProvider({ children, ...p }: {

@@ -10,7 +10,7 @@ import {
   avancarRodada, continuarRodada, contratarTecnicoHumano, novoJogo, possePct, validar,
   type Comando, type ComandoDe, type Mundo, type Partida, type Rodada,
 } from '@bolasfoot/engine'
-import { and, eq, isNotNull } from 'drizzle-orm'
+import { and, eq, isNotNull, or } from 'drizzle-orm'
 import { createHash } from 'node:crypto'
 import { gunzipSync, gzipSync } from 'node:zlib'
 import type { Db } from '../db/index.ts'
@@ -58,6 +58,12 @@ const rodadaDe = async (q: Q, gameId: number, n: number) =>
 const jogadoresDe = (q: Q, gameId: number) =>
   q.select().from(gameMembers).where(and(eq(gameMembers.gameId, gameId), isNotNull(gameMembers.tecnicoId))).orderBy(gameMembers.id)
 
+/** Sem batida do SSE há mais que isso = offline (a batida é de 15 s). */
+const ONLINE_MS = 40_000
+/** Quem joga e está offline. */
+export const offlineDe = async (q: Q, gameId: number) =>
+  (await jogadoresDe(q, gameId)).filter((m) => !m.lastSeen || m.lastSeen.getTime() < Date.now() - ONLINE_MS).map((m) => m.id)
+
 /** O estado que o SSE manda (boas-vindas e a cada mudança). */
 export async function estadoFase(q: Q, gameId: number): Promise<Extract<EventoJogo, { tipo: 'fase' }>> {
   const [g] = await q.select().from(games).where(eq(games.id, gameId))
@@ -65,6 +71,7 @@ export async function estadoFase(q: Q, gameId: number): Promise<Extract<EventoJo
   return {
     tipo: 'fase', status: g?.status ?? 'finished', rodada: g?.round ?? 0, fase: r?.phase ?? null,
     prazo: g?.deadline?.getTime() ?? null, inicio: r?.startedAt?.getTime() ?? null,
+    pausa: g?.pausedAt?.getTime() ?? null, aguardando: g?.autoPaused ?? false, offline: g?.autoPaused ? await offlineDe(q, gameId) : [],
   }
 }
 
@@ -276,18 +283,40 @@ export async function marcarReady(d: Db, gameId: number, userId: number, ready: 
 
 // --- admin ---------------------------------------------------------------------------------------------------------
 
-export async function pausar(d: Db, gameId: number) {
-  await d.update(games).set({ status: 'paused', deadline: null }).where(and(eq(games.id, gameId), eq(games.status, 'running')))
-  publicar(gameId, await estadoFase(d, gameId))
+/** Congela o jogo (o prazo fica guardado). `auto` = alguém caiu: `vigiarPresenca` retoma quando todos voltarem. */
+export async function pausar(d: Db, gameId: number, auto = false) {
+  const [g] = await d.update(games).set({ status: 'paused', pausedAt: new Date(), autoPaused: auto })
+    .where(and(eq(games.id, gameId), eq(games.status, 'running'))).returning({ id: games.id })
+  if (g) publicar(gameId, await estadoFase(d, gameId))
 }
 
-/** Volta com o prazo inteiro da fase. ponytail: não guarda o que sobrava; um tempo ao vivo pausado termina na hora. */
+/** Prazo e início do tempo ao vivo andam o tempo parado: a fase continua de onde parou. */
 export async function retomar(d: Db, gameId: number) {
   const [g] = await d.select().from(games).where(eq(games.id, gameId))
   if (g?.status !== 'paused') return
+  const parado = Date.now() - (g.pausedAt?.getTime() ?? Date.now())
+  const r = (await rodadaDe(d, gameId, g.round))!
   const s = await settingsDe(d, gameId)
-  const phase = (await rodadaDe(d, gameId, g.round))!.phase
-  const prazo = { planejamento: s.planningTimeoutS, intervalo: s.halftimeTimeoutS, resultados: s.resultsPauseS, ao_vivo_1t: 0, ao_vivo_2t: 0 }[phase]
-  await d.update(games).set({ status: 'running', deadline: daqui(prazo) }).where(eq(games.id, gameId))
+  // sem prazo guardado (pausa antiga, ou esperando todos prontos): o prazo inteiro da fase
+  const prazo = { planejamento: s.planningTimeoutS, intervalo: s.halftimeTimeoutS, resultados: s.resultsPauseS, ao_vivo_1t: 0, ao_vivo_2t: 0 }[r.phase]
+  const deadline = g.deadline ? new Date(g.deadline.getTime() + parado) : daqui(prazo)
+  if (r.startedAt) await d.update(rounds).set({ startedAt: new Date(r.startedAt.getTime() + parado) }).where(and(eq(rounds.gameId, gameId), eq(rounds.n, r.n)))
+  await d.update(games).set({ status: 'running', deadline, pausedAt: null, autoPaused: false }).where(eq(games.id, gameId))
   publicar(gameId, await estadoFase(d, gameId))
+}
+
+/** Presença: o SSE marca a batida do membro. */
+export async function batida(d: Db, membro: number) {
+  await d.update(gameMembers).set({ lastSeen: new Date() }).where(eq(gameMembers.id, membro))
+}
+
+/** A liga só anda com todos online: pausa quem tem alguém offline e retoma a pausa automática quando todos voltam. */
+export async function vigiarPresenca(d: Db) {
+  const jogos = await d.select({ id: games.id, status: games.status }).from(games)
+    .where(or(eq(games.status, 'running'), and(eq(games.status, 'paused'), eq(games.autoPaused, true))))
+  for (const g of jogos) {
+    const falta = (await offlineDe(d, g.id)).length > 0
+    if (g.status === 'running' && falta) await pausar(d, g.id, true)
+    else if (g.status === 'paused' && !falta) await retomar(d, g.id)
+  }
 }

@@ -1,9 +1,10 @@
 'use server'
+import { eq } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { exigirAdmin } from '../../lib/auth/sessao.ts'
 import { db } from '../../lib/db/index.ts'
-import type { ModoJogo } from '../../lib/db/schema.ts'
+import { games, type ModoJogo } from '../../lib/db/schema.ts'
 import { apagarJogo, criarJogo, editarSettings, expulsar, gerarConvite, revogarConvite } from '../../lib/game/admin.ts'
 import { iniciarEscolha } from '../../lib/game/escolha.ts'
 import { pausar, retomar, transicionar } from '../../lib/game/rodada.ts'
@@ -78,6 +79,15 @@ export async function retomarAcao(f: FormData) {
   await exigirAdmin()
   await retomar(db(), id(f))
   voltar(id(f))
+}
+
+/** Pausa todos os jogos rodando, ou retoma todos os pausados. */
+export async function pausarTodosAcao(f: FormData) {
+  await exigirAdmin()
+  const pausa = f.get('pausar') === '1'
+  const alvo = await db().select({ id: games.id }).from(games).where(eq(games.status, pausa ? 'running' : 'paused'))
+  for (const g of alvo) await (pausa ? pausar(db(), g.id) : retomar(db(), g.id))
+  revalidatePath('/admin')
 }
 
 export async function forcarAcao(f: FormData) {

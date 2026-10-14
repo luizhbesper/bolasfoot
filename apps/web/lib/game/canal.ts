@@ -6,7 +6,9 @@ import { db } from '../db/index.ts'
 import type { FaseRodada, StatusJogo } from '../db/schema.ts'
 
 export type EventoJogo =
-  | { tipo: 'fase'; status: StatusJogo; rodada: number; fase: FaseRodada | null; prazo: number | null; inicio: number | null }
+  | { tipo: 'fase'; status: StatusJogo; rodada: number; fase: FaseRodada | null; prazo: number | null; inicio: number | null
+      /** pausado desde (o relógio do cliente congela aqui) */
+      pausa: number | null; aguardando: boolean; offline: number[] }
   | { tipo: 'ready'; prontos: number[] }
   | { tipo: 'pick'; membro: number; time: string | null }
 

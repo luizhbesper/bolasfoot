@@ -8,6 +8,13 @@
       "when": 1791921081958,
       "tag": "0000_loving_punisher",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791939365825,
+      "tag": "0001_presenca_pausa",
+      "breakpoints": true
     }
   ]
 }

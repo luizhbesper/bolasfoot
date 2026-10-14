@@ -52,6 +52,10 @@ export const games = pgTable('games', {
   round: integer('round').notNull().default(0),
   /** prazo da fase corrente (escolha de times ou fase da rodada); null = sem prazo */
   deadline: quando('deadline'),
+  /** desde quando está pausado: ao retomar, prazo e relógio da partida andam o tempo parado */
+  pausedAt: quando('paused_at'),
+  /** pausa automática (alguém offline): sai sozinha quando todos voltam; a do admin, não */
+  autoPaused: boolean('auto_paused').notNull().default(false),
   createdAt: criadoEm(),
 })
 
@@ -86,6 +90,8 @@ export const gameMembers = pgTable('game_members', {
   /** id do técnico humano no mundo, depois que o mundo nasce */
   tecnicoId: integer('tecnico_id'),
   ready: boolean('ready').notNull().default(false),
+  /** última batida do SSE (presença) */
+  lastSeen: quando('last_seen'),
   joinedAt: criadoEm(),
 }, (t) => [unique().on(t.gameId, t.userId), unique().on(t.gameId, t.teamRef)])
 

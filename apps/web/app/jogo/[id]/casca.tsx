@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useRef, type ReactNode } from 'react'
 import { Icone } from '../../_ui/icones.tsx'
 import { Avatar, Escudo, Marca } from '../../_ui/ui.tsx'
-import { readyAcao } from './acoes.ts'
+import { pausaAcao, readyAcao } from './acoes.ts'
 import s from './casca.module.css'
 import { dataLonga, dinheiro, NOME_DIVISAO, proximoJogo } from './consultas.ts'
 import { useJogo, useRelogio } from './contexto.tsx'
@@ -107,6 +107,7 @@ function Barra({ titulo }: { titulo: string }) {
         {tecnicos.map((m) => <Avatar key={m.id} nome={m.nome} pronto={prontos.includes(m.id)} />)}
         <Relogio />
       </div>
+      <BotaoPausa />
       <AcaoDaFase />
     </header>
   )
@@ -114,8 +115,12 @@ function Barra({ titulo }: { titulo: string }) {
 
 /** Prazo da fase em pêssego; durante o jogo, o minuto. */
 export function Relogio() {
-  const { fase, msPorMinuto } = useJogo()
+  const { fase, msPorMinuto, membros } = useJogo()
   const agora = useRelogio()
+  if (fase.aguardando) {
+    const quem = membros.filter((m) => fase.offline.includes(m.id)).map((m) => m.nome).join(', ')
+    return <span className={s.pilula} title="A liga só anda com todos online">Aguardando {quem || 'todos'}</span>
+  }
   if (fase.status === 'paused') return <span className={s.pilula}>Pausado</span>
   if (agora === null) return null
   if (fase.fase?.startsWith('ao_vivo') && fase.inicio !== null) {
@@ -138,6 +143,20 @@ export function BotaoPronto() {
       <button className={pronto ? undefined : 'primario'}>
         {pronto ? 'Não estou pronto' : fase.fase === 'intervalo' ? 'Voltar para o 2º tempo' : 'Estou pronto'}
       </button>
+    </form>
+  )
+}
+
+/** Só o admin: congela tudo (prazo e partida) e retoma de onde parou. */
+function BotaoPausa() {
+  const { jogo, fase, eu } = useJogo()
+  if (!eu.admin || (fase.status !== 'running' && fase.status !== 'paused')) return null
+  const pausado = fase.status === 'paused'
+  return (
+    <form action={pausaAcao}>
+      <input type="hidden" name="jogo" value={jogo} />
+      <input type="hidden" name="pausar" value={pausado ? '0' : '1'} />
+      <button className="fantasma">{pausado ? 'Retomar' : 'Pausar'}</button>
     </form>
   )
 }

@@ -23,7 +23,7 @@ export default async function LayoutJogo({ params, children }: { params: Promise
   const time = eu.teamRef ? base.times.find((t) => t.fileRef === eu.teamRef) : undefined
 
   return (
-    <JogoProvider jogo={gid} msPorMinuto={cfg!.ms} eu={{ id: eu.id, tecnicoId: eu.tecnicoId }} membros={membros}
+    <JogoProvider jogo={gid} msPorMinuto={cfg!.ms} eu={{ id: eu.id, tecnicoId: eu.tecnicoId, admin: ctx.usuario.isAdmin }} membros={membros}
       fase={fase} prontos={(await prontos(db(), gid)).prontos}>
       {fase.status === 'lobby' || fase.status === 'picking' ? children : (
         <Casca nomeJogo={g!.name} usuario={ctx.usuario.username} timeInicial={time ? { fileRef: time.fileRef, nome: time.nome } : null}>
