@@ -7,7 +7,7 @@ import { ANO_INICIAL, TIPO, criarCalendario, data, primeiroDomingo } from './cal
 import { atualizarReputacoes, demissoesFimDeTemporada, envelhecer } from './carreira.ts'
 import { classificacaoFinal, compararLinha, type Competicao } from './competicoes.ts'
 import { criarCompeticoesBR } from './brasil.ts'
-import { competicoesInternacionaisDaVirada, detentorBR } from './internacional.ts'
+import { competicoesInternacionaisDaVirada, detentorBR, vagasContinentaisBR } from './internacional.ts'
 import { receberPatrocinio, zerarExtrato } from './economia.ts'
 import { porForca } from './escalacao.ts'
 import { batedorFalta, type Historico, type JogadorM, type Mundo } from './mundo.ts'
@@ -46,6 +46,35 @@ export function sobem(c: Competicao, n: number): number[] {
 export function caem(c: Competicao, n: number): number[] {
   const f0 = c.fases[0]
   return f0?.tipo === 'liga' && n > 0 ? f0.times.slice(-n).reverse() : []
+}
+
+/** Zonas de uma fase das Séries A–D ou de um estadual, em posições (por grupo; no mata-mata, `sobem` = vencedores que sobem). */
+export interface Zonas { sobem: number; caem: number; libertadores: number; sulAmericana: number }
+
+/**
+ * Prévia de acesso, queda e vagas continentais, com os mesmos números do `trocarDivisoes`/`sobem` e das cotas de
+ * internacional.ts. A última Série não cai (volta inteira ao pool); a do estadual cai para a fila. Na Série C sobem os
+ * 2 primeiros de cada grupo da 2ª fase (finalistas e segundos); na D, os vencedores das quartas.
+ */
+export function zonasDaTabela(m: Mundo, compId: string, faseIdx: number): Zonas {
+  const z: Zonas = { sobem: 0, caem: 0, libertadores: 0, sulAmericana: 0 }
+  const c = m.competicoes.find((x) => x.id === compId), f = c?.fases[faseIdx]
+  if (!c || !f || !/^(BR|EST)-/.test(compId)) return z
+  const irma = (d: number) => m.competicoes.find((x) => x.id === compId.replace(/\d+$/, String(d)))
+  const acima = irma(c.divisao - 1)?.rebaixados ?? 0
+  if (f.tipo === 'mata') return { ...z, sobem: acima }
+  if (f.formato === 1022) return { ...z, sobem: Math.floor(acima / Math.max(1, f.grupos.length)) }
+  if (faseIdx > 0) return z
+  z.caem = irma(c.divisao + 1) || c.tipo === TIPO.estadual ? c.rebaixados ?? 0 : 0
+  if (f.avancam === 0) z.sobem = acima
+  if (compId === 'BR-1') {
+    // o campeão da Copa entra primeiro (Z.java:385); fora do topo, tira uma vaga da tabela.
+    // ponytail: ignora o detentor brasileiro e o furo que o campeão da Copa abre na Sul-Americana
+    const v = vagasContinentaisBR(), copa = m.competicoes.find((x) => x.id === 'CB')?.campeao ?? null
+    z.libertadores = v.libertadores - (copa !== null && !f.times.slice(0, v.libertadores).includes(copa) ? 1 : 0)
+    z.sulAmericana = v.sulAmericana
+  }
+  return z
 }
 
 /**
