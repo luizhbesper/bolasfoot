@@ -30,6 +30,13 @@ export const ESTILOS = ['Equilibrado', 'Ataque total', 'Contra-ataque']
 export const MARCACOES = ['Leve', 'Pesada', 'Muito pesada']
 export const JOGADAS = ['Pelo meio', 'Pelas laterais']
 const MAX_BANCO = 11
+type Coluna = 'posicao' | 'nome' | 'energia' | 'forca'
+const COLUNAS: [Coluna, string][] = [['posicao', 'Pos'], ['nome', 'Nome'], ['energia', 'Energia'], ['forca', 'Força']]
+type Ordem = { col: Coluna; desc: boolean }
+const ordenarPor = (o: Ordem) => (a: JogadorM, b: JogadorM) => {
+  const c = o.col === 'nome' ? a.nome.localeCompare(b.nome, 'pt-BR') : a[o.col] - b[o.col]
+  return (o.desc ? -c : c) || porForca(a, b)
+}
 // a formação 0 duplica a 1 no original; não aparece no seletor
 const OPCOES_FORMACAO = NOMES_FORMACAO.map((n, i) => ({ i, n })).filter((x) => x.i > 0)
 
@@ -110,7 +117,11 @@ function Editor({ m, t, pendentes, editavel, paises }: { m: Mundo; t: TimeM; pen
   const forcas = jogadores.map((j) => j.forca)
   const slots = FORMACOES[e.formacao]!
   const naEscalacao = new Set([...Object.values(e.titulares), ...e.banco])
-  const reservas = jogadores.filter((j) => !naEscalacao.has(j.id)).sort((a, b) => a.posicao - b.posicao || porForca(a, b))
+  // a mesma ordem vale para o banco e para fora do jogo; no banco é só exibição (a ordem real não muda)
+  const [ordem, setOrdem] = useState<Ordem>({ col: 'posicao', desc: false })
+  const ordenar = (col: Coluna) => setOrdem((o) => ({ col, desc: o.col === col ? !o.desc : col !== 'posicao' && col !== 'nome' }))
+  const reservas = jogadores.filter((j) => !naEscalacao.has(j.id)).sort(ordenarPor(ordem))
+  const bancoOrdenado = e.banco.map((id) => m.jogadores[id]!).sort(ordenarPor(ordem))
 
   type Lugar = { slot: number } | { banco: number } | null
   const lugar = (x: Estado, id: number): Lugar => {
@@ -161,6 +172,9 @@ function Editor({ m, t, pendentes, editavel, paises }: { m: Mundo; t: TimeM; pen
     onDragStart: (ev) => {
       ev.dataTransfer.setData('text/plain', String(id))
       ev.dataTransfer.effectAllowed = 'move'
+      // o fantasma do arraste é só a camisa, não a linha inteira
+      const img = ev.currentTarget.querySelector('img')
+      if (img) ev.dataTransfer.setDragImage(img, img.width / 2, img.height / 2)
       setArrastando(id)
       setSel(null)
     },
@@ -284,10 +298,11 @@ function Editor({ m, t, pendentes, editavel, paises }: { m: Mundo; t: TimeM; pen
           {...soltavel('banco', (a) => !('banco' in (lugar(e, a) ?? {})) && e.banco.length < MAX_BANCO && mover(a, { banco: e.banco.length }))}>
           <div className="cabecalho">
             <h2 style={{ flex: 1 }}>Banco <span className="fraco" style={{ fontWeight: 400 }}>{e.banco.length} de {MAX_BANCO}</span></h2>
+            <Ordenacao ordem={ordem} ordenar={ordenar} />
           </div>
-          {e.banco.map((id, i) => (
-            <Linha key={id} j={m.jogadores[id]!} t={t} m={m} forcas={forcas} sel={sel === id} onClick={() => tocarJogador(id)} rotulo={`banco ${i + 1}`}
-              dnd={dnd(id)} sobre={sobre === `j${id}`} />
+          {bancoOrdenado.map((j) => (
+            <Linha key={j.id} j={j} t={t} m={m} forcas={forcas} sel={sel === j.id} onClick={() => tocarJogador(j.id)} rotulo="no banco"
+              dnd={dnd(j.id)} sobre={sobre === `j${j.id}`} />
           ))}
           {editavel && sel !== null && e.banco.length < MAX_BANCO && lugar(e, sel) && !('banco' in lugar(e, sel)!) && (
             <button className={s.alvo} onClick={() => tocarVazio({ banco: e.banco.length })}>Pôr no banco</button>
@@ -297,6 +312,7 @@ function Editor({ m, t, pendentes, editavel, paises }: { m: Mundo; t: TimeM; pen
         <div className={`card ${s.lista} ${sobre === 'fora' ? s.sobreLista : ''}`} {...soltavel('fora', (a) => lugar(e, a) !== null && mover(a, null))}>
           <div className="cabecalho">
             <h2 style={{ flex: 1 }}>Fora do jogo <span className="fraco" style={{ fontWeight: 400 }}>{reservas.length}</span></h2>
+            <Ordenacao ordem={ordem} ordenar={ordenar} />
           </div>
           {reservas.map((j) => (
             <Linha key={j.id} j={j} t={t} m={m} forcas={forcas} sel={sel === j.id} onClick={() => tocarJogador(j.id)} dnd={dnd(j.id)} sobre={sobre === `j${j.id}`} />
@@ -390,6 +406,18 @@ function Linha({ j, t, m, forcas, sel, onClick, rotulo, dnd, sobre }: {
       <Energia valor={j.energia} />
       <Forca valor={j.forca} tom={tomForca(j.forca, forcas)} />
     </button>
+  )
+}
+
+function Ordenacao({ ordem, ordenar }: { ordem: Ordem; ordenar: (c: Coluna) => void }) {
+  return (
+    <div className={s.ordenacao} role="group" aria-label="Ordenar">
+      {COLUNAS.map(([c, rotulo]) => (
+        <button key={c} className="ordenar" aria-pressed={ordem.col === c} onClick={() => ordenar(c)}>
+          {rotulo}{ordem.col === c && (ordem.desc ? ' ↓' : ' ↑')}
+        </button>
+      ))}
+    </div>
   )
 }
 
