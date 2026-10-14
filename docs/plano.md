@@ -449,17 +449,26 @@ Sem tickets ainda. O que já foi mapeado:
 - **Elenco:** montagem automática `Z.z` (`Z.java:654-796`: 23 por posição e lado, gerando jogadores quando o país tem poucos); convocação do humano `cO` (`a/aP.java`: de 2 a 3 goleiros, de 15 a 27 de linha).
 - **`ponytail:` que esperam esta fase:** `posjogo.ts:233` (Copa do Mundo ×5 na renda), `partida.ts:257` (o "clube" do jogador nas seleções) e `mercado.ts:590` (`jP`).
 
-### Fase 7 — Atualização de elencos por API
+### Fase 7 — Base 2026
 
-- `packages/data` ganha um importador que gera o **mesmo** `base.json` (contrato: `packages/data/src/types.ts`; `base.test.ts` valida contagens), então o motor não muda. Vale para jogos novos; jogos em andamento não mudam.
-- Fonte: SofaScore não tem API oficial (instável, contra os termos); avaliar **API-Football** (tier grátis, ~100 req/dia, com cache local) ou dumps do Transfermarkt. Decidir no ticket.
-- Mapear o que o Brasfoot precisa e a API não tem:
-  - `Nivel` e `Reputacao` do time ← valor de mercado / ranking;
-  - `Status` (titular) ← minutos jogados;
-  - `Estrela`/craque ← nota média / valor;
-  - `Cr1/Cr2` ← heurística a partir de estatísticas por posição;
-  - escudos e cores ← API, com fallback para os do original.
-- Script roda localmente, gera diff legível (entrou/saiu/mudou) para revisar antes de commitar.
+Tickets detalhados e decisões da fase: `docs/fase7.md`. Corre em paralelo à Fase 6.
+
+Uma segunda base, `base-2026.json`, com os elencos de jan/2026 e os formatos nacionais de 2026. A original (22-23) segue jogável; o admin escolhe ao criar o jogo. Fonte: Transfermarkt (dataset dcaribou + transfermarkt-api local), com a API-Football grátis para conferir.
+
+| ID | Entrega |
+|---|---|
+| B1 | Base versionada: `base-2022.json` e `base-2026.json`, `games.base` |
+| B2 | Mapa de clubes 2026 (fileRef, ids TM/API-Football, divisão, estadual), revisado à mão |
+| B3 | Importador: elencos em 2026-01-15, mapeamentos para o contrato do `types.ts`, diff legível |
+| B4 | `Jogador.forca?` pelo valor de mercado; `forcaInicial` usa quando existe |
+| B5 | Divisões e estaduais explícitos na 1ª temporada |
+| B6 | Formatos 2026: playoff da B, D com 96, Copa com 126, estaduais em 11 datas |
+| B7 | Calendário 2026 (CBF) |
+| B8 | Escudos dos clubes novos e fallback |
+| B9 | Participantes continentais de 2026 como dado (`base.continentais`) para a F6 |
+| B10 | Gate: 10 temporadas com a base 2026; uma temporada no staging |
+
+**Duas levas:** B1–B4, B8 e B9 já (não tocam o que a F6 toca); B5–B7 e B10 depois que a F6 entrar na `dev`.
 
 ### Fase 8 — Polimento
 
@@ -470,7 +479,7 @@ Sons, conquistas/troféus (72 PNGs), ajustes de balanceamento do multiplayer, ar
 ```
 F0 ─► M1..M6 ─► W1..W8 ─► U1..U8 ─► I1..I6 ─► 6B ─► D1..D3
  │                  ▲        ▲
- └─► S1..S7 ────────┴────────┘      Fase 7 só depende de F0-4
+ └─► S1..S7 ────────┴────────┘      Fase 7: B1–B4, B8, B9 em paralelo; B5–B7 depois de I1..I6
 ```
 
 A fase 3 (servidor) não depende do motor completo: pode correr em paralelo às fases 1–2 usando um `avançarRodada` falso. U1–U3 podem começar com um mundo só com a Série A.
@@ -559,4 +568,4 @@ Como a seed é fixa, o teste não fica intermitente. As faixas vêm das fórmula
 | Um processo só | Agendador e SSE em memória não escalam horizontalmente | irrelevante para o uso; Postgres `LISTEN/NOTIFY` se um dia precisar |
 | Senha fraca | Sem regra de senha, por pedido | hash `scrypt` + rate limit no login; o site fica fechado atrás de convite |
 | Direitos | Assets e dados do Brasfoot | repositório privado; site só com login |
-| Fonte de dados atualizados | SofaScore sem API oficial | decidir na fase 7 |
+| Fonte de dados atualizados | Nenhuma API grátis tem elenco datado das Séries C/D e estaduais; o ToS do Transfermarkt proíbe scraping | decidido na F7: Transfermarkt em uso privado, roda uma vez, dados brutos fora do git |
