@@ -52,6 +52,16 @@ test('definirComandos troca os únicos (escalação, tática) e soma o resto', a
   expect(await comandosPendentes(db(), jogo, bia!)).toEqual([])
 })
 
+test('uma proposta por jogador: a nova substitui a anterior', async () => {
+  const m = await carregarMundo(db(), jogo, 1, 0)
+  const [j1, j2] = m.times.find((t) => t.fileRef === t2!.fileRef)!.jogadores as [number, number]
+  await definirComandos(db(), jogo, ana!, [{ tipo: 'comprar', jogador: j1, valor: 100 }, { tipo: 'comprar', jogador: j2, valor: 100 }])
+  await definirComandos(db(), jogo, ana!, [{ tipo: 'comprar', jogador: j1, valor: 200 }])
+  expect(await comandosPendentes(db(), jogo, ana!)).toEqual([
+    { tipo: 'comprar', jogador: j2, valor: 100 }, { tipo: 'comprar', jogador: j1, valor: 200 },
+  ])
+})
+
 test('todos prontos resolvem; concorrência resolve uma vez; seed revelada confere', async () => {
   await enviarComandos(db(), jogo, ana!, [{ tipo: 'tatica', estilo: 2 }])
   await marcarReady(db(), jogo, ana!, true)
@@ -106,11 +116,11 @@ test('presença: alguém offline pausa sozinho; todos de volta retomam; pausa do
   expect((await jogoAtual()).status).toBe('paused')
 })
 
-test('retomar: o prazo anda o tempo parado', async () => {
+test('retomar: o prazo anda o tempo parado, uma vez só', async () => {
   const antes = (await jogoAtual()).deadline!.getTime()
   await pausar(db(), jogo)
   await db().update(games).set({ pausedAt: new Date(Date.now() - 60_000) }).where(eq(games.id, jogo))
-  await retomar(db(), jogo)
+  await Promise.all([retomar(db(), jogo), retomar(db(), jogo)]) // admin e presença juntos: conta uma vez só
   const depois = (await jogoAtual()).deadline!.getTime()
   expect(depois - antes).toBeGreaterThanOrEqual(60_000)
   expect(depois - antes).toBeLessThan(65_000)
