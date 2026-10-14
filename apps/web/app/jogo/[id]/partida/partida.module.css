@@ -79,7 +79,10 @@
 
 .placar {
   flex: none;
-  margin: 0 20px;
+  /* alinhado com a grade (1600px menos o padding dela), centralizado no ultra-wide */
+  width: calc(100% - 40px);
+  max-width: 1560px;
+  margin: 0 auto;
   padding: 18px 28px 16px;
   border-radius: var(--raio-card);
   border: 1px solid var(--line);
@@ -105,12 +108,14 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
-  gap: 24px;
+  gap: 32px;
 }
 
 .clube {
   display: flex;
   align-items: center;
+  /* escudo e nome encostam no placar (em tela larga não ficam perdidos nas pontas) */
+  justify-content: flex-end;
   gap: 16px;
   min-width: 0;
   font-family: var(--font-bricolage), sans-serif;
