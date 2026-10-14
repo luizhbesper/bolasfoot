@@ -199,7 +199,8 @@
 .numerosCartao > div {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  align-items: flex-start;
+  gap: 4px;
   padding: 8px 10px;
   border-radius: 10px;
   background: var(--bg);

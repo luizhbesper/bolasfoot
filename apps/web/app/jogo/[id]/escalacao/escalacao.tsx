@@ -270,7 +270,7 @@ function Editor({ m, t, pendentes, editavel, paises }: { m: Mundo; t: TimeM; pen
         </div>
         <p className="mudo" style={{ margin: 0, fontSize: 13 }}>
           {editavel ? (sel === null ? 'Arraste um jogador (ou toque nele e depois no destino) para uma posição, o banco ou outro jogador.' : `${m.jogadores[sel]!.nome} selecionado: escolha para onde ele vai.`)
-            : 'A escalação só muda no planejamento.'}
+            : 'Travada enquanto a rodada roda: as trocas do jogo são no intervalo, na tela da partida. Abre de novo no planejamento.'}
           {' '}Força <strong style={{ color: 'var(--text)' }}>{total}</strong>
           {fora > 0 && <> · <span style={{ color: 'var(--pessego)' }}>{fora} fora de posição</span></>}
         </p>
@@ -366,7 +366,7 @@ function Cartao({ m, t, j, slot, banco, forcas, comp, aoFechar, aoAbrirFicha }: 
       </div>
       <div className={s.numerosCartao}>
         <div><span>Força</span><Forca valor={j.forca} tom={tomForca(j.forca, forcas)} /></div>
-        <div><span>Energia</span><Energia valor={j.energia} /></div>
+        <div><span>Energia</span><strong>{j.energia}%</strong><div style={{ width: '100%' }}><Energia valor={j.energia} /></div></div>
         <div><span>Gols</span><strong>{gols}</strong></div>
         <div><span>Valor</span><strong>{dinheiro(j.valor)}</strong></div>
       </div>
@@ -398,11 +398,6 @@ function Status({ salvo, editavel, indisponiveis }: { salvo: string; editavel: b
     <>
       {indisponiveis.length > 0 && (
         <p className={s.aviso}>Não podem jogar o próximo jogo: {indisponiveis.join(', ')}. O motor troca pelo melhor disponível.</p>
-      )}
-      {!editavel && (
-        <p className="fraco" style={{ margin: 0, fontSize: 12 }}>
-          Travada enquanto a rodada roda (jogos e resultados): as trocas do jogo são no intervalo, na tela da partida. Abre de novo no planejamento.
-        </p>
       )}
       {editavel && salvo !== 'nada' && (
         <p className="fraco" style={{ margin: 0, fontSize: 12 }} aria-live="polite">
