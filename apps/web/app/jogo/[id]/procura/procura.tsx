@@ -11,6 +11,7 @@ import { Ficha } from '../elenco/elenco.tsx'
 import { Carregando, SemClube } from '../hub.tsx'
 
 const PRECOS = [0, 500_000, 1_000_000, 3_000_000, 10_000_000]
+const ATALHOS: [string, number][] = [['+100 mil', 100_000], ['+500 mil', 500_000], ['+1 mi', 1_000_000], ['+10 mi', 10_000_000]]
 
 export function Procura({ pendentes, paises }: { pendentes: Comando[]; paises: string[] }) {
   const { mundo: m, meuTime: t } = useJogo()
@@ -108,7 +109,8 @@ function previa(m: Mundo, j: JogadorM, t: TimeM, oferta: number): { texto: strin
 
 export function Proposta({ m, j, t, k }: { m: Mundo; j: JogadorM; t: TimeM; k: Comandos }) {
   const dono = m.times[j.time]!
-  const [valor, setValor] = useState(j.aVenda ? j.preco : dono.humano ? j.valor : precoVendaIA(m, j))
+  // começa do zero: o valor é decisão sua (o preço pedido fica num atalho)
+  const [valor, setValor] = useState(0)
   const [aceitar, setAceitar] = useState(false)
   const amigo = dono.humano ? m.tecnicos[dono.tecnico]?.nome : null
   const p = amigo ? null : previa(m, j, t, valor)
@@ -121,9 +123,16 @@ export function Proposta({ m, j, t, k }: { m: Mundo; j: JogadorM; t: TimeM; k: C
       {amigo
         ? <p className="mudo" style={{ margin: 0, fontSize: 13 }}>{dono.nome} é do <strong>{amigo}</strong>: a proposta vai para a caixa dele, que responde na próxima rodada.</p>
         : <p className="fraco" style={{ margin: 0, fontSize: 12 }}>Se um amigo propuser pelo mesmo jogador nesta rodada, leva a maior oferta.</p>}
-      <label className="linha" style={{ justifyContent: 'space-between' }}>Valor (R$)
-        <input type="number" min={1} step={10_000} value={valor} onChange={(e) => setValor(Math.max(0, Math.trunc(Number(e.target.value) || 0)))} style={{ width: 160, textAlign: 'right' }} />
+      <label className="linha" style={{ justifyContent: 'space-between' }}>Valor (R$ milhões)
+        <input type="number" min={0} step={0.1} inputMode="decimal" value={valor ? valor / 1e6 : ''} placeholder="0"
+          onChange={(e) => setValor(Math.max(0, Math.round((Number(e.target.value.replace(',', '.')) || 0) * 1e6)))} style={{ width: 140, textAlign: 'right' }} />
       </label>
+      <div className="chips" style={{ justifyContent: 'flex-end' }}>
+        {ATALHOS.map(([r, v]) => <button key={r} onClick={() => setValor((x) => x + v)}>{r}</button>)}
+        {j.aVenda && <button onClick={() => setValor(j.preco)}>Pedido {dinheiro(j.preco)}</button>}
+        <button onClick={() => setValor(0)} disabled={!valor}>Zerar</button>
+      </div>
+      <strong style={{ alignSelf: 'flex-end', fontSize: 18 }}>{dinheiro(valor)}</strong>
       {p && <span className={`etiqueta ${p.cor}`} style={{ alignSelf: 'flex-start', whiteSpace: 'normal' }}>{p.texto}</span>}
       {!amigo && <label className="check"><input type="checkbox" checked={aceitar} onChange={(e) => setAceitar(e.target.checked)} /> Aceitar a contraproposta, se houver</label>}
       {pendente && (

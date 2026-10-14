@@ -44,6 +44,7 @@ test('proposta entre amigos chega na caixa e é respondida', async ({ browser })
   await admin.getByRole('searchbox', { name: 'Nome do jogador' }).fill(nome)
   await admin.locator('tbody tr').first().click()
   await expect(admin.getByText(/proposta vai para a caixa dele/)).toBeVisible()
+  await admin.getByRole('button', { name: '+1 mi' }).click() // a proposta começa do zero
   await admin.getByRole('button', { name: 'Fazer proposta' }).click()
   await expect(admin.getByText(/^Proposta de R\$/)).toBeVisible()
   await admin.keyboard.press('Escape')
