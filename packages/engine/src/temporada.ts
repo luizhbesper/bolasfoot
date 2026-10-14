@@ -206,8 +206,8 @@ export function fimDeTemporada(m: Mundo, base: Base, seed = m.seed): void {
   demissoesFimDeTemporada(m, acabou, rng('demissoes'))
 
   // competições do ano novo: séries na ordem da tabela velha (quem subiu e quem caiu no fim, Z.ee), estaduais pelas
-  // trocas, regionais pela ordem das séries
-  m.colocacoesEstaduais = []
+  // trocas, regionais pela ordem das séries e das colocações estaduais que sobraram depois do cD (p_0.di)
   m.competicoes = criarCompeticoesBR(m, base, rng('competicoes'), estaduais, series)
+  m.colocacoesEstaduais = []
   m.competicoes.push(...internacionais)
 }
