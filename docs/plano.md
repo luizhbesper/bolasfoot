@@ -457,7 +457,7 @@ Uma segunda base, `base-2026.json`, com os elencos de jan/2026 e os formatos nac
 
 | ID | Entrega |
 |---|---|
-| B1 | Base versionada: `base-2022.json` e `base-2026.json`, `games.base` |
+| B1 | Base versionada: `base.json` (2022) e `base-2026.json`, escolhida no `config` do jogo |
 | B2 | Mapa de clubes 2026 (fileRef, ids TM/API-Football, divisão, estadual), revisado à mão |
 | B3 | Importador: elencos em 2026-01-15, mapeamentos para o contrato do `types.ts`, diff legível |
 | B4 | `Jogador.forca?` pelo valor de mercado; `forcaInicial` usa quando existe |

@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { exigirUsuario } from '../lib/auth/sessao.ts'
 import { db } from '../lib/db/index.ts'
 import { gameMembers, games, rounds, type FaseRodada, type StatusJogo } from '../lib/db/schema.ts'
-import { base } from '../lib/game/base.ts'
+import { baseDe } from '../lib/game/base.ts'
 import { Pagina } from './_ui/pagina.tsx'
 import { Escudo } from './_ui/ui.tsx'
 import s from './inicio.module.css'
@@ -22,7 +22,7 @@ function situacao(status: StatusJogo, fase: FaseRodada | null): [string, string]
 
 export default async function Home() {
   const u = await exigirUsuario()
-  const meus = await db().select({ id: games.id, name: games.name, status: games.status, mode: games.mode, round: games.round, teamRef: gameMembers.teamRef, fase: rounds.phase })
+  const meus = await db().select({ id: games.id, name: games.name, status: games.status, mode: games.mode, round: games.round, config: games.config, teamRef: gameMembers.teamRef, fase: rounds.phase })
     .from(gameMembers).innerJoin(games, eq(games.id, gameMembers.gameId))
     .leftJoin(rounds, and(eq(rounds.gameId, games.id), eq(rounds.n, games.round)))
     .where(eq(gameMembers.userId, u.id)).orderBy(games.id)
@@ -38,7 +38,7 @@ export default async function Home() {
       ) : (
         <div className={s.grade}>
           {meus.map((g) => {
-            const time = g.teamRef ? base.times.find((t) => t.fileRef === g.teamRef) : undefined
+            const time = g.teamRef ? baseDe(g.config).times.find((t) => t.fileRef === g.teamRef) : undefined
             const [rotulo, cor] = situacao(g.status, g.fase)
             return (
               <Link key={g.id} href={`/jogo/${g.id}`} className={`card ${s.jogo}`}>

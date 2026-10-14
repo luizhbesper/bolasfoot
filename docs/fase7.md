@@ -3,7 +3,7 @@
 Detalhe dos tickets B1–B10 do `plano.md`. A base original (22-23) continua jogável ao lado da nova.
 
 **Decisões da fase**
-- **Duas bases.** `base-2022.json` (original) e `base-2026.json`. O admin escolhe ao criar o jogo; o jogo guarda qual usa, porque a virada de temporada lê a base. O oráculo, os `ref-*.json` e os testes golden ficam presos à 2022.
+- **Duas bases.** `base.json` (original, 2022) e `base-2026.json`. O admin escolhe ao criar o jogo; o jogo guarda qual usa, porque a virada de temporada lê a base. O oráculo, os `ref-*.json` e os testes golden ficam presos à 2022.
 - **Fonte híbrida.** Elenco e valor de mercado vêm do Transfermarkt: o [transfermarkt-datasets](https://github.com/dcaribou/transfermarkt-datasets) (CC0) cobre a Série A e as ligas estrangeiras, e o [transfermarkt-api](https://github.com/felipeall/transfermarkt-api), rodando local, cobre as Séries B, C e D e os estaduais. A API-Football (grátis, 100 req/dia) serve só para conferir listas de clubes e IDs. O ToS do TM proíbe scraping, então é uso privado: o importador roda uma vez, com cache em `data-cache/` (gitignored), e os dados brutos nunca são commitados.
 - **Força real.** O jogador ganha `forca?`, derivada do valor de mercado. Sem ela, o `forcaInicial` do original faz dois titulares do mesmo time nascerem quase iguais.
 - **F7 cuida do nacional, F6 do continental.** Esta fase põe os formatos nacionais de 2026 e entrega os participantes continentais da 1ª temporada como dado (B9). A F6 porta as continentais do original, cujo formato da Libertadores (3 preliminares e 8 grupos de 4) já é o de 2026.
@@ -29,7 +29,7 @@ Conferir de novo no ticket.
 
 ```
 packages/data/
-  base-2022.json, base-2026.json
+  base.json (2022), base-2026.json
   src/clubes-2026.json     B2 (mapa revisado à mão)
   src/importar-2026.ts     B3, B4, B8, B9
   src/diff.ts              B3 (entrou/saiu/mudou)
@@ -46,10 +46,10 @@ data-cache/                gitignored: dumps e respostas cacheadas
 ## B1 — Base versionada
 Objetivo: o jogo escolhe entre a base 2022 e a 2026 e a usa até o fim.
 Fonte original: n/a.
-Contrato: `base.json` → `base-2022.json`; `packages/data` exporta `bases: Record<'2022' | '2026', Base>` (a 2026 entra quando existir). Coluna `games.base` (default `'2022'`), escolhida no "criar jogo" do admin. Todo lugar do `apps/web` que carrega a base (catálogo da escolha, `comecarJogo`, rodada, virada) passa a usar a do jogo.
-Fora de escopo: o conteúdo da 2026 (B3).
-Testes: `base.test.ts` com as contagens da 2022 iguais às de hoje; integração: um jogo com `base = '2026'` (stub enquanto a B3 não existir) nasce e avança uma rodada.
-Pronto quando: `pnpm check` verde; jogos existentes continuam na 2022.
+Contrato: a 2022 continua em `packages/data/base.json` (os testes do motor a importam direto); a 2026 vira `base-2026.json`. `apps/web/lib/game/base.ts` tem `bases` (chave → `Base`) e `baseDe(config)`. A escolha fica em `games.config.base` (jsonb, sem migração; ausente = `'2022'`), num select do "criar jogo" do admin que lista as chaves de `bases`. O catálogo da escolha, o `comecarJogo`, a resolução da rodada e os nomes de time nas telas usam a base do jogo; a lista de países continua da 2022 (é a mesma nas duas).
+Fora de escopo: o conteúdo da 2026 (B3 registra a chave `'2026'` em `bases`).
+Testes: os existentes (a 2022 não muda). O teste de um jogo com a 2026 entra na B3, junto com o arquivo.
+Pronto quando: `pnpm check` verde; jogos existentes continuam na 2022. **Feito.**
 
 ## B2 — Mapa de clubes 2026
 Objetivo: a lista revisada de todos os clubes da base 2026 e de onde vem cada um.

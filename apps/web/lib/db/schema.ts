@@ -35,6 +35,8 @@ export interface ConfigJogo {
   proibidos: string[]
   /** divisões BR permitidas (1–3 = Série A–C; 0 = fora das séries, de onde sai a D); vazio = todas */
   divisoes: number[]
+  /** chave em `bases` (lib/game/base.ts); ausente = '2022' */
+  base?: string
 }
 
 export const games = pgTable('games', {

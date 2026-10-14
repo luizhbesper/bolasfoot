@@ -22,7 +22,7 @@ export default async function Jogo({ params, searchParams }: { params: Promise<{
   if (!ctx) redirect('/')
   const [g] = await db().select().from(games).where(eq(games.id, gid))
   if (g!.status === 'lobby' || g!.status === 'picking')
-    return <Escolha nomeJogo={g!.name} regra={regra(g!.config)} erro={erro} times={g!.status === 'picking' ? catalogo(g!.gameSeed).filter((t) => permitido(g!.config, t)) : []} />
+    return <Escolha nomeJogo={g!.name} regra={regra(g!.config)} erro={erro} times={g!.status === 'picking' ? catalogo(g!.gameSeed, g!.config).filter((t) => permitido(g!.config, t)) : []} />
 
   const [r] = await db().select().from(rounds).where(and(eq(rounds.gameId, gid), eq(rounds.n, g!.round)))
   // a última rodada já vista por todos: o que ainda toca ao vivo não entra

@@ -15,7 +15,7 @@ import { createHash } from 'node:crypto'
 import { gunzipSync, gzipSync } from 'node:zlib'
 import type { Db } from '../db/index.ts'
 import { commands, gameMembers, games, gameSettings, roundLogs, rounds, snapshots, users, type FaseRodada } from '../db/schema.ts'
-import { base } from './base.ts'
+import { baseDe } from './base.ts'
 import { publicar, type EventoJogo } from './canal.ts'
 
 type Tx = Parameters<Parameters<Db['transaction']>[0]>[0]
@@ -78,7 +78,7 @@ export async function prontos(q: Q, gameId: number): Promise<Extract<EventoJogo,
 /** O mundo nasce com os times escolhidos e a 1ª rodada abre. Roda na transação que encerra a escolha de times. */
 export async function comecarJogo(tx: Tx, gameId: number): Promise<void> {
   const [g] = await tx.select().from(games).where(eq(games.id, gameId))
-  const m = novoJogo(base, { habilidadeIndividual: g!.config.habilidadeIndividual, salarioMensal: g!.config.salarioMensal }, seedDoMundo(g!.gameSeed))
+  const m = novoJogo(baseDe(g!.config), { habilidadeIndividual: g!.config.habilidadeIndividual, salarioMensal: g!.config.salarioMensal }, seedDoMundo(g!.gameSeed))
   const membros = await tx.select({ id: gameMembers.id, teamRef: gameMembers.teamRef, username: users.username })
     .from(gameMembers).innerJoin(users, eq(users.id, gameMembers.userId)).where(eq(gameMembers.gameId, gameId)).orderBy(gameMembers.id)
   for (const mb of membros) {
@@ -139,7 +139,7 @@ async function resolver(tx: Tx, g: Jogo, n: number, etapa: 0 | 1, s: Settings) {
     return tecnico === undefined ? [] : (c.list as Comando[]).map((comando) => ({ tecnico, comando }))
   })
 
-  const r = etapa ? continuarRodada(m, base, comandos, seed) : avancarRodada(m, base, comandos, seed, g.mode === 'live')
+  const r = etapa ? continuarRodada(m, baseDe(g.config), comandos, seed) : avancarRodada(m, baseDe(g.config), comandos, seed, g.mode === 'live')
   await tx.insert(roundLogs).values({ gameId: g.id, n, etapa, data: resumo(m, r) })
   const agora = new Date()
   if (r.fase === 'intervalo') {
