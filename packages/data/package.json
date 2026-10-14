@@ -8,6 +8,7 @@
   },
   "scripts": {
     "build": "node src/build.ts",
-    "typecheck": "tsc -p ."
+    "typecheck": "tsc -p .",
+    "clubes:2026": "node src/clubes-2026.ts"
   }
 }

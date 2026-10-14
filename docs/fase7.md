@@ -4,7 +4,7 @@ Detalhe dos tickets B1–B10 do `plano.md`. A base original (22-23) continua jog
 
 **Decisões da fase**
 - **Duas bases.** `base.json` (original, 2022) e `base-2026.json`. O admin escolhe ao criar o jogo; o jogo guarda qual usa, porque a virada de temporada lê a base. O oráculo, os `ref-*.json` e os testes golden ficam presos à 2022.
-- **Fonte híbrida.** Elenco e valor de mercado vêm do Transfermarkt: o [transfermarkt-datasets](https://github.com/dcaribou/transfermarkt-datasets) (CC0) cobre a Série A e as ligas estrangeiras, e o [transfermarkt-api](https://github.com/felipeall/transfermarkt-api), rodando local, cobre as Séries B, C e D e os estaduais. A API-Football (grátis, 100 req/dia) serve só para conferir listas de clubes e IDs. O ToS do TM proíbe scraping, então é uso privado: o importador roda uma vez, com cache em `data-cache/` (gitignored), e os dados brutos nunca são commitados.
+- **Fonte híbrida.** Elenco e valor de mercado vêm do Transfermarkt: o [transfermarkt-datasets](https://github.com/dcaribou/transfermarkt-datasets) (CC0) cobre a Série A e as ligas estrangeiras, e o [transfermarkt-api](https://github.com/felipeall/transfermarkt-api), rodando local, cobre as Séries B, C e D, os estaduais e as listas de participantes de 2026 (o TM chama a temporada brasileira de 2026 de `season_id=2025`). A API-Football grátis ficou de fora: só libera as temporadas de 2022 a 2024. O ToS do TM proíbe scraping, então é uso privado: o importador roda uma vez, com cache em `data-cache/` (gitignored), e os dados brutos nunca são commitados.
 - **Força real.** O jogador ganha `forca?`, derivada do valor de mercado. Sem ela, o `forcaInicial` do original faz dois titulares do mesmo time nascerem quase iguais.
 - **F7 cuida do nacional, F6 do continental.** Esta fase põe os formatos nacionais de 2026 e entrega os participantes continentais da 1ª temporada como dado (B9). A F6 porta as continentais do original, cujo formato da Libertadores (3 preliminares e 8 grupos de 4) já é o de 2026.
 - **O formato de 2026 vale para sempre** na base 2026. A Série C com 24 clubes em 2027 e 28 em 2028 fica de fora até fazer falta.
@@ -54,9 +54,12 @@ Pronto quando: `pnpm check` verde; jogos existentes continuam na 2022. **Feito.*
 ## B2 — Mapa de clubes 2026
 Objetivo: a lista revisada de todos os clubes da base 2026 e de onde vem cada um.
 Fonte original: n/a.
-Contrato: `clubes-2026.json`, uma linha por clube: `fileRef`, `tm` (id do TM), `apiFootball` (id), `pais`, `uf`, `divisao` (1–4 ou 0), `estadual` (divisão e grupo, quando houver). Estrangeiros: os participantes de Libertadores e Sul-Americana de 2026 mais o top ~15 por país pelo valor do elenco (o mesmo corte do `mundo.ts:423`). Script `conferir-clubes` compara as listas com a API-Football e com os fatos acima.
+Contrato: `pnpm --filter @bolasfoot/data clubes:2026` (`src/clubes-2026.ts`, com `src/tm.ts` para o acesso ao TM e o cache) gera `clubes-2026.json`: `{ clubes, mantidos }`. Cada clube tem `tm`, `nome`, `fileRef`, `novo`, `pais`, `uf`, `divisao` (1–4 ou 0), `estadual` (id do TM), `copa`, `continentais` e `valor`.
+- **Brasil:** Séries A–D, Copa do Brasil e a 1ª divisão dos 27 estaduais de 2026 (o TM não tem o Amazonense).
+- **Estrangeiros:** 37 ligas (as da CONMEBOL, México, MLS, Europa, Arábia, Japão, Coreia e Austrália), com até a cota de times que o original tem no país, escolhidos pelo valor, mais todos os de Libertadores, Sul-Americana e Recopa. País fora dessas ligas fica com os times do original (`mantidos`).
+- **Casamento com o original:** por nome dentro do mesmo país e UF, ignorando prefixos (EC, SE…), "de/do/da" e a UF no fim do nome. O que o nome não resolve vai em `MANUAL`, `MANUAL_NOME` (nomes que o original traduziu) e `UF_MANUAL`.
 Fora de escopo: elencos.
-Testes: o script acusa 0 divergências; cada clube do original que está na 2026 mantém o `fileRef`.
+Testes: o script lista o que não casou (ambíguo, sem país, sem UF, `fileRef` repetido), os clubes novos e os originais que ficaram de fora; tem que sair sem nenhum problema. **Feito:** 501 clubes, 275 deles brasileiros (143 novos), séries 20/20/20/96, Copa com 126; dos 226 estrangeiros, 145 casados com o original; 235 estrangeiros mantidos.
 
 ## B3 — Importador
 Objetivo: `pnpm data:build:2026` gera o `base-2026.json` a partir do `data-cache/`.
