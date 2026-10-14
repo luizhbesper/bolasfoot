@@ -2,13 +2,13 @@
 // Estado do jogo no cliente: um SSE só por aba (fase, prontos, relógio do servidor) e o mundo baixado do snapshot,
 // rebaixado quando a fase muda. As telas leem tudo por useJogo(); o relógio fica em useRelogio() para não
 // re-renderizar a árvore inteira a cada tick.
-import type { Mundo, TimeM } from '@bolasfoot/engine'
+import { tecnicosEmCampo, type Mundo, type TimeM } from '@bolasfoot/engine'
 import { useRouter } from 'next/navigation'
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { EventoJogo } from '../../../lib/game/canal.ts'
 
 export type EstadoFase = Extract<EventoJogo, { tipo: 'fase' }>
-export interface Membro { id: number; nome: string; teamRef: string | null }
+export interface Membro { id: number; nome: string; teamRef: string | null; tecnicoId: number | null }
 
 interface Jogo {
   jogo: number
@@ -21,6 +21,8 @@ interface Jogo {
   mundo: Mundo | null
   /** time do técnico logado no mundo (null se desempregado ou sem mundo) */
   meuTime: TimeM | null
+  /** o técnico tem jogo agora (o pronto só espera esses); parada sem jogo ou sem mundo: todos os técnicos */
+  joga: (tecnicoId: number | null) => boolean
   /** relógio do servidor menos o local, em ms */
   offset: number
 }
@@ -93,9 +95,11 @@ export function JogoProvider({ children, ...p }: {
     return () => ctl.abort()
   }, [p.jogo, temMundo, fase.rodada, fase.fase])
 
+  const emCampo = useMemo(() => new Set(mundo ? tecnicosEmCampo(mundo) : []), [mundo])
+  const joga = (tc: number | null) => tc !== null && (emCampo.size === 0 || emCampo.has(tc))
   const meuTime = mundo && p.eu.tecnicoId !== null ? mundo.times.find((t) => t.tecnico === p.eu.tecnicoId) ?? null : null
   return (
-    <Ctx.Provider value={{ jogo: p.jogo, msPorMinuto: p.msPorMinuto, eu: p.eu, membros: p.membros, fase, prontos, mundo, meuTime, offset: offset ?? 0 }}>
+    <Ctx.Provider value={{ jogo: p.jogo, msPorMinuto: p.msPorMinuto, eu: p.eu, membros: p.membros, fase, prontos, mundo, meuTime, joga, offset: offset ?? 0 }}>
       {children}
     </Ctx.Provider>
   )

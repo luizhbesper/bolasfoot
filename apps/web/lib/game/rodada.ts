@@ -7,7 +7,7 @@
 //                                                  └─ ninguém em campo (proposta de emprego, virada) ─► planejamento n+1
 //   resultados ─(prazo)─► planejamento n+1
 import {
-  avancarRodada, continuarRodada, contratarTecnicoHumano, novoJogo, possePct, validar,
+  avancarRodada, continuarRodada, contratarTecnicoHumano, novoJogo, possePct, tecnicosEmCampo, validar,
   type Comando, type ComandoDe, type Mundo, type Partida, type Rodada,
 } from '@bolasfoot/engine'
 import { and, eq, isNotNull, or } from 'drizzle-orm'
@@ -185,7 +185,11 @@ export async function transicionar(d: Db, gameId: number, forcar = false): Promi
     switch (r.phase) {
       case 'planejamento':
       case 'intervalo': {
-        const membros = await jogadoresDe(tx, gameId)
+        // só espera quem tem jogo agora; parada sem jogo (emprego, virada): todos
+        // ponytail: descomprime o snapshot a cada pronto; guardar o conjunto em `rounds` se ficar lento
+        const emCampo = new Set(tecnicosEmCampo(await carregarMundo(tx, gameId, r.n, r.phase === 'intervalo' ? 1 : 0)))
+        const jogadores = await jogadoresDe(tx, gameId)
+        const membros = emCampo.size ? jogadores.filter((x) => emCampo.has(x.tecnicoId!)) : jogadores
         const todos = membros.length > 0 && membros.every((x) => x.ready)
         if (!todos && !vencido) return false
         if (!todos && !forcar && !s.autoReadyOnTimeout) {

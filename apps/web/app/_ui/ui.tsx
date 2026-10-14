@@ -53,9 +53,9 @@ export function Forma({ resultados }: { resultados: readonly ('V' | 'E' | 'D')[]
   return <span className={s.forma}>{resultados.map((r, i) => <span key={i} className={s[r]}>{r}</span>)}</span>
 }
 
-export function Avatar({ nome, pronto }: { nome: string; pronto?: boolean }) {
+export function Avatar({ nome, pronto, semJogo }: { nome: string; pronto?: boolean; semJogo?: boolean }) {
   return (
-    <span className={`${s.avatar} ${pronto ? s.pronto : ''}`} title={`${nome}${pronto ? ' — pronto' : ''}`}>
+    <span className={`${s.avatar} ${pronto ? s.pronto : ''} ${semJogo ? s.semJogo : ''}`} title={`${nome}${semJogo ? ' — sem jogo' : pronto ? ' — pronto' : ''}`}>
       {nome.slice(0, 2).toUpperCase()}
     </span>
   )

@@ -16,7 +16,7 @@ export default async function LayoutJogo({ params, children }: { params: Promise
   if (!ctx) redirect('/')
   const [g] = await db().select({ name: games.name, config: games.config }).from(games).where(eq(games.id, gid))
   const [cfg] = await db().select({ ms: gameSettings.msPerMinute }).from(gameSettings).where(eq(gameSettings.gameId, gid))
-  const membros = await db().select({ id: gameMembers.id, nome: users.username, teamRef: gameMembers.teamRef })
+  const membros = await db().select({ id: gameMembers.id, nome: users.username, teamRef: gameMembers.teamRef, tecnicoId: gameMembers.tecnicoId })
     .from(gameMembers).innerJoin(users, eq(users.id, gameMembers.userId)).where(eq(gameMembers.gameId, gid)).orderBy(gameMembers.id)
   const fase = await estadoFase(db(), gid)
   const eu = ctx.membro

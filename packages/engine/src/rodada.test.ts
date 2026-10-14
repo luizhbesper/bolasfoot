@@ -6,7 +6,7 @@ import { jogosDoDia } from './competicoes.ts'
 import { FORMACOES } from './escalacao.ts'
 import { novoJogo, type Mundo } from './mundo.ts'
 import { criarRng } from './rng.ts'
-import { avancarRodada, continuarRodada, validar, type Comando } from './rodada.ts'
+import { avancarRodada, continuarRodada, tecnicosEmCampo, validar, type Comando } from './rodada.ts'
 
 const B = base as Base
 
@@ -61,8 +61,10 @@ describe('rodada', () => {
   it('intervalo: só tática e substituição; o 2º tempo usa a troca', () => {
     const { m, a } = mundo()
     while (!jogosDoDia(m).some(({ jogo }) => [jogo.casa, jogo.fora].includes(timeDe(m, a).id))) avancarRodada(m, B, [], 'x')
+    expect(tecnicosEmCampo(m)).toContain(a)
     const r1 = avancarRodada(m, B, [], 'i', true)
     expect(r1.fase).toBe('intervalo')
+    expect(tecnicosEmCampo(m)).toEqual(r1.partidas.flatMap((x) => x.lados).filter((x) => m.times[x.time]!.humano).map((x) => m.times[x.time]!.tecnico))
     const p = r1.partidas.find((x) => x.lados.some((l) => l.time === timeDe(m, a).id))!
     expect(p.tempo).toBe(1)
     const l = p.lados.find((x) => x.time === timeDe(m, a).id)!
