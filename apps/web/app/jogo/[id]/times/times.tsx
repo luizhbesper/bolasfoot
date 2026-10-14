@@ -15,7 +15,8 @@ const FILTROS = [
   { rotulo: 'Série B', ok: (t: TimeM) => t.divisao === 2 },
   { rotulo: 'Série C', ok: (t: TimeM) => t.divisao === 3 },
   { rotulo: 'Fora das séries', ok: (t: TimeM) => t.divisao === 0 && t.pais === BRA },
-  { rotulo: 'Estrangeiros', ok: (t: TimeM) => t.pais !== BRA },
+  ...([[1, 'América do Sul'], [0, 'Europa'], [2, 'África'], [3, 'Ásia'], [4, 'Concacaf'], [5, 'Oceania']] as const)
+    .map(([k, rotulo]) => ({ rotulo, ok: (t: TimeM) => t.pais !== BRA && t.continente === k })),
 ]
 const MOTIVO: Record<number, string> = { [-1]: 'proposta', 0: 'pediu demissão', 1: 'caixa negativo', 2: 'pressão da torcida', 3: 'resultados' }
 

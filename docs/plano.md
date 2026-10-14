@@ -411,7 +411,7 @@ UI **moderna, inspirada** no original, sobre o servidor da fase 3 (em local, com
 | D2 | Piloto automático do time humano (regras de substituição/escalação da IA, configuráveis) |
 | D3 | Resumo no login (o que mudou desde a última visita) |
 
-### Fase 6 — Competições internacionais de clubes
+### Fase 6 — Competições internacionais de clubes — COMPLETE (2026-10-13)
 
 Tickets detalhados e decisões da fase: `docs/fase6.md`. Vem antes da Fase 5 (o daily fica para o fim).
 
@@ -427,6 +427,17 @@ Continentais das 6 confederações (fora da CONMEBOL, só IA, porque o Mundial p
 | I6 | UI: nomes das fases, competições agrupadas em tabelas e história, filtro de estrangeiros |
 
 **Gate:** `pnpm sim --temporadas 10 --mundos 5` com as continentais, contra o `ref-temporadas.json` regenerado com `jogaIntClubes` ligado; o Mundial acontece todo ano; uma rodada de Libertadores jogada no navegador.
+
+**Notas da entrega (F6):** tudo em `packages/engine/src/internacional.ts`.
+- **Fases com código:** cada fase das continentais tem o código do original (4101…, 6100…, 12001…). Uma fase com `rodadasMax` entrega vencedores e perdedores à competição. Os grupos com código próprio montam o mata-mata seguinte (`fimDeFaseInternacional`, chamado pelo `avancarFase`).
+- **Colocação:** `colocacaoDesde` tira as preliminares da colocação final.
+- **Detentores:** ficam em `Mundo.detentores` e seguem o `ai` e o `cw` do original.
+- **Gate ✔:** em 50 temporadas, a Libertadores vai para o Brasil 26 vezes e para a Argentina 24 (no original, 22 e 24). No Mundial, a Europa ganha 29 contra 35 do original: Real, Barça e Atlético estão fora (sem Espanha).
+- **Força dos elencos:** fica dentro das faixas da referência nova (`tools/temporadas.sh` agora joga as continentais; `sem-int` roda o antigo).
+- **Tempo:** a temporada leva ~1,1 s (era ~0,6 s).
+- **Caixa do piloto:** pode passar de 250M em 10 anos com os prêmios continentais.
+- **UI:** a fase ganha nome próprio ("Preliminar Fase 2", "Fase de grupos"). As competições ficam agrupadas (Brasil, América do Sul, Mundial, outras confederações). Os estrangeiros podem ser filtrados por continente, e a caixa de entrada tem o aviso "Competição" (quem cai da Libertadores para a Sul-Americana).
+- **Ficou para depois:** o convidado mexicano da Libertadores (`r.yx`); a sede rotativa das finais (`mF`), que hoje é campo neutro só no Mundial; a Supercopa dos outros países (só o Brasil tem liga). Os rótulos foram conferidos por script; o teste no navegador ficou pendente porque a extensão do Chrome não estava conectada.
 
 **Notas vindas da F0:** todos os estrangeiros (menos ESP) já estão no `base.json`. A seleção dos participantes é por cota de país, não por flag no time (ver `engenharia-reversa.md`, "Dados e seleção de times").
 

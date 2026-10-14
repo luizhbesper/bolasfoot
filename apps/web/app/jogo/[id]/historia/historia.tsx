@@ -3,6 +3,7 @@
 import { ANO_INICIAL } from '@bolasfoot/engine'
 import { useState } from 'react'
 import { Escudo } from '../../../_ui/ui.tsx'
+import { grupoCompeticao, GRUPOS_COMPETICAO } from '../consultas.ts'
 import { useJogo } from '../contexto.tsx'
 import { Carregando } from '../hub.tsx'
 
@@ -23,7 +24,10 @@ export function Historia() {
           <h2>Campeões</h2>
           {comps.length > 0 && (
             <select aria-label="Competição" value={comp} onChange={(e) => setComp(e.target.value)} style={{ height: 34 }}>
-              {comps.map(([id, nome]) => <option key={id} value={id}>{nome}</option>)}
+              {GRUPOS_COMPETICAO.map((g) => {
+                const lista = comps.filter(([id]) => grupoCompeticao(m.competicoes.find((c) => c.id === id) ?? { confederacao: undefined }) === g)
+                return lista.length > 0 && <optgroup key={g} label={g}>{lista.map(([id, nome]) => <option key={id} value={id}>{nome}</option>)}</optgroup>
+              })}
             </select>
           )}
         </div>
