@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useDeferredValue, useState } from 'react'
 import type { TimeEscolha } from '../../../lib/game/escolha.ts'
 import { Erro } from '../../_ui/pagina.tsx'
-import { Avatar, Escudo } from '../../_ui/ui.tsx'
+import { Avatar, Escudo, Marca } from '../../_ui/ui.tsx'
 import { escolherAcao, readyAcao } from './acoes.ts'
 import { Relogio } from './casca.tsx'
 import { useJogo } from './contexto.tsx'
@@ -33,7 +33,7 @@ export function Escolha({ nomeJogo, regra, times, erro }: { nomeJogo: string; re
   return (
     <div className={s.tela}>
       <header className={s.topo}>
-        <Link href="/" className={s.marca}>Bolasfoot</Link>
+        <Link href="/" className={s.marca}><Marca /></Link>
         <span className="fraco">/</span>
         <span>{nomeJogo}</span>
         <span className={`etiqueta ${escolhendo ? 'ceu' : ''}`}>{escolhendo ? 'Escolha de times' : 'Lobby'}</span>

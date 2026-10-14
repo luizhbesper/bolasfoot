@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useRef, type ReactNode } from 'react'
 import { Icone } from '../../_ui/icones.tsx'
-import { Avatar, Escudo } from '../../_ui/ui.tsx'
+import { Avatar, Escudo, Marca } from '../../_ui/ui.tsx'
 import { readyAcao } from './acoes.ts'
 import s from './casca.module.css'
 import { dataLonga, dinheiro, NOME_DIVISAO, proximoJogo } from './consultas.ts'
@@ -57,7 +57,7 @@ function Menu({ base, sufixo, nomeJogo, usuario, timeInicial }: {
   return (
     <nav className={s.menu} aria-label="Menu do jogo">
       <div className={s.marca}>
-        <span>Bolasfoot</span>
+        <Marca />
         <span className={s.nomeJogo}>{nomeJogo}</span>
       </div>
       {time && (

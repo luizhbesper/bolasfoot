@@ -9,6 +9,15 @@ export function Escudo({ fileRef, tamanho = 24, mini }: { fileRef: string; taman
   return <img className={s.escudo} src={`${ASSETS}/${mini ? 'escudos-mini' : 'escudos'}/${fileRef}.png`} alt="" width={tamanho} height={tamanho} />
 }
 
+/** A logo com o nome ao lado. */
+export function Marca({ tamanho = 28 }: { tamanho?: number }) {
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: tamanho / 4 }}>
+      <img src="/logo.png" alt="" width={tamanho} height={tamanho} />Bolasfoot
+    </span>
+  )
+}
+
 export function Bandeira({ pais, tamanho = 20 }: { pais: number; tamanho?: 20 | 36 }) {
   return <img className={s.bandeira} src={`${ASSETS}/bandeiras/${tamanho}/${pais}.png`} alt="" width={tamanho} height={tamanho} />
 }
