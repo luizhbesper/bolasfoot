@@ -1,0 +1,156 @@
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.kpi {
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.grande {
+  font-family: var(--font-bricolage), sans-serif;
+  font-size: 32px;
+  line-height: 1.05;
+  font-weight: 700;
+}
+
+.nota {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.topo {
+  display: grid;
+  grid-template-columns: minmax(0, 2.1fr) minmax(300px, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.meio {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.painel {
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cabeca {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.legenda {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.legenda i {
+  display: block;
+}
+
+.linhaValor {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.blocos {
+  display: flex;
+  gap: 2px;
+  height: 10px;
+}
+
+.blocos span {
+  flex: 1;
+  border-radius: 3px;
+}
+
+.botaoBanco {
+  flex: 1;
+  height: 44px;
+}
+
+.rank {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 80px 44px;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.trilho {
+  display: block;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--raised);
+}
+
+.trilho span {
+  display: block;
+  height: 6px;
+  border-radius: 3px;
+}
+
+.cabecaExtrato {
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--line);
+}
+
+.dia {
+  padding: 12px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-bottom: 1px solid var(--raised);
+}
+
+.lanc {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+}
+
+.quadrado {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+@media (max-width: 1100px) {
+  .topo,
+  .meio {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 900px) {
+  .kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .grande {
+    font-size: 24px;
+  }
+}
