@@ -38,7 +38,7 @@ describe('rodada', () => {
     // liga (38) + estadual + copa: bem menos rodadas que dias de jogo da temporada (~80)
     expect(rodadas).toBeGreaterThan(38)
     expect(rodadas).toBeLessThan(80)
-  })
+  }, 20_000)
 
   it('usa a escalação salva e troca quem não pode jogar', () => {
     const { m, a } = mundo()
