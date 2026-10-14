@@ -86,10 +86,9 @@ function Menu({ base, sufixo, nomeJogo, usuario, timeInicial }: {
 }
 
 function Barra({ titulo }: { titulo: string }) {
-  const { mundo, meuTime, membros, prontos } = useJogo()
+  const { mundo, meuTime } = useJogo()
   const prox = mundo && meuTime ? proximoJogo(mundo, meuTime.id) : null
   const adv = prox && mundo ? mundo.times[prox.adversario] : null
-  const tecnicos = membros.filter((m) => m.teamRef)
   return (
     <header className={s.barra}>
       <h1 className={s.titulo}>{titulo}</h1>
@@ -103,13 +102,22 @@ function Barra({ titulo }: { titulo: string }) {
         </span>
       )}
       <span className={s.divisor} />
-      <div className={s.presenca} aria-label={`Técnicos prontos: ${prontos.length} de ${tecnicos.length}`}>
-        {tecnicos.map((m) => <Avatar key={m.id} nome={m.nome} pronto={prontos.includes(m.id)} />)}
-        <Relogio />
-      </div>
+      <Prontos />
       <BotaoPausa />
       <AcaoDaFase />
     </header>
+  )
+}
+
+/** Quem já está pronto (um avatar por técnico) e o prazo da fase. */
+export function Prontos() {
+  const { membros, prontos } = useJogo()
+  const tecnicos = membros.filter((m) => m.teamRef)
+  return (
+    <div className={s.presenca} aria-label={`Técnicos prontos: ${prontos.length} de ${tecnicos.length}`}>
+      {tecnicos.map((m) => <Avatar key={m.id} nome={m.nome} pronto={prontos.includes(m.id)} />)}
+      <Relogio />
+    </div>
   )
 }
 

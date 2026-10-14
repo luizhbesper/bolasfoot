@@ -13,11 +13,22 @@ export interface Financas {
   emprestimo: number
   /** juros do mês: 3% do saldo (C.dX) */
   juros: number
-  /** extrato da temporada (C: dN, dM, dL, dO, dP / dR, dT, dQ, dV, dS, dU) */
-  receitas: { bilheteria: number; premios: number; vendas: number; patrocinio: number; multas: number }
-  despesas: { compras: number; juros: number; obras: number; comissoes: number; salarios: number; outras: number }
+  /** extrato da temporada por categoria (C: dN, dM, dL, dO / dR, dT, dQ, dV, dS). Empréstimo do banco é do port: no
+   * original ele mexia no caixa por fora do extrato, que então não fechava */
+  receitas: { bilheteria: number; premios: number; vendas: number; patrocinio: number; emprestimo: number }
+  despesas: { compras: number; juros: number; obras: number; comissoes: number; salarios: number; amortizacao: number }
+  /** cada movimento da temporada, na ordem (receita +, despesa −): caixa = saldo inicial + soma. Mundos salvos antes
+   * não têm (ver `lancamentos`) */
+  lancamentos?: Lancamento[]
   /** obra em andamento: lugares a mais por setor e dia em que termina */
   obra: { setores: [number, number, number, number]; fim: number } | null
+}
+
+export interface Lancamento {
+  dia: number
+  cat: keyof Financas['receitas'] | keyof Financas['despesas']
+  valor: number
+  desc?: string
 }
 
 // ── Jogador ───────────────────────────────────────────────────────────────
@@ -111,34 +122,46 @@ export function abrirCaixa(mundo: Mundo, timeId: number): Financas {
   let caixa = CAIXA_INICIAL[div(t)]!
   // estrangeiro com estaduais ligados: +3,2 folhas (ah.java:1702, isJogaEstadual)
   if (t.pais !== 29 && mundo.opcoes.jogaEstadual !== false) caixa = Math.round(caixa + 3.2 * folha(mundo, t))
+  const patrocinio = PATROCINIO[div(t)]!
   t.financas = {
     caixa,
     emprestimo: 0,
     juros: 0,
-    receitas: { bilheteria: 0, premios: 0, vendas: 0, patrocinio: PATROCINIO[div(t)]!, multas: 0 },
-    despesas: { compras: 0, juros: 0, obras: 0, comissoes: 0, salarios: 0, outras: 0 },
+    receitas: { bilheteria: 0, premios: 0, vendas: 0, patrocinio, emprestimo: 0 },
+    despesas: { compras: 0, juros: 0, obras: 0, comissoes: 0, salarios: 0, amortizacao: 0 },
+    // o patrocínio do 1º ano já está no caixa: lançado para o extrato fechar com ele
+    lancamentos: [{ dia: mundo.dia, cat: 'patrocinio', valor: patrocinio }],
     obra: null,
   }
   return t.financas
 }
 
-export function receber(t: TimeM, valor: number, cat: keyof Financas['receitas']): void {
-  if (!t.financas) return
-  t.financas.caixa += valor
-  t.financas.receitas[cat] += valor
+/** Os movimentos da temporada (vazio em mundo salvo antes do extrato detalhado). */
+export const lancamentos = (f: Financas): Lancamento[] => (f.lancamentos ??= [])
+
+/** Todo dinheiro que entra no caixa passa por aqui (e vai para o extrato). */
+export function receber(t: TimeM, valor: number, cat: keyof Financas['receitas'], dia: number, desc?: string): void {
+  const f = t.financas
+  if (!f) return
+  f.caixa += valor
+  f.receitas[cat] = (f.receitas[cat] ?? 0) + valor
+  lancamentos(f).push({ dia, cat, valor, ...(desc ? { desc } : {}) })
 }
 
-export function pagar(t: TimeM, valor: number, cat: keyof Financas['despesas']): void {
-  if (!t.financas) return
-  t.financas.caixa -= valor
-  t.financas.despesas[cat] += valor
+/** Todo dinheiro que sai do caixa passa por aqui (e vai para o extrato). */
+export function pagar(t: TimeM, valor: number, cat: keyof Financas['despesas'], dia: number, desc?: string): void {
+  const f = t.financas
+  if (!f) return
+  f.caixa -= valor
+  f.despesas[cat] = (f.despesas[cat] ?? 0) + valor
+  lancamentos(f).push({ dia, cat, valor: -valor, ...(desc ? { desc } : {}) })
 }
 
 /** Patrocínio anual, pago na virada da temporada (W7). Fonte: best/ah.java:1692-1698 (kG) */
 export function receberPatrocinio(mundo: Mundo, t: TimeM): void {
   if (!t.financas) return
-  if (t.pais !== 29 && mundo.opcoes.jogaEstadual !== false) t.financas.caixa = Math.round(t.financas.caixa + 3.2 * folha(mundo, t))
-  receber(t, PATROCINIO[div(t)]!, 'patrocinio')
+  if (t.pais !== 29 && mundo.opcoes.jogaEstadual !== false) receber(t, Math.round(3.2 * folha(mundo, t)), 'patrocinio', mundo.dia, 'Bônus de time estrangeiro')
+  receber(t, PATROCINIO[div(t)]!, 'patrocinio', mundo.dia)
 }
 
 /** Zera o extrato da temporada (ah.kI → C.eA). */
@@ -146,6 +169,7 @@ export function zerarExtrato(t: TimeM): void {
   if (!t.financas) return
   for (const k of Object.keys(t.financas.receitas) as (keyof Financas['receitas'])[]) t.financas.receitas[k] = 0
   for (const k of Object.keys(t.financas.despesas) as (keyof Financas['despesas'])[]) t.financas.despesas[k] = 0
+  t.financas.lancamentos = []
 }
 
 /** Até quanto o time pode dever (por divisão) e o tamanho de cada parcela. */
@@ -155,27 +179,27 @@ export const PARCELA_EMPRESTIMO = BLOCO
 const atualizarJuros = (f: Financas) => (f.juros = f.emprestimo > 0 ? Math.floor((f.emprestimo * 3) / 100) : 0)
 
 /** Pega 500 mil, até o limite da divisão. Fonte: best/C.java:228-238 (m) */
-export function pegarEmprestimo(t: TimeM): boolean {
+export function pegarEmprestimo(t: TimeM, dia: number): boolean {
   const f = t.financas
   if (!f || f.emprestimo >= LIMITE_EMPRESTIMO[div(t)]!) return false
   f.emprestimo += BLOCO
-  f.caixa += BLOCO
+  receber(t, BLOCO, 'emprestimo', dia)
   atualizarJuros(f)
   return true
 }
 
 /** Devolve 500 mil, se houver dívida e caixa. Fonte: best/C.java:218-226 (l) */
-export function pagarEmprestimo(t: TimeM): boolean {
+export function pagarEmprestimo(t: TimeM, dia: number): boolean {
   const f = t.financas
   if (!f || f.emprestimo <= 0 || f.caixa < BLOCO) return false
   f.emprestimo -= BLOCO
-  f.caixa -= BLOCO
+  pagar(t, BLOCO, 'amortizacao', dia)
   atualizarJuros(f)
   return true
 }
 
-/** O time tem jogo marcado no mês (ah.bY, best/ah.java:2228). */
-function jogaNoMes(mundo: Mundo, timeId: number, ano: number, mes: number): boolean {
+/** O time tem jogo marcado no mês (ah.bY, best/ah.java:2228): sem jogo, não paga salário. */
+export function jogaNoMes(mundo: Mundo, timeId: number, ano: number, mes: number): boolean {
   for (const c of mundo.competicoes)
     for (const f of c.fases)
       for (const j of f.tipo === 'liga' ? f.jogos : f.rodadas.flatMap((r) => r.jogos))
@@ -194,8 +218,8 @@ export function eventosEconomicos(mundo: Mundo, dia: number): void {
   const pagaSalario = (mundo.opcoes.salarioMensal ?? true) ? diaDePagamento(dia) : diaDaSemana(dia) === 1
   for (const t of humanos) {
     const f = t.financas!
-    if (pagaSalario && jogaNoMes(mundo, t.id, ano, mes)) pagar(t, folha(mundo, t), 'salarios')
-    if (diaDePagamento(dia) && f.juros > 0) pagar(t, f.juros, 'juros')
+    if (pagaSalario && jogaNoMes(mundo, t.id, ano, mes)) pagar(t, folha(mundo, t), 'salarios', dia)
+    if (diaDePagamento(dia) && f.juros > 0) pagar(t, f.juros, 'juros', dia)
     if (f.obra && f.obra.fim < dia) {
       f.obra.setores.forEach((n, k) => (t.estadio.setores[k] = t.estadio.setores[k]! + n))
       f.obra = null
@@ -240,7 +264,7 @@ export function iniciarObra(mundo: Mundo, timeId: number, mais: [number, number,
   if (mais.every((n) => n === 0)) return 'nada a construir'
   const { custo, dias } = orcamentoObra(t, mais)
   if (f.caixa < custo) return 'sem dinheiro para essa expansão'
-  pagar(t, custo, 'obras')
+  pagar(t, custo, 'obras', mundo.dia, `${mais.reduce((a, b) => a + b, 0).toLocaleString('pt-BR')} lugares`)
   f.obra = { setores: [...mais], fim: mundo.dia + dias }
   return null
 }
@@ -255,11 +279,11 @@ const PREMIO_COPA = [1_000_000, 2_000_000, 4_000_000, 5_000_000, 7_000_000, 15_0
 const PREMIO_REGIONAL = [100_000, 100_000, 400_000]
 
 /** Prêmio pela colocação final, só humanos. Fonte: best/ah.java:813-829 (c) */
-export function premioColocacao(t: TimeM, c: Competicao, pos: number): void {
+export function premioColocacao(t: TimeM, c: Competicao, pos: number, dia: number): void {
   let v = 0
   if (c.tipo === 1) v = PREMIO_LIGA[div(t)]?.[pos - 1] ?? 0
   else if (c.tipo === 3 && c.divisao === 1) v = PREMIO_ESTADUAL[pos - 1] ?? 0
-  if (v > 0) receber(t, v, 'premios')
+  if (v > 0) receber(t, v, 'premios', dia, `${c.nome}: ${pos}º lugar`)
 }
 
 /** Continental 1 por fase vencida, por confederação (0 UEFA … 5 OFC). Fonte: best/aq.java:578-621 (sw) */
@@ -276,7 +300,7 @@ const PREMIO_MUNDIAL = [2_000_000, 5_000_000, 7_000_000]
  * Prêmio por fase de mata-mata vencida, só humanos. `rodada` = índice da rodada na fase; `nRodadas` = rodadas do
  * chaveamento. Nas continentais as preliminares (código da fase) pagam fixo. Fonte: f/g_0.java:93-162 (c), :438-447 (V)
  */
-export function premioFase(t: TimeM, c: Competicao, f: FaseMataMata, rodada: number, nRodadas: number): void {
+export function premioFase(t: TimeM, c: Competicao, f: FaseMataMata, rodada: number, nRodadas: number, dia: number): void {
   let v = 0
   const cod = f.formato, conf = c.confederacao ?? 1
   if (c.tipo === 2) v = PREMIO_COPA[rodada + PREMIO_COPA.length - nRodadas] ?? 0
@@ -285,5 +309,5 @@ export function premioFase(t: TimeM, c: Competicao, f: FaseMataMata, rodada: num
   else if (c.tipo === 6 || c.tipo === 12) v = cod === 6100 ? 300_000 : cod >= 6000 && cod <= 6004 ? 500_000 : PREMIO_CONT2[conf === 0 ? 0 : 1]![rodada] ?? 0
   else if (c.tipo === 5) v = PREMIO_MUNDIAL[rodada] ?? 0
   else if (c.tipo === 8 || c.tipo === 11) v = 1_000_000
-  if (v > 0) receber(t, v, 'premios')
+  if (v > 0) receber(t, v, 'premios', dia, c.nome)
 }

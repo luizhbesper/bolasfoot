@@ -121,7 +121,9 @@ a.item:hover {
   color: var(--muted);
 }
 
+/* Ultra-wide: conteúdo e barra param em --largura e centralizam; o fundo da barra segue a tela toda. */
 .principal {
+  --largura: 1440px;
   flex: 1;
   min-width: 0;
   display: flex;
@@ -133,7 +135,7 @@ a.item:hover {
   top: 0;
   z-index: 10;
   min-height: 64px;
-  padding: 10px 24px;
+  padding: 10px max(24px, calc((100% - var(--largura)) / 2));
   display: flex;
   align-items: center;
   gap: 20px;
@@ -203,6 +205,9 @@ a.item:hover {
 
 .conteudo {
   padding: 24px;
+  width: 100%;
+  max-width: var(--largura);
+  margin-inline: auto;
 }
 
 /* Celular: o menu vira uma barra inferior rolável, só com os itens. */

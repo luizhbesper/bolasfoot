@@ -258,9 +258,14 @@ export async function comandosPendentes(q: Q, gameId: number, userId: number): P
 /** Tipos que valem uma vez por fase: o novo substitui o anterior; os outros (compras, propostas…) se somam. */
 const UNICOS = new Set<Comando['tipo']>(['escalar', 'tatica', 'batedores', 'treino', 'ingresso', 'mudarTatica'])
 
+/** Uma proposta por jogador: a nova (compra ou pedido de empréstimo) substitui a anterior. */
+const PROPOSTAS = new Set<Comando['tipo']>(['comprar', 'pedirEmprestado'])
+const alvo = (c: Comando) => (PROPOSTAS.has(c.tipo) && 'jogador' in c ? c.jogador : null)
+
 export function juntarComandos(atuais: Comando[], novos: Comando[]): Comando[] {
   const trocados = new Set(novos.map((c) => c.tipo).filter((t) => UNICOS.has(t)))
-  return [...atuais.filter((c) => !trocados.has(c.tipo)), ...novos]
+  const jogadores = new Set(novos.map(alvo).filter((j) => j !== null))
+  return [...atuais.filter((c) => !trocados.has(c.tipo) && !jogadores.has(alvo(c) ?? -1)), ...novos]
 }
 
 /** Soma `novos` aos comandos já guardados da fase (ver `juntarComandos`) e grava tudo com `enviarComandos`. */
@@ -283,26 +288,35 @@ export async function marcarReady(d: Db, gameId: number, userId: number, ready: 
 
 // --- admin ---------------------------------------------------------------------------------------------------------
 
-/** Congela o jogo (o prazo fica guardado). `auto` = alguém caiu: `vigiarPresenca` retoma quando todos voltarem. */
+/** Congela o jogo (o prazo fica guardado). `auto` = alguém caiu: `vigiarPresenca` retoma quando todos voltarem.
+ * Trava o jogo antes de marcar a hora: se a pausa esperou uma resolução da rodada, a espera não conta como parada. */
 export async function pausar(d: Db, gameId: number, auto = false) {
-  const [g] = await d.update(games).set({ status: 'paused', pausedAt: new Date(), autoPaused: auto })
-    .where(and(eq(games.id, gameId), eq(games.status, 'running'))).returning({ id: games.id })
-  if (g) publicar(gameId, await estadoFase(d, gameId))
+  const pausou = await d.transaction(async (tx) => {
+    const [g] = await tx.select().from(games).where(eq(games.id, gameId)).for('update')
+    if (g?.status !== 'running') return false
+    await tx.update(games).set({ status: 'paused', pausedAt: new Date(), autoPaused: auto }).where(eq(games.id, gameId))
+    return true
+  })
+  if (pausou) publicar(gameId, await estadoFase(d, gameId))
 }
 
-/** Prazo e início do tempo ao vivo andam o tempo parado: a fase continua de onde parou. */
+/** Prazo e início do tempo ao vivo andam o tempo parado: a fase continua de onde parou. Travado: dois retomar juntos
+ * (admin + presença) não somam o tempo parado duas vezes. */
 export async function retomar(d: Db, gameId: number) {
-  const [g] = await d.select().from(games).where(eq(games.id, gameId))
-  if (g?.status !== 'paused') return
-  const parado = Date.now() - (g.pausedAt?.getTime() ?? Date.now())
-  const r = (await rodadaDe(d, gameId, g.round))!
-  const s = await settingsDe(d, gameId)
-  // sem prazo guardado (pausa antiga, ou esperando todos prontos): o prazo inteiro da fase
-  const prazo = { planejamento: s.planningTimeoutS, intervalo: s.halftimeTimeoutS, resultados: s.resultsPauseS, ao_vivo_1t: 0, ao_vivo_2t: 0 }[r.phase]
-  const deadline = g.deadline ? new Date(g.deadline.getTime() + parado) : daqui(prazo)
-  if (r.startedAt) await d.update(rounds).set({ startedAt: new Date(r.startedAt.getTime() + parado) }).where(and(eq(rounds.gameId, gameId), eq(rounds.n, r.n)))
-  await d.update(games).set({ status: 'running', deadline, pausedAt: null, autoPaused: false }).where(eq(games.id, gameId))
-  publicar(gameId, await estadoFase(d, gameId))
+  const retomou = await d.transaction(async (tx) => {
+    const [g] = await tx.select().from(games).where(eq(games.id, gameId)).for('update')
+    if (g?.status !== 'paused') return false
+    const parado = Date.now() - (g.pausedAt?.getTime() ?? Date.now())
+    const r = (await rodadaDe(tx, gameId, g.round))!
+    const s = await settingsDe(tx, gameId)
+    // sem prazo guardado (pausa antiga, ou esperando todos prontos): o prazo inteiro da fase
+    const prazo = { planejamento: s.planningTimeoutS, intervalo: s.halftimeTimeoutS, resultados: s.resultsPauseS, ao_vivo_1t: 0, ao_vivo_2t: 0 }[r.phase]
+    const deadline = g.deadline ? new Date(g.deadline.getTime() + parado) : daqui(prazo)
+    if (r.startedAt) await tx.update(rounds).set({ startedAt: new Date(r.startedAt.getTime() + parado) }).where(and(eq(rounds.gameId, gameId), eq(rounds.n, r.n)))
+    await tx.update(games).set({ status: 'running', deadline, pausedAt: null, autoPaused: false }).where(eq(games.id, gameId))
+    return true
+  })
+  if (retomou) publicar(gameId, await estadoFase(d, gameId))
 }
 
 /** Presença: o SSE marca a batida do membro. */

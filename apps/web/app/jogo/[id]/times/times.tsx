@@ -1,13 +1,15 @@
 'use client'
 // Times e técnicos: o elenco de qualquer time (com a ficha do jogador), o ranking dos técnicos e as trocas de técnico.
-import { BRA, folha, type Mundo, type TimeM } from '@bolasfoot/engine'
+import { BRA, folha, type Comando, type Mundo, type TimeM } from '@bolasfoot/engine'
 import { useState } from 'react'
 import { Gaveta } from '../../../_ui/gaveta.tsx'
 import { ChipPosicao, Escudo, Forca, tomForca } from '../../../_ui/ui.tsx'
+import { useComandos, type Comandos } from '../comandos.tsx'
 import { dataLonga, dinheiro, jogadoresDe, NOME_DIVISAO } from '../consultas.ts'
 import { useJogo } from '../contexto.tsx'
 import { Ficha } from '../elenco/elenco.tsx'
 import { Carregando } from '../hub.tsx'
+import { Proposta } from '../procura/procura.tsx'
 
 type Aba = 'times' | 'tecnicos' | 'trocas'
 const FILTROS = [
@@ -20,8 +22,9 @@ const FILTROS = [
 ]
 const MOTIVO: Record<number, string> = { [-1]: 'proposta', 0: 'pediu demissão', 1: 'caixa negativo', 2: 'pressão da torcida', 3: 'resultados' }
 
-export function Times({ paises }: { paises: string[] }) {
+export function Times({ pendentes, paises }: { pendentes: Comando[]; paises: string[] }) {
   const { mundo: m, meuTime } = useJogo()
+  const k = useComandos(pendentes)
   const [aba, setAba] = useState<Aba>('times')
   if (!m) return <Carregando />
   return (
@@ -31,12 +34,12 @@ export function Times({ paises }: { paises: string[] }) {
           <button key={k} role="tab" aria-selected={aba === k} aria-pressed={aba === k} onClick={() => setAba(k)}>{r}</button>
         ))}
       </div>
-      {aba === 'times' ? <ListaTimes m={m} inicial={meuTime} paises={paises} /> : aba === 'tecnicos' ? <Tecnicos m={m} /> : <Trocas m={m} />}
+      {aba === 'times' ? <ListaTimes m={m} inicial={meuTime} paises={paises} k={k} /> : aba === 'tecnicos' ? <Tecnicos m={m} /> : <Trocas m={m} />}
     </div>
   )
 }
 
-function ListaTimes({ m, inicial, paises }: { m: Mundo; inicial: TimeM | null; paises: string[] }) {
+function ListaTimes({ m, inicial, paises, k }: { m: Mundo; inicial: TimeM | null; paises: string[]; k: Comandos }) {
   const [filtro, setFiltro] = useState(inicial ? Math.max(0, FILTROS.findIndex((f) => f.ok(inicial))) : 0)
   const [busca, setBusca] = useState('')
   const [selId, setSelId] = useState(inicial?.id ?? null)
@@ -116,7 +119,12 @@ function ListaTimes({ m, inicial, paises }: { m: Mundo; inicial: TimeM | null; p
         </section>
       )}
       <Gaveta aberta={sel !== null} titulo={sel?.nome ?? ''} aoFechar={() => setAberto(null)}>
-        {sel && <Ficha m={m} j={sel} pais={paises[sel.pais] ?? ''} forcas={forcas} />}
+        {sel && (
+          <>
+            <Ficha m={m} j={sel} pais={paises[sel.pais] ?? ''} forcas={forcas} />
+            {inicial && sel.time !== inicial.id && !sel.juvenil && <Proposta key={sel.id} m={m} j={sel} t={inicial} k={k} />}
+          </>
+        )}
       </Gaveta>
     </div>
   )

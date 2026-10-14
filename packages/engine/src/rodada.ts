@@ -218,7 +218,7 @@ function executar(m: Mundo, base: Base, tc: number, t: TimeM | null, c: Comando,
       t!.estadio.precos = c.precos && [...c.precos]
       return ok()
     case 'banco':
-      return ok((c.acao === 'pegar' ? pegarEmprestimo(t!) : pagarEmprestimo(t!)) ? null : c.acao === 'pegar' ? 'limite de empréstimo' : 'nada a pagar ou sem caixa')
+      return ok((c.acao === 'pegar' ? pegarEmprestimo(t!, m.dia) : pagarEmprestimo(t!, m.dia)) ? null : c.acao === 'pegar' ? 'limite de empréstimo' : 'nada a pagar ou sem caixa')
     case 'obra':
       return ok(iniciarObra(m, id, c.mais))
     case 'comprar': {

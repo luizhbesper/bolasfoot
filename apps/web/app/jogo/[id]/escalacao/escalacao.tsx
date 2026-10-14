@@ -49,10 +49,12 @@ function inicial(m: Mundo, t: TimeM, pendentes: Comando[], comp: string): Estado
   const esc = p('escalar'), tat = p('tatica'), bat = p('batedores')
   const formacao = esc?.formacao ?? (t.tatica.formacao || 1)
   const salvo = esc ?? t.escalacao ?? escalarIA(m, t.id, comp, derivar(m.seed, `ui:escalacao:${t.id}`), formacao)
+  // a escalação salva não é limpa quando um jogador é vendido ou sai do clube
+  const meu = (id: number) => t.jogadores.includes(id)
   return {
     formacao,
-    titulares: Object.fromEntries(salvo.titulares.map((x) => [x.slot, x.id])),
-    banco: [...salvo.banco],
+    titulares: Object.fromEntries(salvo.titulares.filter((x) => meu(x.id)).map((x) => [x.slot, x.id])),
+    banco: salvo.banco.filter(meu),
     estilo: tat?.estilo ?? t.tatica.estilo,
     marcacao: tat?.marcacao ?? t.tatica.marcacao,
     jogada: tat?.jogada ?? t.tatica.jogada,

@@ -358,7 +358,7 @@ function avancarFase(mundo: Mundo, c: Competicao, desde: number, rng: Rng): void
   if (!r.jogos.every((j) => j.gols)) return
   r.vencedores = r.confrontos.map((_, k) => vencedor(r, k))
   const nRodadas = Math.round(Math.log2(f.rodadas[0]!.confrontos.length * 2))
-  for (const v of r.vencedores) premioFase(mundo.times[v]!, c, f, f.rodadas.length - 1, nRodadas)
+  for (const v of r.vencedores) premioFase(mundo.times[v]!, c, f, f.rodadas.length - 1, nRodadas, mundo.dia)
   // g_0: o confronto vale para diretoria e torcida, avaliado no jogo decisivo
   const n = r.confrontos.length
   r.vencedores.forEach((v, k) => confrontoTecnicos(mundo, c, r.jogos[r.idaVolta ? k + n : k]!, v))
@@ -507,7 +507,7 @@ export function terminarDia(mundo: Mundo, emJogo: DiaEmJogo, seed = mundo.seed):
     const casa = mundo.times[jogo.casa]!
     const torcida = mundo.tecnicos[casa.tecnico]?.time === casa.id ? mundo.tecnicos[casa.tecnico]!.torcida : 80
     if (casa.financas && comp.tipo !== 5 && comp.tipo !== 7)
-      receber(casa, publico(casa, mundo.times[jogo.fora]!, ctx, derivar(seed, `${rotulo}:publico`), torcida).renda, 'bilheteria')
+      receber(casa, publico(casa, mundo.times[jogo.fora]!, ctx, derivar(seed, `${rotulo}:publico`), torcida).renda, 'bilheteria', jogo.dia, `× ${mundo.times[jogo.fora]!.nome}`)
     jogo.gols = [...p.placar]
     if (p.penaltis) jogo.penaltis = p.penaltis.vencedor
     // I.java:407-421: campanha, pontos, diretoria e torcida dos técnicos

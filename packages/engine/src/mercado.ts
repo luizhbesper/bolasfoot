@@ -111,9 +111,9 @@ export function transferir(m: Mundo, j: JogadorM, destino: number, valor: number
   if (modo === 'retorno') j.emprestado = false
   if (modo === 'compra' || modo === 'venda') {
     const multa = modo === 'venda' ? Math.round(valor * taxaMulta(j.contratoAte - m.dia)) : 0
-    receber(de, valor, 'vendas')
-    if (multa > 0) pagar(de, multa, 'comissoes')
-    pagar(para, valor, 'compras')
+    receber(de, valor, 'vendas', m.dia, j.nome)
+    if (multa > 0) pagar(de, multa, 'comissoes', m.dia, j.nome)
+    pagar(para, valor, 'compras', m.dia, j.nome)
   }
   j.contratoAte = m.dia + (modo === 'emprestimo' ? 365 : 180)
   j.preco = j.valor
@@ -131,8 +131,8 @@ function transferirJunior(m: Mundo, j: JogadorM, destino: number, valor: number)
   const de = m.times[j.time]!, para = m.times[destino]!
   j.aVenda = false
   j.paraEmprestimo = false
-  receber(de, valor, 'vendas')
-  pagar(para, valor, 'compras')
+  receber(de, valor, 'vendas', m.dia, j.nome)
+  pagar(para, valor, 'compras', m.dia, j.nome)
   j.preco = valor
   de.juniores = de.juniores.filter((id) => id !== j.id)
   para.juniores.push(j.id)

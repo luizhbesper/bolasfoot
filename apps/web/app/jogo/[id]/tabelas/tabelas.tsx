@@ -110,7 +110,7 @@ function Liga({ m, c, f, eu }: { m: Mundo; c: Competicao; f: FaseLiga; eu: numbe
                     return (
                       <tr key={t} className={t === eu ? 'eu' : undefined}>
                         <td><span className="linha" style={{ gap: 6, flexWrap: 'nowrap' }}><Ponto cor={z.de(i)} /><span className="mudo">{i + 1}</span></span></td>
-                        <td><span className="clube"><Escudo fileRef={m.times[t]!.fileRef} tamanho={18} mini />{m.times[t]!.nome}</span></td>
+                        <td><span className="clube"><Escudo fileRef={m.times[t]!.fileRef} tamanho={18} mini />{m.times[t]!.nome}<Humano m={m} t={t} /></span></td>
                         <td className="num" style={{ fontWeight: 700 }}>{l.pts}</td>
                         <td className="num mudo">{l.j}</td><td className="num mudo">{l.v}</td><td className="num mudo">{l.e}</td><td className="num mudo">{l.d}</td>
                         <td className="num mudo">{l.gp}</td><td className="num mudo">{l.gc}</td>
@@ -178,8 +178,14 @@ function placar(j: Jogo | undefined, invertido = false): string {
 function Lado({ m, t, venceu }: { m: Mundo; t: number; venceu: number | undefined }) {
   const ganhou = venceu === t
   return <span className="clube" style={{ fontWeight: ganhou ? 700 : 400, opacity: venceu !== undefined && !ganhou ? 0.55 : 1 }}>
-    <Escudo fileRef={m.times[t]!.fileRef} tamanho={18} mini />{m.times[t]!.nome}
+    <Escudo fileRef={m.times[t]!.fileRef} tamanho={18} mini />{m.times[t]!.nome}<Humano m={m} t={t} />
   </span>
+}
+
+/** Selo com o nome do técnico humano (do mundo, não do membro: vale depois de troca de clube). */
+function Humano({ m, t }: { m: Mundo; t: number }) {
+  const time = m.times[t]!
+  return time.humano ? <span className="etiqueta lavanda">{m.tecnicos[time.tecnico]?.nome}</span> : null
 }
 
 function Artilharia({ m, c, eu }: { m: Mundo; c: Competicao; eu: number }) {

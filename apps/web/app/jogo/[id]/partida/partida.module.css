@@ -4,6 +4,14 @@
   flex-direction: column;
 }
 
+/* Ultra-wide: topo e grade centralizados; o placar (faixa com as cores dos clubes) segue a tela toda. */
+.topo,
+.grade {
+  width: 100%;
+  max-width: 1600px;
+  margin-inline: auto;
+}
+
 .topo {
   display: flex;
   align-items: center;
