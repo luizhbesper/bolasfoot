@@ -2,7 +2,7 @@ import base from '@bolasfoot/data/base.json' with { type: 'json' }
 import type { Base } from '@bolasfoot/data'
 import { describe, expect, it } from 'vitest'
 import { formatarData } from './calendario.ts'
-import { avancarDia, compararLinha, nTurnos, rodadasRoundRobin, type Competicao, type FaseLiga, type FaseMataMata } from './competicoes.ts'
+import { avancarDia, compararLinha, nTurnos, rodadasRoundRobin, tabelaFixa, type Competicao, type FaseLiga, type FaseMataMata } from './competicoes.ts'
 import { novoJogo } from './mundo.ts'
 import { criarRng } from './rng.ts'
 
@@ -26,6 +26,28 @@ describe('tabela de jogos', () => {
     const rodadas = rodadasRoundRobin([1, 2, 3, 4, 5], 1, criarRng('t'))
     expect(rodadas).toHaveLength(5)
     expect(new Set(rodadas.flat().map(([a, b]) => [a, b].sort().join())).size).toBe(10)
+  })
+
+  it('tabelas fixas do t.java: todos contra todos, ninguém duas vezes na rodada', () => {
+    const casos: [number, boolean, number, number, number][] = [
+      // n, doisTurnos, formato, rodadas, encontros por par
+      [3, false, -1, 3, 1], [3, true, -1, 6, 2], [4, false, 7700, 3, 1], [5, false, -1, 5, 1], [5, true, -1, 10, 2],
+      [6, true, -1, 10, 2], [9, false, -1, 18, 2], [11, true, -1, 11, 1], [19, false, -1, 38, 2], [25, true, -1, 25, 1],
+    ]
+    for (const [n, dois, formato, nRodadas, porPar] of casos) {
+      const times = Array.from({ length: n }, (_, i) => 100 + i)
+      const rodadas = tabelaFixa(times, dois, formato)!
+      expect(rodadas, `${n}`).toHaveLength(nRodadas)
+      const pares = new Map<string, number>()
+      for (const r of rodadas) {
+        expect(new Set(r.flat()).size, `${n}`).toBe(r.length * 2)
+        for (const [a, b] of r) pares.set(`${a}-${b}`, (pares.get(`${a}-${b}`) ?? 0) + 1)
+      }
+      for (const a of times) for (const b of times) if (a < b)
+        expect((pares.get(`${a}-${b}`) ?? 0) + (pares.get(`${b}-${a}`) ?? 0), `${n}: ${a}x${b}`).toBe(porPar)
+    }
+    expect(tabelaFixa([1, 2, 3, 4, 5, 6], false, -1)).toBeNull()
+    expect(tabelaFixa([1, 2, 3, 4], false, -1)).toBeNull()
   })
 
   it('turnos por tamanho (s.java:632-663)', () => {

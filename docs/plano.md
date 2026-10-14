@@ -298,7 +298,7 @@ Começa fechando as **lacunas** listadas no fim de `engenharia-reversa.md`, cada
 - **W1:** `calendario.ts`, com datas absolutas (dias desde 1970) e a sequência `a.g()` inteira. Bate data a data com o original em 2022 e 2026 (`tools/calendario.sh <ano>` → `ref-calendario-<ano>.json`). `Mundo.dia` agora é absoluto e o `Mundo.calendario` é o da temporada corrente.
 - **W2:** a parte genérica está em `competicoes.ts`: fase de liga/grupos, mata-mata, tabela, desempate, colocação final e o `avancarDia`. A parte do Brasil está em `brasil.ts`: as Séries A–D (C no formato 1020; D com os 64 que vêm dos estaduais, `w.Q`), os 18 estaduais (fórmulas 0–10 e os grupos reais do Paulistão), os regionais Nordeste e Verde (`jogaRegionaisTodos = [F,F,T,T]`) e a Copa do Brasil no formato novo (12 times entram na 3ª fase; os campeões do Nordeste e da Verde têm prioridade). Uma temporada só com IA joga 25 competições em cerca de 80 dias de jogo, em ~0,5 s.
   - **cD:** roda antes dos jogos do 1º dia de liga (correção na W3; ver RE "Pendentes").
-  - **Ficou para depois:** os rebaixados da Série C entrarem direto na D, e as colocações do ano anterior nos regionais (W7). A tabela de jogos de grupo ímpar, de 6 em dois turnos e de 11 times usa o círculo com folga, não as tabelas fixas do `t.java`: muda a ordem dos jogos, não o formato. O `desempateEstadual` está em 0 em todos os estaduais e não foi portado. O humano escala pela IA até a W8. As vagas da Libertadores na Copa entram na Fase 6.
+  - **Ficou para depois:** o `desempateEstadual` está em 0 em todos os estaduais e não foi portado. O humano escala pela IA até a W8. As vagas da Libertadores na Copa entram na Fase 6.
 - **W3:** `economia.ts`.
   - Valor, salário e contrato do jogador (o mundo já nasce com eles).
   - Caixa só para os times humanos (`abrirCaixa`), com extrato da temporada.
@@ -328,10 +328,10 @@ Começa fechando as **lacunas** listadas no fim de `engenharia-reversa.md`, cada
 - **W7:** `temporada.ts`.
   - `fimDeTemporada(mundo, base)` vira o ano na ordem do `f_0.aa`.
   - Histórico de cada competição (campeão, vice, colocação, quem subiu e caiu) e hall da fama (gols e jogos na carreira).
-  - Acesso e rebaixamento nas séries e nos estaduais. O "quem sobe" (`s.l`) foi lido do bytecode, porque o decompilador perdia o ramo do mata-mata. Os rebaixados da C entram primeiro na D seguinte.
+  - Acesso e rebaixamento nas séries e nos estaduais. O "quem sobe" (`s.l`) foi lido do bytecode, porque o decompilador perdia o ramo do mata-mata. Os rebaixados da C entram primeiro na D seguinte (já feito: `SR.bY`, `timesSerieD`).
   - Os 12 reservados da próxima Copa, o calendário novo, as reputações, a lista da IA, o patrocínio, o envelhecimento com juniores novos, a janela da IA e as demissões.
   - Em 5 temporadas de teste: cerca de 0,6 s por temporada e campeões variados (Série A: Flamengo, Palmeiras ×2, Flamengo, Corinthians). Os juniores sobem ~2,5 por time ao ano até o teto de 15–20 e os elencos ficam em ~21. O piloto da Série A foi de 15M para 200M, quase tudo em prêmios de títulos.
-  - **Ficou para depois:** Supercopa, continentais, seleções e torneio amistoso (Fase 6). As séries do ano novo saem pelo Nivel, não pela ordem da tabela velha (só muda o desempate de quem fica entre os 16 dos regionais). Estatísticas de temporada (artilharia, notas): Fase 4, junto com a tela que as mostra.
+  - **Ficou para depois:** Supercopa, continentais, seleções e torneio amistoso (Fase 6). (Feito depois, na T4: as séries do ano novo saem na ordem da tabela velha, como no `Z.ee`; os regionais recebem as colocações estaduais que sobram depois do cD, `p_0.di`; e as tabelas fixas do `t.java` para 3, 4-7700, 5, 6, 9, 11, 19 e 25 times.) Estatísticas de temporada (artilharia, notas): Fase 4, junto com a tela que as mostra.
 
 - **W8:** `rodada.ts`.
   - `avancarRodada`/`continuarRodada`, `validar` e os comandos tipados (detalhe em `docs/fase2.md`). O dia em dois tempos (`comecarDia`/`terminarDia`) para o intervalo do modo live; sem intervalo, piloto automático.
@@ -437,7 +437,8 @@ Continentais das 6 confederações (fora da CONMEBOL, só IA, porque o Mundial p
 - **Tempo:** a temporada leva ~1,1 s (era ~0,6 s).
 - **Caixa do piloto:** pode passar de 250M em 10 anos com os prêmios continentais.
 - **UI:** a fase ganha nome próprio ("Preliminar Fase 2", "Fase de grupos"). As competições ficam agrupadas (Brasil, América do Sul, Mundial, outras confederações). Os estrangeiros podem ser filtrados por continente, e a caixa de entrada tem o aviso "Competição" (quem cai da Libertadores para a Sul-Americana).
-- **Ficou para depois:** o convidado mexicano da Libertadores (`r.yx`); a sede rotativa das finais (`mF`), que hoje é campo neutro só no Mundial; a Supercopa dos outros países (só o Brasil tem liga). Os rótulos foram conferidos por script; o teste no navegador ficou pendente porque a extensão do Chrome não estava conectada.
+- **Sede rotativa das finais (`mF`), feita na T3:** a final da LIB, SUL, UCL, UEL e UECL vai para o estádio de um clube do país-sede da temporada (um dos 2 maiores; um dos 6 na continental 2). O mando continua; público e renda saem desse estádio, e a tela da partida mostra "Final em <cidade>".
+- **Ficou para depois:** o convidado mexicano da Libertadores (`r.yx`), código morto porque o México não tem vaga; a Supercopa dos outros países, porque nenhum país estrangeiro tem liga no port. Os rótulos foram conferidos por script; o teste no navegador ficou pendente porque a extensão do Chrome não estava conectada.
 
 **Notas vindas da F0:** todos os estrangeiros (menos ESP) já estão no `base.json`. A seleção dos participantes é por cota de país, não por flag no time (ver `engenharia-reversa.md`, "Dados e seleção de times").
 

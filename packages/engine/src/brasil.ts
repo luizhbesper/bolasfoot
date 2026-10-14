@@ -128,8 +128,12 @@ function potes4x4(rng: Rng): number[] {
  */
 function criarRegionais(mundo: Mundo, base: Base, rng: Rng): Competicao[] {
   const ativos = (base.opcoes.jogaRegionaisTodos as boolean[] | undefined) ?? [false, false, true, true]
-  // di(): times das séries na ordem da tabela, depois os outros BR embaralhados
+  // di(): times das séries na ordem da tabela; da 2ª temporada, com estaduais e 4 divisões, as colocações dos estaduais
+  // que acabaram depois do cD (SR.bx); depois os outros BR embaralhados. O original adiciona cada colocado duas vezes
+  // (`contains(add(x))`); aqui, uma vez e só quem não está na lista. Fonte: best/p_0.java:233-265
   const lista = timesDaLiga(mundo)
+  if (mundo.temporada > 1 && mundo.opcoes.jogaEstadual !== false && base.ligas.length === 4)
+    for (const c of mundo.colocacoesEstaduais) if (!lista.includes(c.time)) lista.push(c.time)
   const outros = timesBR(mundo).map((t) => t.id).filter((id) => !lista.includes(id))
   rng.shuffle(outros)
   lista.push(...outros)
@@ -153,13 +157,14 @@ function criarRegionais(mundo: Mundo, base: Base, rng: Rng): Competicao[] {
  * Séries A–C, estaduais e regionais. A Série D (pelos estaduais) e a Copa do Brasil
  * nascem no evento cD, no 1º dia da liga. Fonte: best/Z.java:112-228 (Ar), best/p_0.java:130-150 (dg)
  */
-export function criarCompeticoesBR(mundo: Mundo, base: Base, rng: Rng, estaduais?: Map<number, number[][]>): Competicao[] {
+export function criarCompeticoesBR(mundo: Mundo, base: Base, rng: Rng, estaduais?: Map<number, number[][]>, series?: Map<number, number[]>): Competicao[] {
   const comps: Competicao[] = []
   for (const cfg of base.ligas) {
     const c: Competicao = { id: `BR-${cfg.divisao}`, nome: `${cfg.nome} ${cfg.nomeDivisao}`, tipo: TIPO.liga, divisao: cfg.divisao, fases: [], campeao: null, vice: null, rebaixados: cfg.nRebaixados }
     if (cfg.divisao === 4) c.opcoes = opcoesDaConfig(cfg)
     else {
-      const times = timesBR(mundo).filter((t) => t.divisao === cfg.divisao).map((t) => t.id).sort(porNivel(mundo))
+      // 1ª temporada pelo Nivel; depois, a ordem da tabela velha (Z.ee: remove quem caiu, quem subiu vai para o fim)
+      const times = series?.get(cfg.divisao) ?? timesBR(mundo).filter((t) => t.divisao === cfg.divisao).map((t) => t.id).sort(porNivel(mundo))
       c.fases.push(criarFaseLiga(mundo, c, times, opcoesDaConfig(cfg), mundo.dia, rng))
     }
     comps.push(c)

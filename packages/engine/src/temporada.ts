@@ -100,12 +100,13 @@ function trocarDivisoes(divs: Competicao[], hist: Map<Competicao, Historico>, ao
  * Séries A–D. A Série D inteira volta para fora das divisões (vem dos estaduais, Z.java:591); os rebaixados da C ficam
  * guardados para entrar primeiro nela (SR.bY). Fonte: best/f_0.java:1303 (am), best/Z.java:454 (ee)
  */
-function acessoNacional(m: Mundo, hist: Map<Competicao, Historico>): void {
+function acessoNacional(m: Mundo, hist: Map<Competicao, Historico>): Map<number, number[]> {
   const divs = [1, 2, 3, 4].map((d) => m.competicoes.find((c) => c.id === `BR-${d}`)).filter((c) => c !== undefined)
   m.rebaixadosC = []
   const listas = trocarDivisoes(divs, hist, (i, t) => i === 2 && m.rebaixadosC.push(t))
   // s.yI: a divisão de cada time; s.yJ: a última volta ao pool
   listas.forEach((l, i) => l.forEach((t) => (m.times[t]!.divisao = i + 1 < divs.length ? i + 1 : 0)))
+  return new Map(divs.map((c, i) => [c.divisao, listas[i]!]))
 }
 
 /**
@@ -220,7 +221,7 @@ export function fimDeTemporada(m: Mundo, base: Base, seed = m.seed): void {
 
   // Y() + am() + ak(): reservados da Copa, acesso e rebaixamento nacional e estadual
   m.reservadosCopa = reservadosCopa(m)
-  acessoNacional(m, hist)
+  const series = acessoNacional(m, hist)
   const estaduais = acessoEstadual(m, hist)
 
   // af(): aniversário, aposentadoria, juniores
@@ -233,9 +234,9 @@ export function fimDeTemporada(m: Mundo, base: Base, seed = m.seed): void {
   janelaIA(m, base, rng('janela'))
   demissoesFimDeTemporada(m, acabou, rng('demissoes'))
 
-  // competições do ano novo: séries pelas divisões novas, estaduais pelas trocas, regionais pela ordem das séries
-  // ponytail: o original mantém as séries na ordem da tabela velha (com quem subiu no fim); aqui, pelo Nivel
+  // competições do ano novo: séries na ordem da tabela velha (quem subiu e quem caiu no fim, Z.ee), estaduais pelas
+  // trocas, regionais pela ordem das séries e das colocações estaduais que sobraram depois do cD (p_0.di)
+  m.competicoes = criarCompeticoesBR(m, base, rng('competicoes'), estaduais, series)
   m.colocacoesEstaduais = []
-  m.competicoes = criarCompeticoesBR(m, base, rng('competicoes'), estaduais)
   m.competicoes.push(...internacionais)
 }
