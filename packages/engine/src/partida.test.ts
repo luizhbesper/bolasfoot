@@ -172,13 +172,19 @@ test('substituição manual: válida e inválidas', () => {
   expect(p.eventos.at(-1)).toMatchObject({ tipo: 6, tempo: 2, minuto: 0, jogador: sai, jogador2: entra })
 })
 
-test('contra humano, a IA só troca no intervalo (nem lesão nem expulsão com a bola rolando)', () => {
-  for (let i = 0; i < 40; i++) {
+test('com humano, só troca no intervalo; no 2º tempo, só o lesionado sai na hora (dos dois lados)', () => {
+  let lesoes2T = 0
+  for (let i = 0; i < 60; i++) {
     const p = partidaSintetica(liga, `h${i}`)
     p.lados[0].humano = true
     simularTempo(p, 1, derivar(`h${i}`, '1T'))
     simularTempo(p, 2, derivar(`h${i}`, '2T'))
-    expect(p.eventos.filter((e) => e.tipo === 6 && (e.tempo === 1 || e.minuto > 0))).toEqual([])
-    expect(p.lados[1].subs).toBeGreaterThanOrEqual(0)
+    expect(p.eventos.filter((e) => e.tipo === 6 && e.tempo === 1)).toEqual([])
+    // toda troca com a bola rolando é logo depois de uma lesão no mesmo minuto e lado, e tira o lesionado
+    for (const e of p.eventos.filter((e) => e.tipo === 6 && e.minuto > 0)) {
+      expect(p.eventos.some((x) => x.tipo === 5 && x.tempo === 2 && x.minuto === e.minuto && x.lado === e.lado && x.jogador === e.jogador)).toBe(true)
+      lesoes2T++
+    }
   }
+  expect(lesoes2T).toBeGreaterThan(0)
 })

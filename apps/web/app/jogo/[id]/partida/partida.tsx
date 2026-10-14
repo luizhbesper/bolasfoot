@@ -1,7 +1,7 @@
 'use client'
 // Partida: todos os jogos do dia no relógio do servidor (o log da rodada inteiro já está no cliente; a tela só mostra o
 // que o relógio alcançou), o seu jogo em destaque, os dos amigos, sons, o painel do intervalo e os resultados.
-import type { Comando, Mundo, Partida as PartidaM } from '@bolasfoot/engine'
+import { escolherParaSlot, type Comando, type Mundo, type Partida as PartidaM } from '@bolasfoot/engine'
 import Link from 'next/link'
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import type { ResumoRodada } from '../../../../lib/game/rodada.ts'
@@ -337,6 +337,10 @@ function PainelIntervalo({ m, timeId, pendentes }: { m: Mundo; timeId: number; p
   const p: PartidaM = achado
   const lado = p.lados[l]
   const restam = lado.subs - subs.length
+  // lesionados do 1º tempo ainda não trocados, com a sugestão do motor (o melhor do banco para a posição dele)
+  const livres = lado.banco.filter((id) => !subs.some((x) => x.entra === id)).map((id) => p.jogadores[id]!).sort((a, b) => b.forca - a.forca)
+  const lesionados = lado.emCampo.map((id) => p.jogadores[id]!).filter((j) => j.lesao > 0 && !subs.some((x) => x.sai === j.id))
+    .map((j) => ({ j, sug: escolherParaSlot(livres, j.slot) }))
 
   async function salvar(novasSubs: Sub[], novaTatica: typeof tatica) {
     setSubs(novasSubs)
@@ -366,6 +370,7 @@ function PainelIntervalo({ m, timeId, pendentes }: { m: Mundo; timeId: number; p
           onClick={() => tocar(id, emCampo)} aria-pressed={sel === id}>
           <ChipPosicao posicao={j.posicao} />
           <span className={s.nomeJog}>{j.nome}</span>
+          {emCampo && j.lesao > 0 && <span className="etiqueta rosa">lesionado</span>}
           <span className="fraco">F {j.forca}</span>
           <span className={j.energia < 70 ? s.cansado : 'mudo'}>E {j.energia}</span>
         </button>
@@ -380,7 +385,13 @@ function PainelIntervalo({ m, timeId, pendentes }: { m: Mundo; timeId: number; p
         <span className="mudo" style={{ fontSize: 13 }}>{restam} substituiç{restam === 1 ? 'ão' : 'ões'} restante{restam === 1 ? '' : 's'}</span>
         {estado && <span className={estado === 'Salvo' || estado === 'Salvando…' ? 'fraco' : s.erro} style={{ fontSize: 13 }}>{estado}</span>}
       </div>
-      <p className="mudo" style={{ margin: 0, fontSize: 13 }}>Toque em quem sai e depois em quem entra.</p>
+      <p className="mudo" style={{ margin: 0, fontSize: 13 }}>Toque em quem sai e depois em quem entra. No 2º tempo não tem pausa: quem se machucar sai na hora para o melhor do banco na posição.</p>
+      {lesionados.map(({ j, sug }) => (
+        <div key={j.id} className={s.lesao}>
+          <span><strong>{j.nome}</strong> se machucou ({j.lesao} dias) e segue em campo até você trocar.</span>
+          {sug && restam > 0 && <button className="primario" onClick={() => void salvar([...subs, { sai: j.id, entra: sug.id }], tatica)}>Trocar por {sug.nome}</button>}
+        </div>
+      ))}
       <div className={s.listas}>
         <div><h3>Em campo</h3><ul>{lado.emCampo.map((id) => linha(id, true))}</ul></div>
         <div><h3>Banco</h3><ul>{lado.banco.map((id) => linha(id, false))}</ul></div>

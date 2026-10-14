@@ -641,3 +641,17 @@
   background: var(--surface);
   color: var(--text);
 }
+
+/* lesionado do 1º tempo no intervalo: a troca sugerida em destaque */
+.lesao {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  border-radius: var(--raio);
+  border: 1px solid var(--rosa);
+  background: color-mix(in srgb, var(--rosa) 10%, transparent);
+  font-size: 13px;
+}
