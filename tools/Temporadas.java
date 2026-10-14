@@ -2,19 +2,20 @@ import java.lang.reflect.*;
 import java.util.*;
 
 // Fase 2 (gate): roda N temporadas do Brasfoot original só com IA e imprime uma linha JSON por temporada, para comparar
-// com `pnpm sim --temporadas`. Mundo como o Calendario/Oracle (best.p.dd()/dg()), ano-base 2026, sem continentais e
-// seleções (o port ainda não as tem). Sem humanos (f_0.bs = false), cada f_0.ap() joga um dia; no fim (bk) vira o ano
-// (V() → aa()) e mede. Uso: tools/temporadas.sh [N=10]
+// com `pnpm sim --temporadas`. Mundo como o Calendario/Oracle (best.p.dd()/dg()), ano-base 2026, com as continentais de
+// clubes (Fase 6) e sem seleções (Fase 6B). Sem humanos (f_0.bs = false), cada f_0.ap() joga um dia; no fim (bk) vira o
+// ano (V() → aa()) e mede. Uso: tools/temporadas.sh [N=10] [sem-int: sem continentais, como na Fase 2]
 public class Temporadas {
   public static void main(String[] a) throws Exception {
     int n = a.length > 0 ? Integer.parseInt(a[0]) : 10;
+    boolean comInt = !(a.length > 1 && a[1].equals("sem-int"));
     Class.forName("best.h2").getMethod("main", String[].class).invoke(null, (Object) new String[0]);
     Class.forName("c.a").getConstructor().newInstance();
     Object sr = Class.forName("c.a").getField("SR").get(null);
     Class<?> loader = Class.forName("best.p");
     loader.getMethod("dd").invoke(null);
     call(sr, "I", 2026);
-    call(sr, "setJogaIntClubes", false);
+    call(sr, "setJogaIntClubes", comInt);
     call(sr, "setJogaSelecoesAll", false);
     for (Object o : (List<?>) get(sr, "bF")) if ((int) call(o, "getPais") == 29) call(o, "v", true); // joga a liga BR
     loader.getMethod("dg").invoke(null);
@@ -26,7 +27,9 @@ public class Temporadas {
         if (++dias > 400) throw new IllegalStateException("temporada sem fim");
       }
       call(sr, "V"); // bk → aa(): fim de temporada (e o 1º dia da seguinte)
-      System.out.println(medir(sr, t, dias)); // depois da virada, como o resumoTemporada do port
+      String linha = medir(sr, t, dias); // depois da virada, como o resumoTemporada do port
+      if (comInt) linha = linha.substring(0, linha.length() - 1) + ",\"lib\":" + campeao(sr, "aF", t) + ",\"sul\":" + campeao(sr, "aH", t) + ",\"mun\":" + campeao(sr, "aR", t) + "}";
+      System.out.println(linha);
     }
     System.exit(0);
   }
@@ -64,6 +67,14 @@ public class Temporadas {
     o.append(",\"ativos\":").append(pros).append(",\"juniores\":").append(juniores).append(",\"estrelas\":").append(estrelas);
     o.append(",\"forcaMax\":").append(max).append(String.format(Locale.ROOT, ",\"idadeMedia\":%.2f}", idade / pros));
     return o.toString();
+  }
+
+  /** campeão da temporada t (at.cv) de uma continental do f_0, com o país: {"nome":…,"pais":…} ou null */
+  static String campeao(Object sr, String getter, int t) throws Exception {
+    Object c = call(sr, getter);
+    Object time = c == null ? null : call(c, "cv", t);
+    if (time == null) return "null";
+    return "{\"nome\":\"" + call(time, "getNome") + "\",\"pais\":" + call(time, "getPais") + "}";
   }
 
   static Object call(Object o, String nome, Object... args) throws Exception {

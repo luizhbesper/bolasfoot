@@ -340,7 +340,7 @@ function avisosDoDia(m: Mundo, d: number): boolean {
 /** Na virada, um aviso por técnico humano: onde o time terminou na série e quem ganhou o quê. */
 function resumoDaTemporada(m: Mundo): void {
   const hist = m.historico.filter((h) => h.temporada === m.temporada - 1)
-  const campeoes = hist.filter((h) => h.campeao !== null && (h.competicao.startsWith('BR-') || h.competicao === 'CB'))
+  const campeoes = hist.filter((h) => h.campeao !== null && (h.competicao.startsWith('BR-') || ['CB', 'SUP-BRA', 'LIB', 'SUL', 'RECOPA', 'MUN'].includes(h.competicao)))
     .map((h) => `${h.nome}: ${m.times[h.campeao!]!.nome}`).join('; ')
   for (const tc of m.tecnicos) {
     if (!tc.humano || tc.time === null) continue
