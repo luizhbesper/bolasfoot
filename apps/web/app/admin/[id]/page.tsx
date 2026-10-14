@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { exigirAdmin } from '../../../lib/auth/sessao.ts'
 import { db } from '../../../lib/db/index.ts'
+import { env } from '../../../lib/env.ts'
 import { gameMembers, games, gameSettings, invites, users } from '../../../lib/db/schema.ts'
 import { baseDe } from '../../../lib/game/base.ts'
 import { Erro, Pagina } from '../../_ui/pagina.tsx'
@@ -23,7 +24,7 @@ export default async function AdminJogo({ params, searchParams }: { params: Prom
     .from(gameMembers).innerJoin(users, eq(users.id, gameMembers.userId)).where(eq(gameMembers.gameId, gid)).orderBy(gameMembers.id)
   const convites = await db().select().from(invites).where(eq(invites.gameId, gid)).orderBy(invites.createdAt)
   const h = await headers()
-  const origem = `${h.get('x-forwarded-proto') ?? 'http'}://${h.get('host')}`
+  const origem = env().PUBLIC_URL ?? `${h.get('x-forwarded-proto') ?? 'http'}://${h.get('x-forwarded-host') ?? h.get('host')}`
   const jogo = <input type="hidden" name="jogo" value={gid} />
 
   return (

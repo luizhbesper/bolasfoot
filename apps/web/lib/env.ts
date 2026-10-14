@@ -9,6 +9,8 @@ export interface Env {
   ADMIN_USERNAME: string
   ADMIN_PASSWORD: string
   TEST_ENDPOINTS: boolean
+  /** URL pública (links de convite); sem ela, vem dos headers do proxy */
+  PUBLIC_URL?: string
 }
 
 export function parseEnv(raw: Record<string, string | undefined>): Env {
@@ -28,6 +30,7 @@ export function parseEnv(raw: Record<string, string | undefined>): Env {
     ADMIN_USERNAME: req('ADMIN_USERNAME'),
     ADMIN_PASSWORD: req('ADMIN_PASSWORD'),
     TEST_ENDPOINTS: raw.TEST_ENDPOINTS?.trim() === '1',
+    PUBLIC_URL: raw.PUBLIC_URL?.trim().replace(/\/+$/, '') || undefined,
   }
   if (env.DATABASE_URL && !/^postgres(ql)?:\/\//.test(env.DATABASE_URL)) errors.push('DATABASE_URL deve ser postgres://')
   if (appEnv === 'prod' && env.TEST_ENDPOINTS) errors.push('TEST_ENDPOINTS não pode estar ligado em prod')
