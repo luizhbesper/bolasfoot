@@ -4,7 +4,7 @@ import { novoJogo } from '@bolasfoot/engine'
 import { and, eq } from 'drizzle-orm'
 import type { Db } from '../db/index.ts'
 import { gameMembers, games, gameSettings, type ConfigJogo } from '../db/schema.ts'
-import { base } from './base.ts'
+import { baseDe } from './base.ts'
 import { publicar } from './canal.ts'
 import { estadoFase, prontos, seedDoMundo } from './rodada.ts'
 
@@ -14,9 +14,10 @@ const BRASIL = 29
 const catalogos = new Map<string, TimeEscolha[]>()
 
 /** Times brasileiros com a divisão do mundo que vai nascer. ponytail: um novoJogo por jogo, guardado em memória. */
-export function catalogo(gameSeed: string): TimeEscolha[] {
+export function catalogo(gameSeed: string, cfg: Pick<ConfigJogo, 'base'>): TimeEscolha[] {
   let c = catalogos.get(gameSeed)
   if (!c) {
+    const base = baseDe(cfg)
     const m = novoJogo(base, { habilidadeIndividual: false }, seedDoMundo(gameSeed))
     c = m.times.filter((t) => t.pais === BRASIL)
       .map((t) => ({ fileRef: t.fileRef, nome: t.nome, uf: base.ufs[t.uf!]?.sigla ?? '', divisao: t.divisao }))
@@ -41,7 +42,7 @@ export async function iniciarEscolha(d: Db, gameId: number) {
 export async function escolherTime(d: Db, gameId: number, userId: number, fileRef: string): Promise<string | null> {
   const [g] = await d.select().from(games).where(eq(games.id, gameId))
   if (g?.status !== 'picking') return 'a escolha de times não está aberta'
-  const t = catalogo(g.gameSeed).find((x) => x.fileRef === fileRef)
+  const t = catalogo(g.gameSeed, g.config).find((x) => x.fileRef === fileRef)
   if (!t || !permitido(g.config, t)) return 'time não permitido'
   try {
     const r = await d.update(gameMembers).set({ teamRef: fileRef, ready: false })

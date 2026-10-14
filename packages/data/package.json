@@ -4,10 +4,12 @@
   "type": "module",
   "exports": {
     ".": "./src/types.ts",
-    "./base.json": "./base.json"
+    "./base.json": "./base.json",
+    "./base-2026.json": "./base-2026.json"
   },
   "scripts": {
     "build": "node src/build.ts",
-    "typecheck": "tsc -p ."
+    "typecheck": "tsc -p .",
+    "build:2026": "node src/build.ts ../../data-cache/mod26/data base-2026.json"
   }
 }

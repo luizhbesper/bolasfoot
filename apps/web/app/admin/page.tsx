@@ -7,6 +7,7 @@ import { Pagina } from '../_ui/pagina.tsx'
 import { criarJogoAcao, pausarTodosAcao } from './acoes.ts'
 import s from './admin.module.css'
 import { STATUS } from './status.ts'
+import { bases } from '../../lib/game/base.ts'
 
 export default async function Admin() {
   const u = await exigirAdmin()
@@ -47,6 +48,9 @@ export default async function Admin() {
             <label>Nome <input name="nome" required placeholder="Liga dos Amigos" /></label>
             <label>Modo
               <select name="modo"><option value="live">Ao vivo (todos juntos numa call)</option><option value="daily">Diário (uma rodada por dia)</option></select>
+            </label>
+            <label>Base
+              <select name="base">{Object.keys(bases).map((k) => <option key={k} value={k}>{k === '2022' ? 'Original (2022-23)' : `Elencos de ${k} (mod julho/26)`}</option>)}</select>
             </label>
             <label className="check"><input type="checkbox" name="habilidadeIndividual" /> Habilidade individual</label>
             <label className="check"><input type="checkbox" name="salarioSemanal" /> Salário semanal</label>

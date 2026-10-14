@@ -5,7 +5,7 @@ import { notFound } from 'next/navigation'
 import { exigirAdmin } from '../../../lib/auth/sessao.ts'
 import { db } from '../../../lib/db/index.ts'
 import { gameMembers, games, gameSettings, invites, users } from '../../../lib/db/schema.ts'
-import { base } from '../../../lib/game/base.ts'
+import { baseDe } from '../../../lib/game/base.ts'
 import { Erro, Pagina } from '../../_ui/pagina.tsx'
 import { Escudo } from '../../_ui/ui.tsx'
 import { apagarAcao, conviteAcao, escolhaAcao, expulsarAcao, forcarAcao, pausarAcao, retomarAcao, revogarAcao, settingsAcao } from '../acoes.ts'
@@ -52,7 +52,7 @@ export default async function AdminJogo({ params, searchParams }: { params: Prom
                 <thead><tr><th>Usuário</th><th>Time</th><th>Pronto</th><th /></tr></thead>
                 <tbody>
                   {membros.map((m) => {
-                    const t = m.teamRef ? base.times.find((x) => x.fileRef === m.teamRef) : undefined
+                    const t = m.teamRef ? baseDe(g.config).times.find((x) => x.fileRef === m.teamRef) : undefined
                     return (
                       <tr key={m.id}>
                         <td>{m.username}</td>

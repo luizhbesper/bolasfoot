@@ -6,6 +6,7 @@ import { exigirAdmin } from '../../lib/auth/sessao.ts'
 import { db } from '../../lib/db/index.ts'
 import { games, type ModoJogo } from '../../lib/db/schema.ts'
 import { apagarJogo, criarJogo, editarSettings, expulsar, gerarConvite, revogarConvite } from '../../lib/game/admin.ts'
+import { bases } from '../../lib/game/base.ts'
 import { iniciarEscolha } from '../../lib/game/escolha.ts'
 import { pausar, retomar, transicionar } from '../../lib/game/rodada.ts'
 
@@ -25,6 +26,7 @@ export async function criarJogoAcao(f: FormData) {
     jogaEstadual: f.get('semEstaduais') !== 'on',
     proibidos: txt(f, 'proibidos').split(/[\s,]+/).filter(Boolean),
     divisoes: f.getAll('divisoes').map(Number),
+    base: Object.hasOwn(bases, txt(f, 'base')) ? txt(f, 'base') : '2022',
   })
   redirect(`/admin/${g}`)
 }

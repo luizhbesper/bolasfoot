@@ -18,8 +18,8 @@ const status = async () => (await db().select().from(games).where(eq(games.id, j
 
 test('escolha: filtros, time ocupado, todos prontos criam o mundo', async () => {
   const [g] = await db().select().from(games)
-  const serieA = catalogo(g!.gameSeed).filter((t) => t.divisao === 1)
-  const serieB = catalogo(g!.gameSeed).find((t) => t.divisao === 2)!
+  const serieA = catalogo(g!.gameSeed, g!.config).filter((t) => t.divisao === 1)
+  const serieB = catalogo(g!.gameSeed, g!.config).find((t) => t.divisao === 2)!
   expect(serieA).toHaveLength(20)
   expect(await escolherTime(db(), jogo, ana, serieA[0]!.fileRef)).toBe('a escolha de times não está aberta')
 
@@ -49,7 +49,7 @@ test('prazo da escolha: quem não escolheu fica de fora; ninguém escolheu, espe
   expect(await transicionar(db(), jogo, true)).toBe(false)
   expect(await status()).toBe('picking')
   const [g] = await db().select().from(games)
-  await escolherTime(db(), jogo, ana, catalogo(g!.gameSeed)[0]!.fileRef)
+  await escolherTime(db(), jogo, ana, catalogo(g!.gameSeed, g!.config)[0]!.fileRef)
   expect(await transicionar(db(), jogo, true)).toBe(true)
   const mb = await db().select().from(gameMembers).orderBy(gameMembers.id)
   expect(mb.map((x) => x.tecnicoId !== null)).toEqual([true, false])

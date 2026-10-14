@@ -208,8 +208,7 @@ export function resumoTemporada(m: Mundo, encerradas: Competicao[], nivel0: numb
  * N temporadas de um mundo com um humano-piloto (começa no 10º da Série A por Nivel; escala pela IA e, desempregado,
  * aceita a primeira proposta) jogando pelo caminho da máquina de estados (`avancarRodada`).
  */
-export function simularTemporadas(n: number, seed: string): ResumoTemporada[] {
-  const B = base as Base
+export function simularTemporadas(n: number, seed: string, B: Base = base as Base): ResumoTemporada[] {
   const m = novoJogo(B, { habilidadeIndividual: false }, seed)
   const nivel0 = m.times.map((t) => t.nivel)
   const time = m.times.filter((t) => t.divisao === 1).sort((x, y) => y.nivel - x.nivel || x.id - y.id)[9]!.id
