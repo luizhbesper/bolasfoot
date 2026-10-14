@@ -136,9 +136,9 @@ describe('temporada BR só com IA', () => {
 })
 
 describe('temporada sem estaduais', () => {
-  it('nenhum estadual; Série D com 64 e Copa no formato novo, tudo jogado', () => {
+  it('nenhum estadual nem regional; Série D com 64 e Copa no formato novo, tudo jogado', () => {
     const m = novoJogo(base as Base, { habilidadeIndividual: false, jogaEstadual: false }, 'sem-estaduais')
-    expect(m.competicoes.some((c) => c.tipo === 3)).toBe(false)
+    expect(m.competicoes.some((c) => c.tipo === 3 || c.tipo === 10)).toBe(false)
     while (avancarDia(m) !== null);
     const d = m.competicoes.find((c) => c.id === 'BR-4')!
     expect((d.fases[0] as FaseLiga).times).toHaveLength(64)
