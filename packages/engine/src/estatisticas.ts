@@ -123,8 +123,8 @@ function spearman(a: number[], b: number[]): number {
 
 export interface ResumoTemporada {
   temporada: number
-  /** campeões (nomes) de A, B, C, D e Copa */
-  campeoes: Record<'A' | 'B' | 'C' | 'D' | 'CB', string>
+  /** campeões (nomes) de A, B, C, D, Copa, Libertadores, Sul-Americana e Mundial */
+  campeoes: Record<'A' | 'B' | 'C' | 'D' | 'CB' | 'LIB' | 'SUL' | 'MUN', string>
   /** Spearman entre a colocação final da Série A e a ordem por Nivel do começo do jogo (1 = só os favoritos no topo) */
   spearmanA: number
   /** Série A: gols por jogo e resultado */
@@ -179,7 +179,7 @@ export function resumoTemporada(m: Mundo, encerradas: Competicao[], nivel0: numb
   for (const t of m.times) if (t.ligaNacional) rep[t.reputacao]!++
   return {
     temporada: m.temporada - 1,
-    campeoes: { A: nome(a.campeao), B: nome(comp('BR-2')?.campeao), C: nome(comp('BR-3')?.campeao), D: nome(comp('BR-4')?.campeao), CB: nome(comp('CB')?.campeao) },
+    campeoes: { A: nome(a.campeao), B: nome(comp('BR-2')?.campeao), C: nome(comp('BR-3')?.campeao), D: nome(comp('BR-4')?.campeao), CB: nome(comp('CB')?.campeao), LIB: nome(comp('LIB')?.campeao), SUL: nome(comp('SUL')?.campeao), MUN: nome(comp('MUN')?.campeao) },
     spearmanA: +spearman(final.map((_, i) => i), final.map((t) => porNivel.indexOf(t))).toFixed(3),
     golsJogo: +(jogosA.reduce((s, j) => s + j.gols![0] + j.gols![1], 0) / jogosA.length).toFixed(2),
     casa: +(jogosA.filter((j) => j.gols![0] > j.gols![1]).length / jogosA.length).toFixed(3),

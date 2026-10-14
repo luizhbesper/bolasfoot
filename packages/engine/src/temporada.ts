@@ -7,6 +7,7 @@ import { ANO_INICIAL, TIPO, criarCalendario, data, primeiroDomingo } from './cal
 import { atualizarReputacoes, demissoesFimDeTemporada, envelhecer } from './carreira.ts'
 import { classificacaoFinal, compararLinha, type Competicao } from './competicoes.ts'
 import { criarCompeticoesBR } from './brasil.ts'
+import { competicoesInternacionaisDaVirada, detentorBR } from './internacional.ts'
 import { receberPatrocinio, zerarExtrato } from './economia.ts'
 import { porForca } from './escalacao.ts'
 import { batedorFalta, type Historico, type JogadorM, type Mundo } from './mundo.ts'
@@ -106,7 +107,7 @@ function acessoEstadual(m: Mundo, hist: Map<Competicao, Historico>): Map<number,
 /**
  * Os 12 que entram direto na 3ª fase da próxima Copa: Série A e B pela colocação, com o campeão da B e o da Copa na
  * frente. Fonte: best/Z.java:270 (y), chamado por f_0.Y
- * ponytail: os campeões continentais brasileiros também vão para a frente (Fase 6)
+ * e, na frente de todos, os detentores brasileiros da Sul-Americana e da Libertadores.
  */
 function reservadosCopa(m: Mundo): number[] {
   const a = m.competicoes.find((c) => c.id === 'BR-1'), b = m.competicoes.find((c) => c.id === 'BR-2')
@@ -118,6 +119,8 @@ function reservadosCopa(m: Mundo): number[] {
   }
   frente(b && classificacaoFinal(b)[0])
   frente(m.competicoes.find((c) => c.id === 'CB')?.campeao)
+  frente(detentorBR(m, 'SUL'))
+  frente(detentorBR(m, 'LIB'))
   return lista.length >= 12 ? lista.slice(0, 12) : []
 }
 
@@ -128,7 +131,7 @@ const porForcaIdade = (a: JogadorM, b: JogadorM) => b.forca - a.forca || b.idade
  * Vira o ano depois que `avancarDia` devolve null. Na ordem do original (f_0.aa): histórico; extrato zerado; calendário
  * novo; reputações, lista da IA e patrocínio; acesso e rebaixamento; envelhecimento; janela da IA e demissões; as
  * competições do ano novo. Fonte: best/f_0.java:524 (aa)
- * ponytail: continentais, seleções, Supercopa (f.I) e torneio amistoso entram na Fase 6
+ * ponytail: seleções (Fase 6B) e torneio amistoso ficam de fora
  */
 export function fimDeTemporada(m: Mundo, base: Base, seed = m.seed): void {
   const acabou = m.temporada
@@ -183,6 +186,9 @@ export function fimDeTemporada(m: Mundo, base: Base, seed = m.seed): void {
     if (t.humano) receberPatrocinio(m, t)
   }
 
+  // ai() + ae() + Z(): continentais, Recopas e Supercopa, pela classificação que acabou
+  const internacionais = competicoesInternacionaisDaVirada(m, rng('continentais'))
+
   // Y() + am() + ak(): reservados da Copa, acesso e rebaixamento nacional e estadual
   m.reservadosCopa = reservadosCopa(m)
   acessoNacional(m, hist)
@@ -202,4 +208,5 @@ export function fimDeTemporada(m: Mundo, base: Base, seed = m.seed): void {
   // ponytail: o original mantém as séries na ordem da tabela velha (com quem subiu no fim); aqui, pelo Nivel
   m.colocacoesEstaduais = []
   m.competicoes = criarCompeticoesBR(m, base, rng('competicoes'), estaduais)
+  m.competicoes.push(...internacionais)
 }

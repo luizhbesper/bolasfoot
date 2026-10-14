@@ -2,6 +2,7 @@
 import type { Base, Jogador, Time } from '@bolasfoot/data'
 import { ANO_INICIAL, criarCalendario, primeiroDomingo, type Calendario } from './calendario.ts'
 import { criarCompeticoesBR, type ColocacaoEstadual } from './brasil.ts'
+import { criarContinentais } from './internacional.ts'
 import type { Competicao, DiaEmJogo } from './competicoes.ts'
 import { atualizarValores, type Financas } from './economia.ts'
 import { listarIA, type Emprestimo, type Leilao, type Transferencia } from './mercado.ts'
@@ -184,10 +185,12 @@ export interface Mundo {
   queremParar: number[]
   /** o dia entre o 1º e o 2º tempo, no modo com intervalo */
   emJogo: DiaEmJogo | null
+  /** detentores das continentais (os YT/YU/ZA/ZC/ago do original), por chave de internacional.ts; ausente em mundos antigos */
+  detentores?: Record<string, number>
 }
 
 /** O que o aviso é, para a caixa de entrada filtrar e oferecer a ação certa. */
-export type TipoAviso = 'proposta' | 'mercado' | 'emprego' | 'demissao' | 'aposentadoria' | 'temporada'
+export type TipoAviso = 'proposta' | 'mercado' | 'emprego' | 'demissao' | 'aposentadoria' | 'temporada' | 'competicao'
 
 export interface Aviso {
   tecnico: number
@@ -411,7 +414,7 @@ export function novoJogo(base: Base, opcoes: OpcoesJogo, seed: string): Mundo {
     seed, temporada: 1, dia, diaEventos: dia - 1, calendario, competicoes: [], colocacoesEstaduais: [], opcoes, times: [], jogadores: [],
     continentes: base.paises.map((p) => p.continente), emprestimos: [], transferencias: [], leiloes: [],
     tecnicos: [], ofertas: [], trocasDeTecnico: [], semanaTreino: 0, historico: [], hallDaFama: [], filasEstaduais: {}, rebaixadosC: [],
-    reservadosCopa: [], avisos: [], propostasHumanas: [], queremParar: [], emJogo: null,
+    reservadosCopa: [], avisos: [], propostasHumanas: [], queremParar: [], emJogo: null, detentores: {},
   }
 
   // p_0.java:59 ordena por Nivel desc; p_0.java:110-128: país sem liga carrega só 15 times
@@ -516,5 +519,7 @@ export function novoJogo(base: Base, opcoes: OpcoesJogo, seed: string): Mundo {
   const rngElenco = derivar(seed, 'novoJogo:elenco')
   for (const t of mundo.times) listarIA(mundo, t, rngElenco)
   mundo.competicoes = criarCompeticoesBR(mundo, base, derivar(seed, 'temporada:1:competicoes'))
+  // p_0.java:174-188: as continentais nascem no novo jogo
+  mundo.competicoes.push(...criarContinentais(mundo, derivar(seed, 'temporada:1:continentais')))
   return mundo
 }

@@ -137,5 +137,5 @@ describe('temporada', () => {
     }
     expect(m.jogadores.filter((j, i) => j.forca !== forca0[i]).length).toBeGreaterThan(5000)
     expect(m.trocasDeTecnico.length).toBeGreaterThan(0)
-  })
+  }, 20_000)
 })

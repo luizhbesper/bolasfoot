@@ -4,6 +4,7 @@
 import { datas, domingo, TIPO } from './calendario.ts'
 import { disponivel, escalarIA, escolherParaSlot, porForca, type Escalacao } from './escalacao.ts'
 import { eventoCD, proximaRodadaCopa, registrarColocacoes } from './brasil.ts'
+import { diaDoMundial, eventoCW, fimDeFaseInternacional } from './internacional.ts'
 import type { Mundo } from './mundo.ts'
 import { iniciarPartida, simularTempo, type ContextoPartida, type Partida } from './partida.ts'
 import { eventosEconomicos, premioFase, receber } from './economia.ts'
@@ -58,6 +59,8 @@ export interface RodadaMataMata {
   /** ida (um por confronto, na ordem), depois a volta */
   jogos: Jogo[]
   vencedores: number[]
+  /** o 2º confronto é a decisão do 3º lugar (at.mq, g_0.java:69: os perdedores das semifinais) */
+  terceiro?: boolean
 }
 
 export interface FaseMataMata {
@@ -68,6 +71,13 @@ export interface FaseMataMata {
   formato: number
   /** times que entram depois (Copa: f/f_0.afU) */
   reservados: number[]
+  /** z.ZG + 1: depois de tantas rodadas a fase entrega vencedores e perdedores à competição (preliminares das
+   * continentais, internacional.ts); sem ele, vai até o campeão */
+  rodadasMax?: number
+  /** nome de cada rodada (at.b(l_0)), quando não é o padrão Oitavas/Quartas/Semifinal/Final */
+  nomes?: string[]
+  /** a última rodada tem decisão de 3º lugar */
+  terceiro?: boolean
 }
 
 export type Fase = FaseLiga | FaseMataMata
@@ -89,6 +99,12 @@ export interface Competicao {
   opcoes?: OpcoesLiga
   /** quantos caem (s.getnRebaixados): define a faixa da tabela para a diretoria */
   rebaixados?: number
+  /** confederação (at.gg(): 0 UEFA, 1 CONMEBOL, 2 CAF, 3 AFC, 4 Concacaf, 5 OFC, 7 mundo): prêmios das continentais */
+  confederacao?: number
+  /** listas da temporada das continentais (YF: direto aos grupos, YS: preliminares, ZE/aao: quem vem de outra) */
+  listas?: Record<string, number[]>
+  /** 1ª fase que entra na colocação final (at.mr: as preliminares das continentais não contam) */
+  colocacaoDesde?: number
 }
 
 const linhaVazia = (): Linha => ({ pts: 0, j: 0, v: 0, e: 0, d: 0, gp: 0, gc: 0 })
@@ -171,6 +187,8 @@ export interface OpcoesLiga {
   formato: number
   /** grupos jogam contra os outros grupos, não entre si (estaduais 7 e 10: jogosDentroGrupo falso) */
   cruzados?: boolean
+  /** pula as duas primeiras datas livres do tipo (s.pulaDuasDatas, s.java:676) */
+  pulaDuas?: boolean
 }
 
 // Tabelas fixas dos grupos cruzados: [grupo, posição, grupo, posição] (1-based), uma linha por rodada.
@@ -182,7 +200,7 @@ const cZ = [[[4, 3, 1, 1], [4, 1, 1, 5], [4, 2, 1, 4], [4, 5, 1, 3], [4, 4, 1, 2
 export function criarFaseLiga(mundo: Mundo, c: Competicao, times: number[], o: OpcoesLiga, desde: number, rng: Rng): FaseLiga {
   const fase: FaseLiga = { tipo: 'liga', times: [...times], grupos: [], linhas: {}, jogos: [], avancam: o.avancam, idaVolta: o.idaVolta, formato: o.formato }
   for (const t of times) fase.linhas[t] = linhaVazia()
-  const dias = proximasDatas(mundo, c.tipo, desde)
+  const dias = proximasDatas(mundo, c.tipo, desde).slice(o.pulaDuas ? 2 : 0)
   const turnos = (n: number) => nTurnos(c.tipo, n, { doisTurnos: o.doisTurnos, grupos: o.grupos, formato: o.formato, numeroTurnos: o.numeroTurnos })
   if (o.grupos <= 1) agendar(rodadasRoundRobin(times, turnos(times.length), rng), dias, fase.jogos)
   else {
@@ -245,7 +263,7 @@ const ZM = [0, 1], ZN = [1, 0]
 const ZO = [0, 3, 1, 2], ZP = [3, 0, 2, 1], ZQ = [0, 3, 2, 1], ZR = [3, 0, 1, 2]
 const ZS = [0, 1, 2, 3, 4, 5, 6, 7], ZT = [1, 0, 3, 2, 5, 4, 7, 6]
 const ZU = [1, 6, 3, 4, 0, 7, 2, 5], ZV = [6, 1, 4, 3, 7, 0, 5, 2]
-const ZW = [0, 3, 4, 7, 8, 11, 12, 15, 2, 1, 6, 5, 10, 9, 14, 13], ZX = [3, 0, 7, 4, 11, 8, 15, 12, 1, 2, 5, 6, 9, 10, 13, 14]
+export const ZW = [0, 3, 4, 7, 8, 11, 12, 15, 2, 1, 6, 5, 10, 9, 14, 13], ZX = [3, 0, 7, 4, 11, 8, 15, 12, 1, 2, 5, 6, 9, 10, 13, 14]
 const ZY = [7, 0, 2, 5, 3, 4, 6, 1, 15, 8, 10, 13, 11, 12, 14, 9, 23, 16, 18, 21, 19, 20, 22, 17, 31, 24, 26, 29, 27, 28, 30, 25]
 
 /** Quem avança da fase de liga e em que ordem. Fonte: f/s.java:848-1004 (yP), ramo nacional/estadual */
@@ -278,7 +296,7 @@ function classificados(f: FaseLiga): number[] {
 export function classificacaoFinal(c: Competicao): number[] {
   const vistos: number[] = []
   const add = (t: number) => void (vistos.includes(t) || vistos.push(t))
-  for (const f of [...c.fases].reverse()) {
+  for (const f of c.fases.slice(c.colocacaoDesde ?? 0).reverse()) {
     if (f.tipo === 'mata')
       for (const r of [...f.rodadas].reverse())
         r.confrontos.forEach(([a, b], k) => {
@@ -321,6 +339,7 @@ function avancarFase(mundo: Mundo, c: Competicao, desde: number, rng: Rng): void
   const f = c.fases.at(-1)!
   if (f.tipo === 'liga') {
     if (!f.jogos.every((j) => j.gols)) return
+    if (fimDeFaseInternacional(mundo, c, f, desde, rng)) return
     if (f.avancam === 0) {
       c.campeao = f.times[0]!
       c.vice = f.times[1]!
@@ -339,11 +358,12 @@ function avancarFase(mundo: Mundo, c: Competicao, desde: number, rng: Rng): void
   if (!r.jogos.every((j) => j.gols)) return
   r.vencedores = r.confrontos.map((_, k) => vencedor(r, k))
   const nRodadas = Math.round(Math.log2(f.rodadas[0]!.confrontos.length * 2))
-  for (const v of r.vencedores) premioFase(mundo.times[v]!, c, f.rodadas.length - 1, nRodadas)
+  for (const v of r.vencedores) premioFase(mundo.times[v]!, c, f, f.rodadas.length - 1, nRodadas)
   // g_0: o confronto vale para diretoria e torcida, avaliado no jogo decisivo
   const n = r.confrontos.length
   r.vencedores.forEach((v, k) => confrontoTecnicos(mundo, c, r.jogos[r.idaVolta ? k + n : k]!, v))
-  if (r.vencedores.length === 1) {
+  if (f.rodadasMax !== undefined && f.rodadas.length === f.rodadasMax) return void fimDeFaseInternacional(mundo, c, f, desde, rng)
+  if (r.vencedores.length === 1 || r.terceiro) {
     const [a, b] = r.confrontos[0]!
     c.campeao = r.vencedores[0]!
     c.vice = c.campeao === a ? b : a
@@ -351,7 +371,16 @@ function avancarFase(mundo: Mundo, c: Competicao, desde: number, rng: Rng): void
     return
   }
   if (f.formato === 2029) return void f.rodadas.push(proximaRodadaCopa(mundo, c, f, desde, rng))
-  f.rodadas.push(criarRodada(mundo, c, r.vencedores, f.idaVolta[f.rodadas.length] ?? true, desde))
+  const prox = criarRodada(mundo, c, r.vencedores, f.idaVolta[f.rodadas.length] ?? true, desde)
+  if (f.terceiro && r.vencedores.length === 2) {
+    // g_0.java:69: na final entra a decisão do 3º lugar entre os perdedores das semifinais
+    const perdedores = r.confrontos.map(([a, b], k) => (r.vencedores[k] === a ? b : a))
+    const extra = criarRodada(mundo, c, perdedores, prox.idaVolta, desde)
+    prox.confrontos.push(...extra.confrontos)
+    prox.jogos.push(...extra.jogos)
+    prox.terceiro = true
+  }
+  f.rodadas.push(prox)
 }
 
 // ── O dia ─────────────────────────────────────────────────────────────────
@@ -510,9 +539,12 @@ export function terminarDia(mundo: Mundo, emJogo: DiaEmJogo, seed = mundo.seed):
   }
   // f_0.at → q(0): eventos de dia (salário, juros, obras) de todos os dias até hoje
   // e, aos domingos (aj), a evolução semanal
+  const cw = diaDoMundial(mundo)
   for (let d = mundo.diaEventos + 1; d <= hoje; d++) {
     eventosEconomicos(mundo, d)
     if (domingo(d)) evolucaoSemanal(mundo, derivar(seed, `semana:${d}`))
+    // a.java:583 (cw): no último dia de continental 1, depois dos jogos, o Mundial é montado
+    if (d === cw) eventoCW(mundo, hoje + 1, derivar(seed, `cw:${d}`))
   }
   mundo.diaEventos = Math.max(mundo.diaEventos, hoje)
   // f_0.ax → az() + q(1): eventos pós-jogo dos dias até o próximo dia de jogo. O cD (a.java:649-697)

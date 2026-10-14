@@ -25,7 +25,7 @@ const TODAS_IDA_VOLTA = [true, true, true, true, true, true, true]
 /** a_0.cN: Nivel desc, desempate desc (h/d_0.java) */
 const porNivel = (m: Mundo) => (a: number, b: number) => m.times[b]!.nivel - m.times[a]!.nivel || m.times[b]!.desempate - m.times[a]!.desempate
 /** a_0.abm: Nivel desc, reputação desc, desempate desc (h/j_0.java) */
-const porNivelReputacao = (m: Mundo) => (a: number, b: number) => {
+export const porNivelReputacao = (m: Mundo) => (a: number, b: number) => {
   const x = m.times[a]!, y = m.times[b]!
   return y.nivel - x.nivel || y.reputacao - x.reputacao || y.desempate - x.desempate
 }
@@ -250,10 +250,12 @@ function criarCopa(mundo: Mundo, lista: number[], desde: number, rng: Rng): Comp
     c.fases.push(criarFaseMataMata(mundo, c, cima.flatMap((t, i) => [baixo[i]!, t]), TODAS_IDA_VOLTA, desde))
     return c
   }
-  // 12 entram na 3ª fase: os 13 primeiros da lista, com os campeões da Copa Verde e do Nordeste na frente (Bg/Bf).
-  // ponytail: com as continentais (Fase 6), os brasileiros da Libertadores entram antes
-  // da 2ª temporada em diante, os 12 do Z.y (reservadosCopa) ocupam o lugar dos 13 primeiros (f_0.java:90)
-  let reservados = mundo.reservadosCopa.length > 0 ? [...mundo.reservadosCopa] : lista.slice(0, 13)
+  // 12 entram na 3ª fase. Na 1ª temporada (f/f_0.java:90-118): os brasileiros da Libertadores (YF, depois YS) e os 13
+  // primeiros da lista; da 2ª em diante, os 12 do Z.y (reservadosCopa). Os campeões da Copa Verde e do Nordeste
+  // vão para a frente (Bg) e corta em 12 (Bf).
+  const lib = mundo.competicoes.find((x) => x.id === 'LIB')?.listas
+  const daLib = [...(lib?.YF ?? []), ...(lib?.YS ?? [])].filter((t) => mundo.times[t]!.pais === BRA)
+  let reservados = mundo.reservadosCopa.length > 0 ? [...mundo.reservadosCopa] : [...new Set([...daLib, ...lista.slice(0, 13)])]
   for (const r of ['REG-2', 'REG-3']) {
     const campeao = mundo.competicoes.find((x) => x.id === r)?.campeao
     if (campeao == null) continue

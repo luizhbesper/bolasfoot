@@ -28,7 +28,7 @@ if (values.temporadas) {
     const r = simularTemporadas(+values.temporadas, seed)
     console.log(`mundo ${seed}: ${r.length} temporadas em ${Math.round(performance.now() - t0)} ms`)
     for (const x of r)
-      console.log(`  T${x.temporada} A:${x.campeoes.A} CB:${x.campeoes.CB} ρ=${x.spearmanA} gols=${x.golsJogo} top11=${x.forcaTop11.join('/')} piloto ${x.piloto.time ?? 'desempregado'} ${x.piloto.posicao ?? '-'}º caixa ${(x.piloto.caixa / 1e6).toFixed(1)}M${x.piloto.demissoes ? ' (demitido)' : ''}`)
+      console.log(`  T${x.temporada} A:${x.campeoes.A} CB:${x.campeoes.CB} LIB:${x.campeoes.LIB} SUL:${x.campeoes.SUL} MUN:${x.campeoes.MUN} ρ=${x.spearmanA} gols=${x.golsJogo} top11=${x.forcaTop11.join('/')} piloto ${x.piloto.time ?? 'desempregado'} ${x.piloto.posicao ?? '-'}º caixa ${(x.piloto.caixa / 1e6).toFixed(1)}M${x.piloto.demissoes ? ' (demitido)' : ''}`)
     todos.push({ seed, temporadas: r })
   }
   if (values.saida) writeFileSync(values.saida, JSON.stringify(todos))

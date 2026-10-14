@@ -4,7 +4,7 @@
 // best/f_0.java:1613 (aw: fim das obras), best/I.java:383 (hf: bilheteria), best/ah.java:813 (prêmios de liga),
 // f/g_0.java:93-140 + :438 (prêmios por fase de copa).
 import { data, diaDaSemana, diaDePagamento } from './calendario.ts'
-import type { Competicao } from './competicoes.ts'
+import type { Competicao, FaseMataMata } from './competicoes.ts'
 import type { JogadorM, Mundo, TimeM } from './mundo.ts'
 
 export interface Financas {
@@ -262,13 +262,28 @@ export function premioColocacao(t: TimeM, c: Competicao, pos: number): void {
   if (v > 0) receber(t, v, 'premios')
 }
 
+/** Continental 1 por fase vencida, por confederação (0 UEFA … 5 OFC). Fonte: best/aq.java:578-621 (sw) */
+const PREMIO_CONT1 = [
+  [2_000_000, 5_000_000, 7_000_000, 25_000_000, 30_000_000], [2_000_000, 3_500_000, 5_000_000, 20_000_000, 40_000_000],
+  [500_000, 1_500_000, 2_000_000, 4_000_000, 40_000_000], [500_000, 1_500_000, 2_000_000, 4_000_000, 40_000_000],
+  [500_000, 1_500_000, 2_000_000, 4_000_000, 40_000_000], [200_000, 500_000, 1_000_000, 2_000_000, 20_000_000],
+]
+/** Continental 2 e Conference (0 UEFA, 1 o resto), Mundial. Fonte: best/aq.java:622-656 (sx, sy, aeG) */
+const PREMIO_CONT2 = [[500_000, 700_000, 2_000_000, 2_500_000, 7_000_000], [500_000, 1_000_000, 1_500_000, 5_000_000, 5_000_000]]
+const PREMIO_MUNDIAL = [2_000_000, 5_000_000, 7_000_000]
+
 /**
- * Prêmio por fase de mata-mata vencida, só humanos. `rodada` = índice da fase; `nRodadas` = fases do chaveamento.
- * Fonte: f/g_0.java:93-140 (c), :438-447 (V)
+ * Prêmio por fase de mata-mata vencida, só humanos. `rodada` = índice da rodada na fase; `nRodadas` = rodadas do
+ * chaveamento. Nas continentais as preliminares (código da fase) pagam fixo. Fonte: f/g_0.java:93-162 (c), :438-447 (V)
  */
-export function premioFase(t: TimeM, c: Competicao, rodada: number, nRodadas: number): void {
+export function premioFase(t: TimeM, c: Competicao, f: FaseMataMata, rodada: number, nRodadas: number): void {
   let v = 0
+  const cod = f.formato, conf = c.confederacao ?? 1
   if (c.tipo === 2) v = PREMIO_COPA[rodada + PREMIO_COPA.length - nRodadas] ?? 0
   else if (c.tipo === 10) v = PREMIO_REGIONAL[rodada] ?? 0
+  else if (c.tipo === 4) v = cod >= 4101 && cod <= 4103 ? 500_000 : cod >= 4000 && cod <= 4004 ? 1_000_000 : PREMIO_CONT1[conf < 0 ? 1 : conf]?.[rodada] ?? 0
+  else if (c.tipo === 6 || c.tipo === 12) v = cod === 6100 ? 300_000 : cod >= 6000 && cod <= 6004 ? 500_000 : PREMIO_CONT2[conf === 0 ? 0 : 1]![rodada] ?? 0
+  else if (c.tipo === 5) v = PREMIO_MUNDIAL[rodada] ?? 0
+  else if (c.tipo === 8 || c.tipo === 11) v = 1_000_000
   if (v > 0) receber(t, v, 'premios')
 }
