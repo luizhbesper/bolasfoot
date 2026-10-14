@@ -203,9 +203,10 @@ const RUIDO = [[10, 20, 5, 0], [100, 500, 200, 10], [300, 1000, 400, 20], [400, 
  * `satisfacao` = satisfação da torcida (al.og, começa em 85; 80 se não há técnico).
  * Fonte: best/v_0.java:90-233
  */
-export function publico(mandante: TimeM, visitante: Pick<TimeM, 'reputacao'>, ctx: ContextoPartida, rng: Rng, satisfacao = 85): { setores: number[]; renda: number } {
+export function publico(mandante: TimeM, visitante: Pick<TimeM, 'reputacao'>, ctx: ContextoPartida, rng: Rng, satisfacao = 85, estadio = mandante.estadio): { setores: number[]; renda: number } {
   const tipo = ctx.tipoComp
-  const cap = mandante.estadio.setores
+  // `estadio`: o do jogo (I.dH), que na final em sede rotativa não é o do mandante; a demanda segue o mandante (hc)
+  const cap = estadio.setores
   const padrao = precoPadrao(tipo, mandante)
   let dem = [...DEMANDA[mandante.reputacao]!]
   if (tipo === 3 || tipo === 10) dem = dem.map((x) => Math.round(x * 0.7))
@@ -224,8 +225,8 @@ export function publico(mandante: TimeM, visitante: Pick<TimeM, 'reputacao'>, ct
     return n > 0 ? x + rng.int(n) : x
   })
   let precos = padrao
-  if (!mandante.estadio.precoAuto && mandante.estadio.precos) {
-    precos = mandante.estadio.precos
+  if (!estadio.precoAuto && estadio.precos) {
+    precos = estadio.precos
     dem = dem.map((x, k) => x + Math.round(0.03 * x) * (padrao[k]! - precos[k]!))
   }
   dem = dem.map((x, k) => Math.min(Math.max(x, 0), cap[k]!))

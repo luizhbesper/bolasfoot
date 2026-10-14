@@ -126,6 +126,8 @@ const resumo = (m: Mundo, r: Rodada) => ({
       comp, compNome: m.competicoes.find((c) => c.id === comp)?.nome ?? comp,
       times: [p.lados[0].time, p.lados[1].time], nomes: [m.times[p.lados[0].time]!.nome, m.times[p.lados[1].time]!.nome],
       placar: p.placar, acrescimos: p.acrescimos,
+      // final em sede rotativa: cidade e o clube dono do estádio
+      sede: p.ctx.sede ?? null,
       numeros: p.lados.map((l, i) => ({ posse: posse[i]!, chutes: l.chutes, noAlvo: l.noAlvo, fora: l.fora, desarmes: l.desarmes, passesErrados: l.passesErrados })),
       eventos: p.eventos.map((e) => ({ ...e, nome: e.jogador === null ? null : nome(e.jogador), nome2: nome(e.jogador2) })),
       penaltis: p.penaltis && { placar: p.penaltis.placar, vencedor: p.penaltis.vencedor },

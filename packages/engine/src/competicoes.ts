@@ -4,7 +4,7 @@
 import { datas, domingo, TIPO } from './calendario.ts'
 import { disponivel, escalarIA, escolherParaSlot, porForca, type Escalacao } from './escalacao.ts'
 import { eventoCD, proximaRodadaCopa, registrarColocacoes } from './brasil.ts'
-import { diaDoMundial, eventoCW, fimDeFaseInternacional } from './internacional.ts'
+import { diaDoMundial, eventoCW, fimDeFaseInternacional, sedeDaFinal } from './internacional.ts'
 import type { Mundo } from './mundo.ts'
 import { iniciarPartida, simularTempo, type ContextoPartida, type Partida } from './partida.ts'
 import { eventosEconomicos, premioFase, receber } from './economia.ts'
@@ -444,6 +444,8 @@ export function jogosDoDia(mundo: Mundo): { comp: Competicao; fase: Fase; jogo: 
           const ida = r.jogos[i - n]!.gols!
           ctx.mataMata = { ida: [ida[1], ida[0]], golFora: false, penaltis: true }
         }
+        const sede = n === 1 ? sedeDaFinal(mundo, comp) : null
+        if (sede) ctx.sede = sede
       }
       out.push({ comp, fase, jogo, ctx })
     })
@@ -548,7 +550,7 @@ export function terminarDia(mundo: Mundo, emJogo: DiaEmJogo, seed = mundo.seed):
     const casa = mundo.times[jogo.casa]!
     const torcida = mundo.tecnicos[casa.tecnico]?.time === casa.id ? mundo.tecnicos[casa.tecnico]!.torcida : 80
     if (casa.financas && comp.tipo !== 5 && comp.tipo !== 7)
-      receber(casa, publico(casa, mundo.times[jogo.fora]!, ctx, derivar(seed, `${rotulo}:publico`), torcida).renda, 'bilheteria', jogo.dia, `× ${mundo.times[jogo.fora]!.nome}`)
+      receber(casa, publico(casa, mundo.times[jogo.fora]!, ctx, derivar(seed, `${rotulo}:publico`), torcida, ctx.sede && mundo.times[ctx.sede.time]!.estadio).renda, 'bilheteria', jogo.dia, `× ${mundo.times[jogo.fora]!.nome}`)
     jogo.gols = [...p.placar]
     if (p.penaltis) jogo.penaltis = p.penaltis.vencedor
     // I.java:407-421: campanha, pontos, diretoria e torcida dos técnicos

@@ -175,7 +175,8 @@ function Placar({ p, pt, m, dias }: { p: PartidaLog; pt: Ponto; m: Mundo | null;
   const n = st.fim ? p.numeros : null
   // o que é o jogo: "Paulista, 7ª rodada · Itaquerão"
   const etapa = m ? dias.map((d) => etapaDoJogo(m, p.comp, p.times[0]!, p.times[1]!, d)).find(Boolean) : ''
-  const sobre = [[p.compNome, etapa].filter(Boolean).join(', '), t(0)?.estadio.nome].filter(Boolean).join(' · ')
+  const sede = p.sede ? m?.times[p.sede.time] : null
+  const sobre = [[p.compNome, etapa].filter(Boolean).join(', '), p.sede && `Final em ${p.sede.cidade}`, (sede ?? t(0))?.estadio.nome].filter(Boolean).join(' · ')
   return (
     <section className={s.placar} style={{ '--c0': t(0)?.cor1 ?? 'transparent', '--c1': t(1)?.cor1 ?? 'transparent' } as CSSProperties}>
       <div className={s.sobre}>{sobre}</div>

@@ -13,6 +13,8 @@ export interface ContextoPartida {
   temporada: number
   /** campo neutro; padrão: Mundial (5) e seleções (7). Fonte: I.java:1484 (hX) */
   neutro?: boolean
+  /** final em sede rotativa (mF): cidade e o clube dono do estádio; o mando não muda. Fonte: best/I.java:187-197 */
+  sede?: { cidade: string; time: number }
   /** jogo eliminatório que pode ir para os pênaltis */
   mataMata?: {
     /** gols da ida [do mandante de hoje, do visitante de hoje]; ausente = jogo único */
