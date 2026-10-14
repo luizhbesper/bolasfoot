@@ -10,7 +10,6 @@
   "scripts": {
     "build": "node src/build.ts",
     "typecheck": "tsc -p .",
-    "clubes:2026": "node src/clubes-2026.ts",
-    "importar:2026": "node src/importar-2026.ts"
+    "build:2026": "node src/build.ts ../../data-cache/mod26/data base-2026.json"
   }
 }

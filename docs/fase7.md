@@ -2,7 +2,23 @@
 
 Detalhe dos tickets B1–B10 do `plano.md`. A base original (22-23) continua jogável ao lado da nova.
 
-**Decisões da fase**
+**Mudança de rumo (2026-10-13): a base 2026 vem do mod "Projeto Brasfoot julho/26".** O mod tem os times no formato do
+próprio jogo (8.396 `.ban`, lidos pelo `Dump.java` com as classes do 22-23), com nivel, estrela, características e titulares
+feitos à mão, e escudos e camisas. Isso substitui o pipeline do Transfermarkt (B2–B4, removido do código; fica no histórico
+de commits) e torna a B5 desnecessária, porque o ranking por nivel do mod já dá as Séries A, B e C reais de 2026. Os
+elencos são os de julho/2026, não os de janeiro. Para refazer:
+1. `bsdtar -xf "MOD PROJETO BRASFOOT JULHO 26.rar" -C <dir> --exclude '*.exe' 'teams/*.ban'` (nunca rodar os .exe do mod).
+2. `java -cp original/tools:original/game.jar Dump <dir>/teams/*.ban > data-cache/mod26/data/teams.jsonl`.
+3. `pnpm --filter @bolasfoot/data build:2026`: só troca os times. O Brasil entra com Nivel ≥ 8 (273 clubes), e cada país
+   estrangeiro com os de maior Nivel até a cota que o original tem nele (461), para o mundo ficar do mesmo tamanho. Países,
+   UFs, ligas, estaduais, opções e nomes vêm do original.
+4. Extrair do .rar `teams/{escudos,escudosMini,camisas,camisas2,camisas3}/<fileRef>.png` dos clubes novos para
+   `data-cache/mod26/teams` e rodar `pnpm assets`, que copia sem sobrescrever o original. Ficaram sem escudo 5 clubes com
+   acento no nome do arquivo (capitaopoçppa_br, confiaçapb_br, depcuenca_equ, sãoraimundoam_br, unionsaintgilloise_bel).
+
+Na simulação, a força dos 11 melhores da Série A nasce com ~51 (o original nasce com ~48).
+
+**Decisões da fase** (as que falam do Transfermarkt valem só para o histórico)
 - **Duas bases.** `base.json` (original, 2022) e `base-2026.json`. O admin escolhe ao criar o jogo; o jogo guarda qual usa, porque a virada de temporada lê a base. O oráculo, os `ref-*.json` e os testes golden ficam presos à 2022.
 - **Fonte híbrida.** Elenco e valor de mercado vêm do Transfermarkt: o [transfermarkt-datasets](https://github.com/dcaribou/transfermarkt-datasets) (CC0) cobre a Série A e as ligas estrangeiras, e o [transfermarkt-api](https://github.com/felipeall/transfermarkt-api), rodando local, cobre as Séries B, C e D, os estaduais e as listas de participantes de 2026 (o TM chama a temporada brasileira de 2026 de `season_id=2025`). A API-Football grátis ficou de fora: só libera as temporadas de 2022 a 2024. O ToS do TM proíbe scraping, então é uso privado: o importador roda uma vez, com cache em `data-cache/` (gitignored), e os dados brutos nunca são commitados.
 - **Força real.** O jogador ganha `forca?`, derivada do valor de mercado. Sem ela, o `forcaInicial` do original faz dois titulares do mesmo time nascerem quase iguais.

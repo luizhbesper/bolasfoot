@@ -61,22 +61,13 @@ test('novoJogo: divisões, carga e determinismo', () => {
   expect(novoJogo(base, { habilidadeIndividual: false }, 'outra').jogadores[0]!.habilidades).toBeNull()
 })
 
-test('novoJogo: base 2026 nasce com as Séries A–C reais (B5)', () => {
+test('novoJogo: base 2026 (mod) nasce com as Séries A–C reais pelo Nivel', () => {
   const b = base2026 as Base
   const m = novoJogo(b, { habilidadeIndividual: false }, 's')
   const serie = (d: number) => m.times.filter((t) => t.pais === BRA && t.divisao === d).map((t) => t.nome)
   for (const d of [1, 2, 3]) expect(serie(d)).toHaveLength(20)
   expect(serie(1)).toEqual(expect.arrayContaining(['Flamengo', 'Palmeiras', 'Remo', 'Chapecoense', 'Mirassol']))
-  expect(serie(1)).not.toContain('América-MG')
+  expect(serie(1)).not.toContain('América Mineiro')
+  expect(serie(2)).toEqual(expect.arrayContaining(['América Mineiro', 'Fortaleza', 'Sport Recife']))
 })
 
-test('novoJogo: força dada pela base vale; o resto do mundo não muda (B4)', () => {
-  const comForca: Base = structuredClone(base)
-  const alvo = comForca.times.find((t) => t.fileRef === 'flarj')!.jogadores[0]!
-  alvo.forca = 77
-  const [m0, m1] = [novoJogo(base, { habilidadeIndividual: true }, 's'), novoJogo(comForca, { habilidadeIndividual: true }, 's')]
-  const i = m1.jogadores.findIndex((j) => j.nome === alvo.nome && m1.times[j.time]!.fileRef === 'flarj')
-  expect(m1.jogadores[i]!.forca).toBe(77)
-  expect(novoJogo(comForca, { habilidadeIndividual: true, forcaDaBase: false }, 's').jogadores[i]!.forca).toBe(m0.jogadores[i]!.forca)
-  expect(m1.jogadores.filter((_, k) => k !== i).map((j) => j.forca)).toEqual(m0.jogadores.filter((_, k) => k !== i).map((j) => j.forca))
-})

@@ -78,7 +78,7 @@ export async function prontos(q: Q, gameId: number): Promise<Extract<EventoJogo,
 /** O mundo nasce com os times escolhidos e a 1ª rodada abre. Roda na transação que encerra a escolha de times. */
 export async function comecarJogo(tx: Tx, gameId: number): Promise<void> {
   const [g] = await tx.select().from(games).where(eq(games.id, gameId))
-  const m = novoJogo(baseDe(g!.config), { habilidadeIndividual: g!.config.habilidadeIndividual, salarioMensal: g!.config.salarioMensal, forcaDaBase: g!.config.forcaDaBase }, seedDoMundo(g!.gameSeed))
+  const m = novoJogo(baseDe(g!.config), { habilidadeIndividual: g!.config.habilidadeIndividual, salarioMensal: g!.config.salarioMensal }, seedDoMundo(g!.gameSeed))
   const membros = await tx.select({ id: gameMembers.id, teamRef: gameMembers.teamRef, username: users.username })
     .from(gameMembers).innerJoin(users, eq(users.id, gameMembers.userId)).where(eq(gameMembers.gameId, gameId)).orderBy(gameMembers.id)
   for (const mb of membros) {

@@ -1,11 +1,14 @@
 // ETL: original/ (gerado por tools/extract.sh) → packages/data/base.json.
+// Base 2026 (docs/fase7.md): `node src/build.ts <pasta com teams.jsonl do mod> base-2026.json` troca só os times;
+// países, UFs, ligas, estaduais, opções e nomes vêm do original (o mod roda no mesmo motor do 22-23).
 // Fica de fora: Espanha (liga não portada). Ficam todos os outros estrangeiros, porque o Mundial
 // (f/a_0.java:41-79) precisa dos campeões das 6 confederações.
 import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 import type { Base, ConfigEstadual, ConfigLiga, Jogador, Pais, Time, Uf } from './types.ts'
 
 const ORIG = new URL('../../../original/', import.meta.url)
-const OUT = new URL('../base.json', import.meta.url)
+const [MOD, SAIDA = 'base.json'] = process.argv.slice(2)
+const OUT = new URL(`../${SAIDA}`, import.meta.url)
 const BRA = 29
 const ESP = 65
 
@@ -51,8 +54,15 @@ const jogador = (j: Raw): Jogador => ({
   titular: j.Status === 1,
 })
 
-const times: Time[] = jsonl('data/teams.jsonl')
-  .filter((t) => t.Valid && t.Vid === 185 && t.Pais !== ESP) // U.java:59
+const timesBrutos: Raw[] = MOD ? readFileSync(`${MOD}/teams.jsonl`, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)) : jsonl('data/teams.jsonl')
+/** Mod: o Brasil de Nivel ≥ 8 (~ Séries A–D e estaduais; o mod tem 830 times BR) e, de cada país, os de maior Nivel até a
+ *  quantidade que o original tem nele (o mundo fica do mesmo tamanho). */
+const cota = MOD ? jsonl('data/teams.jsonl').filter((t) => t.Valid && t.Vid === 185).reduce((m: Map<number, number>, t) => m.set(t.Pais, (m.get(t.Pais) ?? 0) + 1), new Map()) : new Map()
+const ordemNivel = (t: Raw) => timesBrutos.filter((x) => x.Pais === t.Pais && x.Valid && x.Nivel > t.Nivel).length
+const doMod = (t: Raw, i: number, todos: Raw[]) =>
+  t.Pais === BRA ? t.Nivel >= 8 : ordemNivel(t) + todos.slice(0, i).filter((x) => x.Pais === t.Pais && x.Valid && x.Nivel === t.Nivel).length < (cota.get(t.Pais) ?? 0)
+const times: Time[] = timesBrutos
+  .filter((t, i, todos) => t.Valid && t.Vid === 185 && t.Pais !== ESP && (!MOD || doMod(t, i, todos))) // U.java:59
   .map((t) => ({
     fileRef: nfc(t.FileRef),
     nome: nfc(t.Nome),
@@ -127,4 +137,4 @@ for (const id of [...usados].sort((a, b) => a - b)) {
 
 const base: Base = { paises, ufs, times, ligas, estaduais, opcoes, nomes }
 writeFileSync(OUT, JSON.stringify(base) + '\n')
-console.log(`base.json: ${times.length} times, ${paises.length} países, ${Object.keys(nomes).length} listas de nomes`)
+console.log(`${SAIDA}: ${times.length} times, ${paises.length} países, ${Object.keys(nomes).length} listas de nomes`)

@@ -22,8 +22,6 @@ export interface Jogador {
   potencial: number
   /** Status == 1 */
   titular: boolean
-  /** Força inicial dada pela base (2026: do valor de mercado); sem ela, o motor usa a fórmula do original. */
-  forca?: number
 }
 
 export interface Time {
@@ -46,10 +44,6 @@ export interface Time {
   tecNac: number
   jogadores: Jogador[]
   juniores: Jogador[]
-  /** Série (1–3) na 1ª temporada (base 2026); sem o campo, a divisão sai do ranking por Nivel, como no original */
-  divisaoInicial?: number
-  /** está na 1ª divisão do estadual na 1ª temporada (base 2026); entra antes dos outros da UF */
-  estadualInicial?: boolean
 }
 
 export interface Pais {

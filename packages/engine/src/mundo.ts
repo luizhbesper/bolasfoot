@@ -135,8 +135,6 @@ export interface OpcoesJogo {
   habilidadeIndividual: boolean
   /** salário pago no dia 2 (padrão do original) ou todo domingo */
   salarioMensal?: boolean
-  /** usa a `forca` que a base traz (base 2026); falso = fórmula do original para todos. Padrão: verdadeiro */
-  forcaDaBase?: boolean
 }
 
 export interface Mundo {
@@ -423,8 +421,6 @@ export function novoJogo(base: Base, opcoes: OpcoesJogo, seed: string): Mundo {
   // ponytail: empate de Nivel segue a ordem do base.json (o original usa a ordem dos arquivos)
   const ordenados = base.times.map((t, i) => [t, i] as const).sort((x, y) => y[0].nivel - x[0].nivel || x[1] - y[1]).map(([t]) => t)
   const porPais = new Map<number, number>()
-  /** força que a base dá pronta (base 2026, docs/fase7.md B4), por id do jogador */
-  const forcaDada = new Map<number, number>()
   for (const t of ordenados) {
     const n = porPais.get(t.pais) ?? 0
     if (t.pais !== BRA && n >= 15) continue
@@ -464,7 +460,6 @@ export function novoJogo(base: Base, opcoes: OpcoesJogo, seed: string): Mundo {
         jogos: 0,
       }
       mundo.jogadores.push(jm)
-      if (j.forca !== undefined && opcoes.forcaDaBase !== false) forcaDada.set(jm.id, j.forca)
       return jm.id
     }
     const { jogadores, juniores, estadio, tecnico, ...resto } = t
@@ -496,15 +491,13 @@ export function novoJogo(base: Base, opcoes: OpcoesJogo, seed: string): Mundo {
   // Z.Ar(): ordena por Nivel e desempate, A/B/C = blocos de 20. A Série D vem dos estaduais (Z.java:177).
   const br = mundo.times.filter((t) => t.pais === BRA).sort((x, y) => y.nivel - x.nivel || y.desempate - x.desempate)
   br.forEach((t, i) => (t.divisao = i < 60 ? Math.floor(i / 20) + 1 : 0))
-  // base 2026 (docs/fase7.md B5): a divisão real de cada clube na 1ª temporada
-  if (br.some((t) => t.divisaoInicial)) for (const t of br) t.divisao = t.divisaoInicial ?? 0
 
   // f_0.aU(): força de todos os jogadores, depois dos juniores (mesma ordem do original)
   const ordem = [...mundo.jogadores.filter((j) => !j.juvenil), ...mundo.jogadores.filter((j) => j.juvenil)]
   for (const j of ordem) {
     const t = mundo.times[j.time]!
     const { forca, n8, n6 } = forcaInicial(j, t, base.paises[t.pais]!.nivel, rngForca)
-    j.forca = forcaDada.get(j.id) ?? forca // a fórmula roda mesmo assim: o sorteio segue na mesma ordem
+    j.forca = forca
     if (opcoes.habilidadeIndividual) j.habilidades = habilidadesIniciais(j, n8, n6, rngForca)
   }
   // F.fI (F.java:655-658): progresso inicial e potencial estimado dos juniores

@@ -75,9 +75,7 @@ function criarEstaduais(mundo: Mundo, base: Base, rng: Rng, divisoes?: Map<numbe
   for (const [uf, todos] of [...porUf].sort((a, b) => a[0] - b[0])) {
     if (todos.length < 6) continue
     const dadas = divisoes?.get(uf)
-    // base 2026 (B5): quem está na 1ª divisão real do estadual entra primeiro
-    const real = (id: number) => +!!mundo.times[id]!.estadualInicial
-    const resto = [...todos].sort((a, b) => real(b) - real(a) || porNivel(mundo)(a, b))
+    const resto = [...todos].sort(porNivel(mundo))
     const total = resto.length
     for (let div = 1; dadas ? div <= dadas.length : div <= 4 && resto.length >= 6; div++) {
       const cfg = base.estaduais.find((e) => e.uf === uf && e.divisao === div)

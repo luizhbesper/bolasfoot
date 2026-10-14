@@ -35,8 +35,6 @@ export interface ConfigJogo {
   proibidos: string[]
   /** divisões BR permitidas (1–3 = Série A–C; 0 = fora das séries, de onde sai a D); vazio = todas */
   divisoes: number[]
-  /** força inicial pela base (valor de mercado, base 2026); ausente = sim */
-  forcaDaBase?: boolean
   /** chave em `bases` (lib/game/base.ts); ausente = '2022' */
   base?: string
 }

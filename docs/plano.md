@@ -453,7 +453,7 @@ Sem tickets ainda. O que já foi mapeado:
 
 Tickets detalhados e decisões da fase: `docs/fase7.md`. Corre em paralelo à Fase 6.
 
-Uma segunda base, `base-2026.json`, com os elencos de jan/2026 e os formatos nacionais de 2026. A original (22-23) segue jogável; o admin escolhe ao criar o jogo. Fonte: Transfermarkt (dataset dcaribou + transfermarkt-api local), com a API-Football grátis para conferir.
+Uma segunda base, `base-2026.json`, com os elencos de 2026 e os formatos nacionais de 2026. A original (22-23) segue jogável; o admin escolhe ao criar o jogo. **Fonte: o mod "Projeto Brasfoot julho/26"** (times no formato do jogo; ver `docs/fase7.md`). O pipeline do Transfermarkt (B2–B4) foi descartado e a B5 ficou desnecessária.
 
 | ID | Entrega |
 |---|---|

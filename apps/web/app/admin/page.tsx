@@ -46,11 +46,10 @@ export default async function Admin() {
               <select name="modo"><option value="live">Ao vivo (todos juntos numa call)</option><option value="daily">Diário (uma rodada por dia)</option></select>
             </label>
             <label>Base
-              <select name="base">{Object.keys(bases).map((k) => <option key={k} value={k}>{k === '2022' ? 'Original (2022-23)' : `Elencos de ${k}`}</option>)}</select>
+              <select name="base">{Object.keys(bases).map((k) => <option key={k} value={k}>{k === '2022' ? 'Original (2022-23)' : `Elencos de ${k} (mod julho/26)`}</option>)}</select>
             </label>
             <label className="check"><input type="checkbox" name="habilidadeIndividual" /> Habilidade individual</label>
             <label className="check"><input type="checkbox" name="salarioSemanal" /> Salário semanal</label>
-            <label className="check"><input type="checkbox" name="forcaDaBase" defaultChecked /> Força dos jogadores pelo valor de mercado <span className="fraco" style={{ fontSize: 12 }}>(só na base 2026; sem ela, a fórmula do original)</span></label>
             <fieldset>
               <legend>Divisões permitidas na escolha (nenhuma = todas)</legend>
               {[1, 2, 3, 0].map((d) => (
