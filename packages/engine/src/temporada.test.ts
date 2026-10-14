@@ -33,7 +33,7 @@ describe('zonasDaTabela', () => {
     expect(z('BR-2')).toEqual({ sobem: 4, caem: 4, libertadores: 0, sulAmericana: 0 })
     expect(z('BR-3')).toEqual({ sobem: 0, caem: 4, libertadores: 0, sulAmericana: 0 })
     expect(z('BR-4')).toEqual({ sobem: 0, caem: 0, libertadores: 0, sulAmericana: 0 })
-    const est = n.competicoes.filter((c) => c.id.startsWith('EST-')).map((c) => [c.id, c.rebaixados ?? 0] as const)
+    const est = n.competicoes.filter((c) => c.id.startsWith('EST-')).map((c) => [c.id, (c.fases[0] as FaseLiga).grupos.length ? 0 : c.rebaixados ?? 0] as const)
     expect(est.length).toBeGreaterThan(0)
     for (const [id, r] of est) expect(z(id)).toMatchObject({ caem: r, libertadores: 0 })
     expect(z('CB')).toEqual({ sobem: 0, caem: 0, libertadores: 0, sulAmericana: 0 })

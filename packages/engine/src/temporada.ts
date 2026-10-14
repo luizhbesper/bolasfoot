@@ -65,7 +65,8 @@ export function zonasDaTabela(m: Mundo, compId: string, faseIdx: number): Zonas 
   if (f.tipo === 'mata') return { ...z, sobem: acima }
   if (f.formato === 1022) return { ...z, sobem: Math.floor(acima / Math.max(1, f.grupos.length)) }
   if (faseIdx > 0) return z
-  z.caem = irma(c.divisao + 1) || c.tipo === TIPO.estadual ? c.rebaixados ?? 0 : 0
+  // com grupos, quem cai sai da geral (`caem` usa f.times), que a tela não mostra: pintar por grupo marcaria demais
+  z.caem = f.grupos.length === 0 && (irma(c.divisao + 1) || c.tipo === TIPO.estadual) ? c.rebaixados ?? 0 : 0
   if (f.avancam === 0) z.sobem = acima
   if (compId === 'BR-1') {
     // o campeão da Copa entra primeiro (Z.java:385); fora do topo, tira uma vaga da tabela.
