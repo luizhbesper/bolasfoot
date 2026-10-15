@@ -45,10 +45,10 @@ test('comandos: inválido não grava; fora do jogo é recusado', async () => {
 })
 
 test('definirComandos troca os únicos (escalação, tática) e soma o resto', async () => {
-  await definirComandos(db(), jogo, ana!, [{ tipo: 'tatica', estilo: 1 }, { tipo: 'banco', acao: 'pegar' }])
-  await definirComandos(db(), jogo, ana!, [{ tipo: 'tatica', estilo: 2 }, { tipo: 'banco', acao: 'pagar' }])
+  await definirComandos(db(), jogo, ana!, [{ tipo: 'tatica', estilo: 1 }, { tipo: 'banco', acao: 'pegar', valor: 500_000 }])
+  await definirComandos(db(), jogo, ana!, [{ tipo: 'tatica', estilo: 2 }, { tipo: 'banco', acao: 'pagar', valor: 500_000 }])
   expect(await comandosPendentes(db(), jogo, ana!)).toEqual([
-    { tipo: 'banco', acao: 'pegar' }, { tipo: 'tatica', estilo: 2 }, { tipo: 'banco', acao: 'pagar' },
+    { tipo: 'banco', acao: 'pegar', valor: 500_000 }, { tipo: 'tatica', estilo: 2 }, { tipo: 'banco', acao: 'pagar', valor: 500_000 },
   ])
   expect(await comandosPendentes(db(), jogo, bia!)).toEqual([])
 })

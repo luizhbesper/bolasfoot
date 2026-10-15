@@ -33,18 +33,20 @@ function useLargura(inicial: number) {
 
 const H = 260, L = 64, R = 14, T = 30, B = 226
 
-export function LinhaCaixa({ inicial, dias, hoje, caixa, pedido, folha }: {
-  inicial: number; dias: Dia[]; hoje: number; caixa: number; pedido: number; folha: { dia: number; valor: number }
+/** `proj`: saldo projetado ([dia, saldo] a cada mudança, de hoje em diante); `folha`: dia da próxima folha. */
+export function LinhaCaixa({ inicial, dias, hoje, caixa, proj: pontos, folha }: {
+  inicial: number; dias: Dia[]; hoje: number; caixa: number; proj: [number, number][]; folha: number
 }) {
   const [ref, W] = useLargura(820)
   const ini = Math.min(dias[0]?.dia ?? hoje, hoje)
-  const fim = Math.max(folha.dia + 3, hoje + 7)
+  const fim = Math.max(pontos.at(-1)![0], hoje + 7)
   // degraus: o saldo muda no dia do movimento
   const pts: [number, number][] = [[ini, inicial]]
   for (const d of dias) pts.push([d.dia, pts.at(-1)![1]], [d.dia, d.saldo])
   pts.push([hoje, caixa])
-  const posPedido = caixa - pedido
-  const proj: [number, number][] = [[hoje, caixa], [hoje + 0.5, posPedido], [folha.dia, posPedido], [folha.dia, posPedido - folha.valor], [fim, posPedido - folha.valor]]
+  // degraus também na projeção; o pedido de hoje aparece meio dia depois
+  const proj: [number, number][] = [[hoje, caixa]]
+  for (const [d, v] of pontos.slice(1)) proj.push([d === hoje ? hoje + 0.5 : d, proj.at(-1)![1]], [d === hoje ? hoje + 0.5 : d, v])
   const vals = [...pts, ...proj].map((p) => p[1])
   const st = passo(Math.max(...vals) - Math.min(...vals))
   const v0 = Math.floor(Math.min(...vals) / st) * st
@@ -69,7 +71,7 @@ export function LinhaCaixa({ inicial, dias, hoje, caixa, pedido, folha }: {
   return (
     <div ref={ref} style={{ overflow: 'hidden' }}>
     <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="img" style={{ display: 'block' }}
-      aria-label={`Caixa na temporada: começou em ${dinheiro(inicial)}, está em ${dinheiro(caixa)}, mínimo de ${dinheiro(minimo)}; depois do pedido e da próxima folha, ${dinheiro(posPedido - folha.valor)}`}>
+      aria-label={`Caixa na temporada: começou em ${dinheiro(inicial)}, está em ${dinheiro(caixa)}, mínimo de ${dinheiro(minimo)}; em 6 meses, projetado ${dinheiro(pontos.at(-1)![1])}`}>
       {grade.map((v) => (
         <g key={v}>
           <line x1={L} x2={W - R} y1={Y(v)} y2={Y(v)} stroke="var(--line)" />
@@ -80,7 +82,7 @@ export function LinhaCaixa({ inicial, dias, hoje, caixa, pedido, folha }: {
       <path d={`M${X(ini)},${B} L${linha(pts).replaceAll(' ', ' L')} L${X(hoje)},${B} Z`} fill="var(--lavanda)" fillOpacity="0.1" />
       <polyline points={linha(pts)} fill="none" stroke="var(--lavanda)" strokeWidth="2" strokeLinejoin="round" />
       <polyline points={linha(proj)} fill="none" stroke="var(--lavanda)" strokeWidth="2" strokeDasharray="5 5" />
-      {[...folhas, folha.dia].map((d) => <rect key={d} x={X(d) - 4} y={B - 4} width="8" height="8" rx="2" fill="var(--pessego)" stroke="var(--surface)" strokeWidth="2" />)}
+      {[...folhas, folha].map((d) => <rect key={d} x={X(d) - 4} y={B - 4} width="8" height="8" rx="2" fill="var(--pessego)" stroke="var(--surface)" strokeWidth="2" />)}
       <line x1={X(hoje)} x2={X(hoje)} y1={T - 8} y2={B} stroke="var(--faint)" strokeDasharray="2 3" />
       <text x={X(hoje)} y={T - 14} textAnchor="middle" fill="var(--muted)" fontSize="11" fontWeight="600">hoje</text>
       {marcos.map(({ x, y, l }, i) => {
@@ -99,11 +101,11 @@ export function LinhaCaixa({ inicial, dias, hoje, caixa, pedido, folha }: {
   )
 }
 
-/** Barras divergentes: entrou acima da linha, saiu abaixo; embaixo, o mês e o saldo dele. */
+/** Barras divergentes: entrou acima da linha, saiu abaixo; o projetado empilha mais claro; embaixo, o mês e o saldo dele. */
 export function BarrasMes({ meses }: { meses: Mes[] }) {
   const [ref, w] = useLargura(640)
-  const ultimos = meses.slice(-12)
-  const maior = Math.max(1, ...ultimos.flatMap((x) => [x.entrou, x.saiu]))
+  const ultimos = meses.slice(-12).map((x) => ({ ...x, ent: x.entrou + (x.entrouProj ?? 0), sai: x.saiu + (x.saiuProj ?? 0) }))
+  const maior = Math.max(1, ...ultimos.flatMap((x) => [x.ent, x.sai]))
   const zero = 128, alto = 96, larg = Math.min(56, (w - 40) / Math.max(1, ultimos.length))
   const valores = larg >= 40 // estreito: os valores ficam na lista ao lado e no aria-label
   const k = alto / maior
@@ -111,16 +113,18 @@ export function BarrasMes({ meses }: { meses: Mes[] }) {
   return (
     <div ref={ref} style={{ overflow: 'hidden' }}>
     <svg width={w} height={268} viewBox={`0 0 ${w} 268`} role="img" style={{ display: 'block' }}
-      aria-label={`Entradas e saídas por mês: ${ultimos.map((x) => `${MESES[x.mes - 1]} entrou ${dinheiro(x.entrou)}, saiu ${dinheiro(x.saiu)}`).join('; ')}`}>
+      aria-label={`Entradas e saídas por mês (com o projetado): ${ultimos.map((x) => `${MESES[x.mes - 1]} entra ${dinheiro(x.ent)}, sai ${dinheiro(x.sai)}`).join('; ')}`}>
       <line x1={16} x2={w - 8} y1={zero} y2={zero} stroke="var(--faint)" />
       {ultimos.map((x, i) => {
-        const cx = 24 + larg * i + larg / 2, bw = larg * 0.6, net = x.entrou - x.saiu
+        const cx = 24 + larg * i + larg / 2, bw = larg * 0.6, net = x.ent - x.sai
         return (
           <g key={`${x.ano}-${x.mes}`}>
+            {x.ent > 0 && <rect x={cx - bw / 2} y={zero - x.ent * k - 1} width={bw} height={x.ent * k} rx="4" fill="var(--menta)" fillOpacity="0.35" />}
             {x.entrou > 0 && <rect x={cx - bw / 2} y={zero - x.entrou * k - 1} width={bw} height={x.entrou * k} rx="4" fill="var(--menta)" />}
+            {x.sai > 0 && <rect x={cx - bw / 2} y={zero + 1} width={bw} height={x.sai * k} rx="4" fill="var(--rosa)" fillOpacity="0.35" />}
             {x.saiu > 0 && <rect x={cx - bw / 2} y={zero + 1} width={bw} height={x.saiu * k} rx="4" fill="var(--rosa)" />}
-            {valores && x.entrou > 0 && <text x={cx} y={zero - x.entrou * k - 6} textAnchor="middle" fill="var(--muted)" fontSize="10">{curto(x.entrou)}</text>}
-            {valores && x.saiu > 0 && <text x={cx} y={zero + x.saiu * k + 14} textAnchor="middle" fill="var(--muted)" fontSize="10">{curto(x.saiu)}</text>}
+            {valores && x.ent > 0 && <text x={cx} y={zero - x.ent * k - 6} textAnchor="middle" fill="var(--muted)" fontSize="10">{curto(x.ent)}</text>}
+            {valores && x.sai > 0 && <text x={cx} y={zero + x.sai * k + 14} textAnchor="middle" fill="var(--muted)" fontSize="10">{curto(x.sai)}</text>}
             <text x={cx} y={246} textAnchor="middle" fill="var(--faint)" fontSize="11">{MESES[x.mes - 1]}</text>
             {valores && <text x={cx} y={262} textAnchor="middle" fill={net >= 0 ? 'var(--menta)' : 'var(--rosa)'} fontSize="11" fontWeight="600">{net >= 0 ? '+' : '−'}{curto(Math.abs(net))}</text>}
           </g>

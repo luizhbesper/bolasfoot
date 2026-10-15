@@ -92,6 +92,8 @@ describe('rodada', () => {
       [{ tipo: 'comprar', jogador: timeDe(m, a).jogadores[0]!, valor: 1 }, /seu time/],
       [{ tipo: 'comprar', jogador: deB, valor: 1000 }, null],
       [{ tipo: 'aceitarOferta', time: 0 }, /proposta/],
+      [{ tipo: 'banco', acao: 'pegar', valor: 150_000 }, /valor inválido/],
+      [{ tipo: 'banco', acao: 'pagar', valor: 200_000 }, null],
     ]
     for (const [c, erro] of casos) {
       const r = validar(m, a, c)
