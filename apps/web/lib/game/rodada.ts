@@ -118,8 +118,10 @@ const fimDoTempo = (inicio: Date, partidas: Partida[], tempo: 1 | 2, msPorMinuto
 
 /** O que o log da rodada guarda: todas as partidas do dia, com placar, eventos com os nomes e números do time (o resto
  * o cliente acha no snapshot). */
-const resumo = (m: Mundo, r: Rodada) => ({
+const resumo = (m: Mundo, r: Rodada, antes: Record<string, number[][]>) => ({
   resultados: r.resultados, dias: r.dias, virou: r.virou,
+  /** classificação (grupos, ou [times]) das ligas do dia antes da rodada: as setas e a animação do fim da rodada */
+  antes: Object.fromEntries(Object.entries(antes).filter(([c]) => r.todas.some((x) => x.comp === c))),
   partidas: r.todas.map(({ comp, partida: p }) => {
     const nome = (id: number | undefined) => (id === undefined ? null : p.jogadores[id]?.nome ?? null)
     const posse = possePct(p)
@@ -149,8 +151,12 @@ async function resolver(tx: Tx, g: Jogo, n: number, etapa: 0 | 1, s: Settings) {
     return tecnico === undefined ? [] : (c.list as Comando[]).map((comando) => ({ tecnico, comando }))
   })
 
+  const antes = Object.fromEntries(m.competicoes.flatMap((c) => {
+    const f = c.fases.at(-1)
+    return f?.tipo === 'liga' ? [[c.id, f.grupos.length ? f.grupos.map((x) => [...x]) : [[...f.times]]]] : []
+  }))
   const r = etapa ? continuarRodada(m, baseDe(g.config), comandos, seed) : avancarRodada(m, baseDe(g.config), comandos, seed, g.mode === 'live')
-  await tx.insert(roundLogs).values({ gameId: g.id, n, etapa, data: resumo(m, r) })
+  await tx.insert(roundLogs).values({ gameId: g.id, n, etapa, data: resumo(m, r, antes) })
   const agora = new Date()
   if (r.fase === 'intervalo') {
     await salvarMundo(tx, g.id, n, 1, m)
@@ -238,7 +244,8 @@ const etapaDa = (phase: FaseRodada | undefined) => (phase === 'planejamento' ? 0
  * o mundo atual; com qualquer erro, nada é gravado.
  */
 export async function enviarComandos(d: Db, gameId: number, userId: number, lista: unknown): Promise<{ erro: string } | { erros: (string | null)[] }> {
-  return d.transaction(async (tx) => {
+  let lance = false
+  const r = await d.transaction(async (tx): Promise<{ erro: string } | { erros: (string | null)[] }> => {
     const [g] = await tx.select().from(games).where(eq(games.id, gameId)).for('share')
     // pausado (alguém caiu ou o admin parou) ainda dá para mexer: só o relógio para
     if (g?.status !== 'running' && g?.status !== 'paused') return { erro: 'o jogo não está rodando' }
@@ -251,10 +258,26 @@ export async function enviarComandos(d: Db, gameId: number, userId: number, list
     const m = await carregarMundo(tx, gameId, g.round, etapa)
     const erros = lista.map((c) => validar(m, mb.tecnicoId!, c as Comando))
     if (erros.some((e) => e !== null)) return { erros }
+    const [antes] = await tx.select({ list: commands.list }).from(commands)
+      .where(and(eq(commands.gameId, gameId), eq(commands.n, g.round), eq(commands.etapa, etapa), eq(commands.memberId, mb.id)))
+    const lances = (l: unknown) => JSON.stringify((l as Comando[] | undefined ?? []).filter((c) => c.tipo === 'lance'))
+    lance = lances(antes?.list) !== lances(lista)
     await tx.insert(commands).values({ gameId, n: g.round, etapa, memberId: mb.id, list: lista })
       .onConflictDoUpdate({ target: [commands.gameId, commands.n, commands.etapa, commands.memberId], set: { list: lista } })
     return { erros }
   })
+  if (lance) publicar(gameId, { tipo: 'lance' })
+  return r
+}
+
+/** Lances de leilão desta rodada de todos os membros (públicos: a tela mostra quem cobre quem na hora). */
+export async function lancesDaRodada(q: Q, gameId: number): Promise<{ jogador: number; valor: number; tecnico: number }[]> {
+  const [g] = await q.select().from(games).where(eq(games.id, gameId))
+  if (!g?.round || etapaDa((await rodadaDe(q, gameId, g.round))?.phase) !== 0) return []
+  const linhas = await q.select({ list: commands.list, tecnico: gameMembers.tecnicoId }).from(commands)
+    .innerJoin(gameMembers, eq(gameMembers.id, commands.memberId))
+    .where(and(eq(commands.gameId, gameId), eq(commands.n, g.round), eq(commands.etapa, 0)))
+  return linhas.flatMap((x) => (x.list as Comando[]).flatMap((c) => (c.tipo === 'lance' && x.tecnico !== null ? [{ jogador: c.jogador, valor: c.valor, tecnico: x.tecnico }] : [])))
 }
 
 /** Comandos já guardados pelo membro na fase corrente (vazio fora do planejamento/intervalo). */
@@ -271,8 +294,8 @@ export async function comandosPendentes(q: Q, gameId: number, userId: number): P
 /** Tipos que valem uma vez por fase: o novo substitui o anterior; os outros (compras, propostas…) se somam. */
 const UNICOS = new Set<Comando['tipo']>(['escalar', 'tatica', 'batedores', 'treino', 'ingresso', 'mudarTatica'])
 
-/** Uma proposta por jogador: a nova (compra, pedido de empréstimo, renovação) substitui a anterior. */
-const PROPOSTAS = new Set<Comando['tipo']>(['comprar', 'pedirEmprestado', 'renovar'])
+/** Uma proposta por jogador: a nova (compra, pedido de empréstimo, renovação, lance) substitui a anterior. */
+const PROPOSTAS = new Set<Comando['tipo']>(['comprar', 'pedirEmprestado', 'renovar', 'lance'])
 const alvo = (c: Comando) => (PROPOSTAS.has(c.tipo) && 'jogador' in c ? c.jogador : null)
 
 export function juntarComandos(atuais: Comando[], novos: Comando[]): Comando[] {

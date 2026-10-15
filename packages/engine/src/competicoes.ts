@@ -352,27 +352,41 @@ export function classificacaoFinal(c: Competicao): number[] {
 }
 
 /** Atualiza tabela e grupos com os jogos de hoje. Fonte: best/ah.java:1080-1105 + f/s.java:1006-1020 (pO) */
-function atualizarTabela(f: FaseLiga, hoje: Jogo[]): void {
-  for (const j of hoje) {
-    const [gc, gf] = j.gols!
-    for (const [t, pro, contra] of [[j.casa, gc, gf], [j.fora, gf, gc]] as const) {
-      const l = f.linhas[t]!
-      l.j++
-      l.gp += pro
-      l.gc += contra
-      if (pro > contra) {
-        l.v++
-        l.pts += 3
-      } else if (pro < contra) l.d++
-      else {
-        l.e++
-        l.pts++
-      }
+/** Soma (sinal 1) ou desfaz (-1) um jogo nas linhas da tabela. */
+function somarJogo(linhas: Record<number, Linha>, casa: number, fora: number, [gc, gf]: [number, number], sinal: 1 | -1 = 1): void {
+  for (const [t, pro, contra] of [[casa, gc, gf], [fora, gf, gc]] as const) {
+    const l = linhas[t]
+    if (!l) continue
+    l.j += sinal
+    l.gp += sinal * pro
+    l.gc += sinal * contra
+    if (pro > contra) {
+      l.v += sinal
+      l.pts += 3 * sinal
+    } else if (pro < contra) l.d += sinal
+    else {
+      l.e += sinal
+      l.pts += sinal
     }
   }
+}
+
+function atualizarTabela(f: FaseLiga, hoje: Jogo[]): void {
+  for (const j of hoje) somarJogo(f.linhas, j.casa, j.fora, j.gols!)
   const cmp = (a: number, b: number) => compararLinha(f.linhas[a]!, f.linhas[b]!)
   f.times.sort(cmp)
   for (const g of f.grupos) g.sort(cmp)
+}
+
+/**
+ * Classificação da fase com placares a mais (sinal 1: a tabela ao vivo) ou a menos (-1: a de antes da rodada, a partir da
+ * de depois). Só conta jogos da fase; não mexe nela. Ordem estável, como `atualizarTabela`.
+ */
+export function tabelaCom(f: FaseLiga, placares: readonly { casa: number; fora: number; gols: [number, number] }[], sinal: 1 | -1 = 1): { grupos: number[][]; linhas: Record<number, Linha> } {
+  const linhas: Record<number, Linha> = Object.fromEntries(Object.entries(f.linhas).map(([t, l]) => [t, { ...l }]))
+  for (const p of placares) if (f.jogos.some((j) => j.casa === p.casa && j.fora === p.fora)) somarJogo(linhas, p.casa, p.fora, p.gols, sinal)
+  const cmp = (a: number, b: number) => compararLinha(linhas[a]!, linhas[b]!)
+  return { grupos: (f.grupos.length ? f.grupos : [f.times]).map((g) => [...g].sort(cmp)), linhas }
 }
 
 /** Fecha a fase atual se acabou e abre a próxima. Fonte: f/s.java:1006-1090 (pO), f/z.java:115-145 (pO/zs) */
@@ -603,4 +617,8 @@ export function terminarDia(mundo: Mundo, emJogo: DiaEmJogo, seed = mundo.seed):
 }
 
 /** O dia inteiro, sem intervalo. */
-export const avancarDia = (mundo: Mundo, seed = mundo.seed): number | null => terminarDia(mundo, comecarDia(mundo, seed), seed)
+/** Um dia inteiro sem rodadas (testes e simulação): cada dia conta como planejado, então os leilões abertos estão à vista. */
+export const avancarDia = (mundo: Mundo, seed = mundo.seed): number | null => {
+  for (const l of mundo.leiloes) l.visto = true
+  return terminarDia(mundo, comecarDia(mundo, seed), seed)
+}

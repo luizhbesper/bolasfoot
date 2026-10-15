@@ -52,6 +52,7 @@ function Menu({ base, sufixo, nomeJogo, usuario, timeInicial }: {
       <Link key={i.chave} href={i.rota ? `${base}/${i.rota}` : base} className={s.item} aria-current={i.rota === sufixo ? 'page' : undefined}>
         <Icone nome={i.chave} /><span>{i.rotulo}</span>
         {i.chave === 'caixa' && naoLidos > 0 && <span className={s.contador} aria-label={`${naoLidos} não lidos`}>{naoLidos}</span>}
+        {i.chave === 'leiloes' && !!mundo?.leiloes.length && <span className={s.contador} aria-label={`${mundo.leiloes.length} leilões abertos`}>{mundo.leiloes.length}</span>}
       </Link>
     )
   return (

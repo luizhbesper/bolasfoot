@@ -38,7 +38,16 @@ export interface Leilao {
   /** lance mínimo: metade do valor */
   minimo: number
   lances: { time: number; valor: number }[]
+  /** regra do port: false = aberto sem nenhum humano ter planejado com ele à vista (não fecha ainda); `avancarRodada`
+   * marca true. Ausente = visto */
+  visto?: boolean
+  /** chegou lance cobrindo o de outro clube desde a última checagem: fica mais uma rodada (até `MAX_PRORROGACOES`) */
+  disputa?: boolean
+  prorrogacoes?: number
 }
+
+/** Regra do port: quantas rodadas a mais um leilão disputado pode ficar aberto. */
+export const MAX_PRORROGACOES = 2
 
 /** Resposta a uma proposta: fechada, recusada ou com contraproposta (valor e salário pedido; 0 = mantém). */
 export type Proposta =
@@ -458,7 +467,7 @@ function abrirLeiloes(m: Mundo, rng: Rng): void {
     for (const t of rng.shuffle(m.times.filter((t) => !t.humano && t.jogadores.length >= 21))) if ((j = sobra(m, t, rng))) break
     if (!j || m.leiloes.some((l) => l.jogador === j!.id)) continue
     const c = acharComprador(m, j, j.valor, true, 0, rng)
-    m.leiloes.push({ jogador: j.id, vendedor: j.time, compradorIA: c?.id ?? null, minimo: Math.round(j.valor * 0.5), lances: [] })
+    m.leiloes.push({ jogador: j.id, vendedor: j.time, compradorIA: c?.id ?? null, minimo: Math.round(j.valor * 0.5), lances: [], visto: false })
   }
 }
 
@@ -470,6 +479,8 @@ export function darLance(m: Mundo, timeId: number, jogadorId: number, valor: num
   if (!t.financas || !Number.isInteger(valor) || valor <= 0) return 'valor inválido'
   if (t.jogadores.length >= ELENCO_MAX) return 'não há vagas no time'
   if (valor >= t.financas.caixa) return 'oferta maior que seu dinheiro em caixa'
+  // regra do port: cobrir o lance de outro clube dá a ele mais uma rodada para responder
+  if (l.lances.some((x) => x.time !== timeId && x.valor <= valor)) l.disputa = true
   l.lances = [...l.lances.filter((x) => x.time !== timeId), { time: timeId, valor }]
   return null
 }
@@ -479,9 +490,16 @@ export function darLance(m: Mundo, timeId: number, jogadorId: number, valor: num
  * O `> 80 → 0,82` do original vem depois do `> 60` e nunca acontece; mantido assim. Fonte: a/dz_0.java:244 (pT)
  */
 function resolverLeiloes(m: Mundo, rng: Rng): void {
+  const abertos: Leilao[] = []
   for (const l of m.leiloes) {
     const j = jog(m, l.jogador)
     if (j.time !== l.vendedor) continue
+    // regra do port: só fecha depois de uma rodada à vista; disputado, espera a resposta (dias só da IA não contam)
+    if (l.visto === false || (l.disputa && (l.prorrogacoes ?? 0) < MAX_PRORROGACOES)) {
+      if (l.visto !== false) l.prorrogacoes = (l.prorrogacoes ?? 0) + 1
+      abertos.push({ ...l, visto: false, disputa: false })
+      continue
+    }
     let lance = 0, vencedor: number | null = null
     for (const x of l.lances) {
       const t = m.times[x.time]!
@@ -494,7 +512,7 @@ function resolverLeiloes(m: Mundo, rng: Rng): void {
       if (ia !== null) transferir(m, j, ia, lanceIA)
     } else transferir(m, j, vencedor!, lance)
   }
-  m.leiloes = []
+  m.leiloes = abertos
 }
 
 // ── Juniores ──────────────────────────────────────────────────────────────

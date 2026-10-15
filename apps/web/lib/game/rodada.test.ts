@@ -6,7 +6,7 @@ import { limpar } from '../db/teste.ts'
 import { tecnicosEmCampo } from '@bolasfoot/engine'
 import { criarJogo } from './admin.ts'
 import { base } from './base.ts'
-import { batida, carregarMundo, comandosPendentes, comecarJogo, definirComandos, enviarComandos, marcarReady, pausar, retomar, sha256, transicionar, vigiarPresenca } from './rodada.ts'
+import { batida, carregarMundo, comandosPendentes, comecarJogo, definirComandos, enviarComandos, lancesDaRodada, marcarReady, pausar, retomar, sha256, transicionar, vigiarPresenca } from './rodada.ts'
 
 let jogo: number, ana: number, bia: number
 const [t1, t2] = base.times.filter((t) => t.pais === 29).sort((a, b) => b.nivel - a.nivel)
@@ -58,6 +58,15 @@ test('preferências de telas diferentes viram um comando só', async () => {
   await definirComandos(db(), jogo, ana!, [{ tipo: 'config', renovarAuto: true }])
   await definirComandos(db(), jogo, ana!, [{ tipo: 'config', energiaMin: 70 }])
   expect(await comandosPendentes(db(), jogo, ana!)).toEqual([{ tipo: 'config', renovarAuto: true, energiaMin: 70 }])
+})
+
+test('lances de leilão: um por jogador e visíveis para todos', async () => {
+  const m = await carregarMundo(db(), jogo, 1, 0)
+  const j = m.times.find((t) => !t.humano && t.divisao === 1)!.jogadores[0]!
+  await definirComandos(db(), jogo, ana!, [{ tipo: 'lance', jogador: j, valor: 100 }])
+  await definirComandos(db(), jogo, ana!, [{ tipo: 'lance', jogador: j, valor: 200 }])
+  await definirComandos(db(), jogo, bia!, [{ tipo: 'lance', jogador: j, valor: 150 }])
+  expect((await lancesDaRodada(db(), jogo)).map((x) => x.valor).sort()).toEqual([150, 200])
 })
 
 test('uma proposta por jogador: a nova substitui a anterior', async () => {

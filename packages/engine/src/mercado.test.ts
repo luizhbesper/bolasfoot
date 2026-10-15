@@ -157,6 +157,31 @@ describe('leilão', () => {
     mercadoAntesDosJogos(m, rng())
     expect(k.time).toBe(1)
   })
+  it('só fecha depois de visto; cobrir o lance de outro clube prorroga até 2 rodadas', () => {
+    const m = mundo()
+    const j = abrir(m)
+    // o "outro clube" é um lance posto direto (o sintético só tem 2 times; sem caixa, ele nunca leva)
+    const outro = (valor: number) => (m.leiloes[0]!.lances = [...m.leiloes[0]!.lances.filter((x) => x.time !== 1), { time: 1, valor }])
+    m.leiloes[0]!.visto = false // aberto num dia só da IA
+    mercadoAntesDosJogos(m, rng())
+    expect(m.leiloes).toHaveLength(1)
+    m.leiloes[0]!.visto = true
+    outro(1_250_000)
+    darLance(m, 0, j.id, 1_300_000) // cobre: prorroga
+    mercadoAntesDosJogos(m, rng())
+    expect(j.time).toBe(1)
+    m.leiloes[0]!.visto = true
+    outro(1_400_000)
+    darLance(m, 0, j.id, 1_450_000) // cobre de novo: 2ª prorrogação
+    mercadoAntesDosJogos(m, rng())
+    expect(j.time).toBe(1)
+    m.leiloes[0]!.visto = true
+    outro(1_500_000)
+    darLance(m, 0, j.id, 1_550_000) // terceira disputa: o limite fecha
+    mercadoAntesDosJogos(m, rng())
+    expect(j.time).toBe(0)
+    expect(m.leiloes).toEqual([])
+  })
 })
 
 describe('juniores e contrato', () => {

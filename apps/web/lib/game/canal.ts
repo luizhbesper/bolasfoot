@@ -11,6 +11,8 @@ export type EventoJogo =
       pausa: number | null; aguardando: boolean; offline: number[] }
   | { tipo: 'ready'; prontos: number[] }
   | { tipo: 'pick'; membro: number; time: string | null }
+  /** alguém mudou um lance de leilão: as telas recarregam (os lances da rodada são públicos) */
+  | { tipo: 'lance' }
 
 type Ouvinte = (e: EventoJogo) => void
 const g = globalThis as { __canais?: Map<number, Set<Ouvinte>>; __canalPg?: boolean }

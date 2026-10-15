@@ -428,6 +428,7 @@ function seguir(m: Mundo, base: Base, seed: string, r: Rodada, jogado: number, p
 export function avancarRodada(m: Mundo, base: Base, comandos: readonly ComandoDe[], seed: string, intervalo = false): Rodada {
   if (m.emJogo) throw new Error('rodada no intervalo: use continuarRodada')
   m.avisos = m.avisos.filter((a) => a.dia >= m.dia - 365)
+  for (const l of m.leiloes) l.visto = true // os humanos planejaram vendo esses leilões
   const pendentes = new Set(m.propostasHumanas)
   const resultados = aplicarComandos(m, base, comandos, derivar(seed, 'comandos'))
   for (const p of m.propostasHumanas.filter((x) => pendentes.has(x)))
