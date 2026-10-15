@@ -56,13 +56,13 @@ export function Negociar({ m, j, k }: { m: Mundo; j: JogadorM; k: Comandos }) {
 
       <div style={{ borderTop: '1px solid var(--raised)', paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
         <span className="mudo" style={{ fontSize: 13 }}>Renovar contrato · salário atual {dinheiro(j.salario)} · teto {dinheiro(Math.round(j.valor * 0.25))}</span>
-        <div className="linha">
+        {j.renovadoEm === m.temporada ? <span className="fraco" style={{ fontSize: 13 }}>Já renovou nesta temporada: a próxima negociação abre na temporada que vem.</span> : <div className="linha">
           <input type="number" min={1} step={1000} aria-label="Salário proposto" value={salario} onChange={(e) => setSalario(num(e.target.value))} style={{ width: 130, textAlign: 'right' }} />
           <select aria-label="Duração" value={duracao} onChange={(e) => setDuracao(Number(e.target.value) as 0 | 1 | 2 | 3)}>
             {DURACOES.map((d, i) => <option key={i} value={i}>+{d}</option>)}
           </select>
           <button disabled={off || salario <= 0} onClick={() => void k.mandar({ tipo: 'renovar', jogador: j.id, salario, duracao })}>Propor</button>
-        </div>
+        </div>}
       </div>
 
       {m.queremParar.includes(j.id) && (

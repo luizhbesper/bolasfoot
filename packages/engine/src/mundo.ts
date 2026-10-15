@@ -51,6 +51,10 @@ export interface JogadorM extends Jogador {
   salario: number
   /** F.eJ: dia em que o contrato acaba */
   contratoAte: number
+  /** temporada da última renovação: uma por temporada (regra do port) */
+  renovadoEm?: number
+  /** `contratoAte` já avisado ao técnico humano (aviso de fim de contrato, uma vez por contrato) */
+  avisoContrato?: number
   /** F.eY: na lista de transferências, pelo `preco` (F.ev) */
   aVenda: boolean
   preco: number
@@ -140,6 +144,8 @@ export interface OpcoesJogo {
   salarioMensal?: boolean
   /** estaduais no começo do ano (padrão); sem eles, Série D e Copa saem por Nivel. Fonte: best/Z.java:177, best/a.java:589 */
   jogaEstadual?: boolean
+  /** padrão da renovação automática dos clubes humanos que não escolheram (TimeM.config) */
+  renovarAuto?: boolean
 }
 
 export interface Mundo {
@@ -195,7 +201,7 @@ export interface Mundo {
 }
 
 /** O que o aviso é, para a caixa de entrada filtrar e oferecer a ação certa. */
-export type TipoAviso = 'proposta' | 'mercado' | 'emprego' | 'demissao' | 'aposentadoria' | 'temporada' | 'competicao'
+export type TipoAviso = 'proposta' | 'mercado' | 'emprego' | 'demissao' | 'aposentadoria' | 'temporada' | 'competicao' | 'contrato'
 
 export interface Aviso {
   tecnico: number

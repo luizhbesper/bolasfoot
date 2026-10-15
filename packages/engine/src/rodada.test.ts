@@ -6,7 +6,7 @@ import { jogosDoDia } from './competicoes.ts'
 import { FORMACOES } from './escalacao.ts'
 import { novoJogo, type Mundo } from './mundo.ts'
 import { criarRng } from './rng.ts'
-import { avancarRodada, continuarRodada, tecnicosEmCampo, validar, type Comando } from './rodada.ts'
+import { avancarRodada, continuarRodada, contratosDoDia, tecnicosEmCampo, validar, type Comando } from './rodada.ts'
 
 const B = base as Base
 
@@ -141,5 +141,23 @@ describe('rodada', () => {
       return criarRng(JSON.stringify(m)).int(1e9)
     }
     expect(hash()).toBe(hash())
+  })
+})
+
+describe('contratos dos humanos', () => {
+  it('perto do fim: avisa uma vez; com renovação automática, renova 1 ano', () => {
+    const { m, a, b } = mundo()
+    const [ja, jb] = [timeDe(m, a), timeDe(m, b)].map((t) => m.jogadores[t.jogadores[0]!]!)
+    ja!.contratoAte = jb!.contratoAte = m.dia + 30
+    timeDe(m, b).config = { renovarAuto: true }
+    contratosDoDia(m, m.dia)
+    contratosDoDia(m, m.dia)
+    const avisos = (tc: number) => m.avisos.filter((x) => x.tipo === 'contrato' && x.tecnico === tc)
+    expect(avisos(a)).toHaveLength(1)
+    expect(ja!.contratoAte).toBe(m.dia + 30)
+    expect(avisos(b)).toHaveLength(1)
+    expect(avisos(b)[0]!.texto).toContain('renovou automaticamente')
+    expect(jb!.contratoAte).toBe(m.dia + 30 + 365)
+    expect(jb!.renovadoEm).toBe(m.temporada)
   })
 })

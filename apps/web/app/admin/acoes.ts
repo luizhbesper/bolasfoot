@@ -24,6 +24,7 @@ export async function criarJogoAcao(f: FormData) {
     habilidadeIndividual: f.get('habilidadeIndividual') === 'on',
     salarioMensal: f.get('salarioSemanal') !== 'on',
     jogaEstadual: f.get('semEstaduais') !== 'on',
+    renovarAuto: f.get('renovarAuto') === 'on',
     proibidos: txt(f, 'proibidos').split(/[\s,]+/).filter(Boolean),
     divisoes: f.getAll('divisoes').map(Number),
     base: Object.hasOwn(bases, txt(f, 'base')) ? txt(f, 'base') : '2022',

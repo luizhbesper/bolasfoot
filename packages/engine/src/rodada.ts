@@ -346,9 +346,34 @@ function avisosDoDia(m: Mundo, d: number): boolean {
     const saiu = x.saiu !== null ? m.tecnicos[x.saiu]! : null
     if (x.dia === d && saiu?.humano && x.motivo > 0) avisar(m, saiu.id, 'demissao', `Você foi demitido do ${m.times[x.time]!.nome}: ${MOTIVOS_DEMISSAO[x.motivo]}`)
   }
+  contratosDoDia(m, d)
   const novas = m.ofertas.filter((o) => o.dia === d && m.tecnicos[o.tecnico]!.humano)
   for (const o of novas) avisar(m, o.tecnico, 'emprego', `Propostas de emprego: ${o.times.map((t) => m.times[t]!.nome).join(', ')}.`)
   return novas.length > 0
+}
+
+/** Contratos dos humanos com menos de 60 dias: com renovação automática, renova 1 ano no salário que o jogador pede;
+ * senão (ou se ele já renovou nesta temporada), avisa uma vez por contrato. Regra do port. */
+export function contratosDoDia(m: Mundo, d: number): void {
+  for (const t of m.times) {
+    if (!t.humano) continue
+    const auto = t.config?.renovarAuto ?? m.opcoes.renovarAuto ?? false
+    for (const id of t.jogadores) {
+      const j = m.jogadores[id]!
+      if (j.contratoAte - d >= 60 || j.avisoContrato === j.contratoAte || m.emprestimos.some((e) => e.jogador === id)) continue
+      if (auto && j.renovadoEm !== m.temporada) {
+        const r = renovarContrato(m, id, 0, 1, true)
+        if (r.tipo === 'fechada') {
+          avisar(m, t.tecnico, 'contrato', `${j.nome} renovou automaticamente por 1 ano: ${reais(r.valor)} de salário.`, id)
+          continue
+        }
+      }
+      j.avisoContrato = j.contratoAte
+      avisar(m, t.tecnico, 'contrato', j.renovadoEm === m.temporada
+        ? `O contrato de ${j.nome} acaba em ${j.contratoAte - d} dias; ele já renovou nesta temporada.`
+        : `O contrato de ${j.nome} acaba em ${j.contratoAte - d} dias. Negocie a renovação.`, id)
+    }
+  }
 }
 
 /** Na virada, um aviso por técnico humano: onde o time terminou na série e quem ganhou o quê. */

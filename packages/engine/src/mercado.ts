@@ -550,6 +550,8 @@ export function promoverJunior(m: Mundo, jogadorId: number, rng: Rng): string | 
  */
 export function renovarContrato(m: Mundo, jogadorId: number, salario: number, duracao: 0 | 1 | 2 | 3, aceitar = false): Proposta {
   const j = jog(m, jogadorId)
+  // regra do port: uma renovação por temporada (o original deixava empilhar contratos)
+  if (j.renovadoEm === m.temporada) return { tipo: 'recusada', motivo: 'já renovou nesta temporada' }
   const teto = Math.round(j.valor * 0.25)
   const s = j.salario
   const min = j.contratoAte - m.dia < 60 ? s - Math.trunc((s * [1, 3, 5, 12][duracao]!) / 100) : s + Math.trunc((s * [10, 12, 15, 5][duracao]!) / 100)
@@ -559,6 +561,7 @@ export function renovarContrato(m: Mundo, jogadorId: number, salario: number, du
     j.preco = j.valor
     j.contratoAte += [180, 365, 730, 1095][duracao]!
     j.salario = valor
+    j.renovadoEm = m.temporada
     return { tipo: 'fechada', valor }
   }
   if (aceitar) return fechar(pedido)

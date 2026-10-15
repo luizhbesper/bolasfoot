@@ -2,6 +2,7 @@
 // Caixa de entrada: o que o original mostrava em modais (propostas de amigos, ofertas de emprego, demissão,
 // aposentadoria, mercado, fim de temporada) vira lista com filtros e um detalhe com a ação, quando houver.
 import { ANO_INICIAL, type Aviso, type Comando, type Mundo, type TipoAviso } from '@bolasfoot/engine'
+import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { SalaDeTrofeus } from '../../../_ui/trofeu.tsx'
 import { Escudo } from '../../../_ui/ui.tsx'
@@ -19,6 +20,7 @@ const TIPOS: Record<TipoAviso, { rotulo: string; cor: string }> = {
   mercado: { rotulo: 'Mercado', cor: 'ceu' },
   temporada: { rotulo: 'Temporada', cor: '' },
   competicao: { rotulo: 'Competição', cor: 'ceu' },
+  contrato: { rotulo: 'Contrato', cor: 'pessego' },
 }
 
 export function Caixa({ pendentes }: { pendentes: Comando[] }) {
@@ -97,6 +99,7 @@ function precisaResposta(m: Mundo, a: Aviso, tecnico: number | null): boolean {
 }
 
 function Detalhe({ m, a, k, tecnico }: { m: Mundo; a: Aviso; k: Comandos; tecnico: number | null }) {
+  const { jogo } = useJogo()
   const off = !k.aberto || k.ocupado
   const pedido = (f: (c: Comando) => boolean) => k.pendentes.find(f)
   let acao = null
@@ -156,6 +159,7 @@ function Detalhe({ m, a, k, tecnico }: { m: Mundo; a: Aviso; k: Comandos; tecnic
         <span className="fraco" style={{ fontSize: 12 }}>{dataLonga(a.dia)}</span>
       </div>
       <p style={{ margin: 0, lineHeight: 1.5 }}>{a.texto}</p>
+      {a.tipo === 'contrato' && <Link href={`/jogo/${jogo}/elenco`} style={{ alignSelf: 'flex-start' }}>Ver no elenco</Link>}
       {a.tipo === 'temporada' && <TitulosDaTemporada m={m} a={a} tecnico={tecnico} />}
       {acao}
       {acao && <Fechado k={k} />}

@@ -53,6 +53,8 @@ export function descrever(m: Mundo, c: Comando): string {
     case 'dispensarJunior': return `Dispensar ${nome(c.jogador)}`
     case 'renovar': return `Renovar com ${nome(c.jogador)}: ${dinheiro(c.salario)}, ${['6 meses', '1 ano', '2 anos', '3 anos'][c.duracao]}`
     case 'aposentar': return `Aposentar ${nome(c.jogador)}`
+    case 'config': return [c.energiaMin !== undefined && (c.energiaMin ? `Trocar cansados abaixo de ${c.energiaMin}%` : 'Não trocar cansados'),
+      c.renovarAuto !== undefined && `Renovação automática ${c.renovarAuto ? 'ligada' : 'desligada'}`].filter(Boolean).join(' · ')
     default: return c.tipo
   }
 }

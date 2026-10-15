@@ -33,6 +33,8 @@ export interface ConfigJogo {
   salarioMensal: boolean
   /** ausente = joga (jogos antigos) */
   jogaEstadual?: boolean
+  /** padrão da renovação automática de contratos dos clubes humanos; ausente = não */
+  renovarAuto?: boolean
   /** fileRef dos times que ninguém pode escolher */
   proibidos: string[]
   /** divisões BR permitidas (1–3 = Série A–C; 0 = fora das séries, de onde sai a D); vazio = todas */

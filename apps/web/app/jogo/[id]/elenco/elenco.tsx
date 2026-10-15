@@ -38,6 +38,8 @@ export function Elenco({ paises, pendentes }: { paises: string[]; pendentes: Com
   })
   const ordenar = (col: Coluna) => setOrdem((o) => ({ col, desc: o.col === col ? !o.desc : col !== 'nome' && col !== 'posicao' && col !== 'idade' }))
   const sel = aberto === null ? null : m.jogadores[aberto]!
+  const cfg = k.pendentes.findLast((c) => c.tipo === 'config' && c.renovarAuto !== undefined) as Extract<Comando, { tipo: 'config' }> | undefined
+  const renovarAuto = cfg?.renovarAuto ?? t.config?.renovarAuto ?? m.opcoes.renovarAuto ?? false
 
   return (
     <>
@@ -48,6 +50,11 @@ export function Elenco({ paises, pendentes }: { paises: string[]; pendentes: Com
             {p} <span className="fraco">{todos.filter((j) => j.posicao === i).length}</span>
           </button>
         ))}
+        <label className="check" style={{ marginLeft: 'auto' }} title="Com menos de 60 dias de contrato, renova 1 ano no salário que o jogador pedir (uma vez por temporada)">
+          <input type="checkbox" checked={renovarAuto} disabled={!k.aberto || k.ocupado}
+            onChange={(e) => void k.mandar({ tipo: 'config', renovarAuto: e.target.checked })} />
+          Renovar contratos automaticamente
+        </label>
       </div>
       <div className="card rolagem">
         <table className="tabela" style={{ minWidth: 860 }}>

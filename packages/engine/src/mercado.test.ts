@@ -182,6 +182,10 @@ describe('juniores e contrato', () => {
     expect(renovarContrato(m, j.id, 105_000, 0)).toEqual({ tipo: 'contraproposta', valor: 0, salario: 110_000 })
     expect(renovarContrato(m, j.id, 0, 0, true)).toEqual({ tipo: 'fechada', valor: 110_000 })
     expect(j.contratoAte).toBe(380)
+    // uma renovação por temporada
+    expect(renovarContrato(m, j.id, 0, 0, true)).toEqual({ tipo: 'recusada', motivo: 'já renovou nesta temporada' })
+    m.temporada++
+    expect(renovarContrato(m, j.id, 0, 0, true).tipo).toBe('fechada')
   })
 })
 

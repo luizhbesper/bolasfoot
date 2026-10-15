@@ -86,7 +86,7 @@ export async function prontos(q: Q, gameId: number): Promise<Extract<EventoJogo,
 /** O mundo nasce com os times escolhidos e a 1ª rodada abre. Roda na transação que encerra a escolha de times. */
 export async function comecarJogo(tx: Tx, gameId: number): Promise<void> {
   const [g] = await tx.select().from(games).where(eq(games.id, gameId))
-  const m = novoJogo(baseDe(g!.config), { habilidadeIndividual: g!.config.habilidadeIndividual, salarioMensal: g!.config.salarioMensal, jogaEstadual: g!.config.jogaEstadual }, seedDoMundo(g!.gameSeed))
+  const m = novoJogo(baseDe(g!.config), { habilidadeIndividual: g!.config.habilidadeIndividual, salarioMensal: g!.config.salarioMensal, jogaEstadual: g!.config.jogaEstadual, renovarAuto: g!.config.renovarAuto ?? false }, seedDoMundo(g!.gameSeed))
   const membros = await tx.select({ id: gameMembers.id, teamRef: gameMembers.teamRef, username: users.username })
     .from(gameMembers).innerJoin(users, eq(users.id, gameMembers.userId)).where(eq(gameMembers.gameId, gameId)).orderBy(gameMembers.id)
   for (const mb of membros) {
@@ -271,8 +271,8 @@ export async function comandosPendentes(q: Q, gameId: number, userId: number): P
 /** Tipos que valem uma vez por fase: o novo substitui o anterior; os outros (compras, propostas…) se somam. */
 const UNICOS = new Set<Comando['tipo']>(['escalar', 'tatica', 'batedores', 'treino', 'ingresso', 'mudarTatica'])
 
-/** Uma proposta por jogador: a nova (compra ou pedido de empréstimo) substitui a anterior. */
-const PROPOSTAS = new Set<Comando['tipo']>(['comprar', 'pedirEmprestado'])
+/** Uma proposta por jogador: a nova (compra, pedido de empréstimo, renovação) substitui a anterior. */
+const PROPOSTAS = new Set<Comando['tipo']>(['comprar', 'pedirEmprestado', 'renovar'])
 const alvo = (c: Comando) => (PROPOSTAS.has(c.tipo) && 'jogador' in c ? c.jogador : null)
 
 export function juntarComandos(atuais: Comando[], novos: Comando[]): Comando[] {
