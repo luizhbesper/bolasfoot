@@ -302,7 +302,7 @@ function Editor({ m, t, pendentes, editavel, paises }: { m: Mundo; t: TimeM; pen
             <Ordenacao ordem={ordem} ordenar={ordenar} />
           </div>
           {bancoOrdenado.map((j) => (
-            <Linha key={j.id} j={j} t={t} m={m} forcas={forcas} sel={sel === j.id} onClick={() => tocarJogador(j.id)} rotulo="no banco"
+            <Linha key={j.id} j={j} t={t} m={m} forcas={forcas} sel={sel === j.id} onClick={() => tocarJogador(j.id)} rotulo={`banco ${e.banco.indexOf(j.id) + 1}`}
               dnd={dnd(j.id)} sobre={sobre === `j${j.id}`} />
           ))}
           {editavel && sel !== null && e.banco.length < MAX_BANCO && lugar(e, sel) && !('banco' in lugar(e, sel)!) && (
