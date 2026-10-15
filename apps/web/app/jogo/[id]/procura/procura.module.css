@@ -1,0 +1,222 @@
+/* Procurar jogadores: lateral de filtros fixa ao rolar; no celular vira uma folha que sobe de baixo. */
+.tela {
+  display: grid;
+  grid-template-columns: 272px minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.painel {
+  position: sticky;
+  top: 16px;
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  scrollbar-width: thin;
+}
+
+.painel input,
+.painel select {
+  width: 100%;
+  height: 36px;
+  font-size: 13px;
+}
+
+.topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.topo > h2 {
+  font-size: 16px;
+}
+
+.topo > button {
+  height: 30px;
+  padding: 0 8px;
+  font-size: 13px;
+}
+
+.grupo {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.grupo .chips {
+  gap: 6px;
+}
+
+.grupo .chips > button {
+  height: 30px;
+  padding: 0 11px;
+  font-size: 13px;
+}
+
+.rotulo {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* "Idade  [mín] – [máx]": rótulo à esquerda, dois campos curtos alinhados em coluna entre as faixas */
+.faixa {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 64px auto 64px;
+  align-items: center;
+  gap: 6px;
+  padding-left: 10px;
+  border-left: 2px solid var(--line);
+}
+
+.faixa.ligada {
+  border-left-color: var(--lavanda);
+}
+
+.faixa.ligada > .rotulo {
+  color: var(--text);
+}
+
+.painel .faixa > input {
+  height: 32px;
+  padding: 0 8px;
+  text-align: right;
+  -moz-appearance: textfield;
+}
+
+.faixa > input::-webkit-inner-spin-button,
+.faixa > input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.nota {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--faint);
+}
+
+.resumo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.total {
+  margin: 0 auto 0 0;
+  font-family: var(--font-bricolage), var(--font-geist), sans-serif;
+  font-weight: 700;
+  font-size: 22px;
+  letter-spacing: -0.01em;
+}
+
+.linha {
+  cursor: pointer;
+}
+
+.linha:hover {
+  background: var(--raised);
+}
+
+.nome {
+  height: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-weight: 500;
+  text-align: left;
+}
+
+/* só existem no celular */
+.abrir,
+.soCelular,
+.ver,
+.veu {
+  display: none;
+}
+
+.abrir {
+  align-items: center;
+  gap: 8px;
+}
+
+.selo {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--lavanda);
+  color: var(--sobre-lavanda);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+@media (max-width: 1000px) {
+  .tela {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .abrir {
+    display: inline-flex;
+  }
+
+  .soCelular {
+    display: inline-block;
+  }
+
+  .painel {
+    display: none;
+  }
+
+  .painel.aberto {
+    display: flex;
+    position: fixed;
+    z-index: 40;
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    max-height: 88vh;
+    padding: 20px 16px 0;
+    border-radius: var(--raio-card) var(--raio-card) 0 0;
+    border-bottom: 0;
+    animation: sobe 0.2s ease-out;
+  }
+
+  .aberto .ver {
+    display: block;
+    position: sticky;
+    bottom: 16px;
+    flex: none;
+    margin-bottom: 16px;
+    width: 100%;
+    margin-top: auto;
+    box-shadow: 0 -16px 0 var(--surface), 0 16px 0 var(--surface);
+  }
+
+  .veu {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 39;
+    background: rgba(8, 10, 14, 0.55);
+  }
+}
+
+@keyframes sobe {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .painel.aberto {
+    animation: none;
+  }
+}
