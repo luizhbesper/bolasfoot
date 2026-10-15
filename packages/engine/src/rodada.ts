@@ -8,7 +8,7 @@ import { iniciarObra, pagarEmprestimo, pegarEmprestimo } from './economia.ts'
 import { BANCO, FORMACOES } from './escalacao.ts'
 import {
   anunciar, comprarEmprestado, darLance, disponibilizarEmprestimo, dispensarJunior, encerrarEmprestimo, pedirEmprestado,
-  promoverJunior, proporCompra, registrarProposta, renovarContrato, retirarDaLista, transferir, venderAgora, type Proposta,
+  promoverJunior, proporCompra, registrarProposta, renovarContrato, retirarDaLista, transferir, type Proposta,
 } from './mercado.ts'
 import type { Mundo, RegistroProposta, Tatica, TimeM, TipoAviso } from './mundo.ts'
 import { ANO_INICIAL } from './calendario.ts'
@@ -32,7 +32,6 @@ export type Comando =
   | { tipo: 'responderProposta'; proposta: number; aceitar: boolean }
   | { tipo: 'anunciar'; jogador: number; preco: number }
   | { tipo: 'retirarDaLista'; jogador: number }
-  | { tipo: 'venderAgora'; jogador: number; preco: number }
   | { tipo: 'paraEmprestimo'; jogador: number; sim: boolean }
   | { tipo: 'pedirEmprestado'; jogador: number }
   | { tipo: 'encerrarEmprestimo'; jogador: number }
@@ -78,7 +77,7 @@ export interface Rodada {
 const INTERVALO = new Set<Comando['tipo']>(['substituir', 'mudarTatica'])
 const TIPOS = new Set<string>([
   'escalar', 'tatica', 'batedores', 'config', 'treino', 'ingresso', 'banco', 'obra', 'comprar', 'responderProposta', 'anunciar',
-  'retirarDaLista', 'venderAgora', 'paraEmprestimo', 'pedirEmprestado', 'encerrarEmprestimo', 'comprarEmprestado', 'lance',
+  'retirarDaLista', 'paraEmprestimo', 'pedirEmprestado', 'encerrarEmprestimo', 'comprarEmprestado', 'lance',
   'promoverJunior', 'dispensarJunior', 'renovar', 'aposentar', 'aceitarOferta', 'pedirDemissao', 'substituir', 'mudarTatica',
 ] satisfies Comando['tipo'][])
 const inteiro = (n: unknown, min = 0) => typeof n === 'number' && Number.isInteger(n) && n >= min
@@ -168,7 +167,6 @@ export function validar(m: Mundo, tecnicoId: number, c: Comando): string | null 
       return p && t.jogadores.includes(p.jogador) ? null : 'proposta não encontrada'
     }
     case 'anunciar':
-    case 'venderAgora':
       return !meu(c.jogador) ? 'jogador fora do elenco' : inteiro(c.preco) ? null : 'preço inválido'
     case 'retirarDaLista':
     case 'paraEmprestimo':
@@ -282,12 +280,6 @@ function executar(m: Mundo, base: Base, tc: number, t: TimeM | null, c: Comando,
     case 'retirarDaLista':
       retirarDaLista(m, c.jogador)
       return ok()
-    case 'venderAgora': {
-      const r = venderAgora(m, c.jogador, c.preco, rng)
-      registrarProposta(m, r ? { jogador: c.jogador, vendedor: id, comprador: r.comprador, valor: r.valor, status: 'aceita', motivo: 'venda imediata' }
-        : { jogador: c.jogador, vendedor: id, comprador: -1, valor: c.preco, status: 'recusada', motivo: 'venda imediata: nenhum clube pagou esse preço' })
-      return ok(r ? null : 'nenhum clube pagou esse preço')
-    }
     case 'paraEmprestimo':
       return ok(disponibilizarEmprestimo(m, c.jogador, c.sim))
     case 'pedirEmprestado':

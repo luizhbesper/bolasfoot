@@ -383,21 +383,6 @@ function venderParaIA(m: Mundo, j: JogadorM, preco: number, hl: number, rng: Rng
   return c
 }
 
-/**
- * Venda imediata: se o preço está abaixo do valor, aceita até 10–15% de desconto.
- * ponytail: no original os outros humanos podem cobrir a oferta da IA na hora (a/iX); aqui só a IA compra
- * Fonte: a/jc.java:123 (dE)
- */
-export function venderAgora(m: Mundo, jogadorId: number, preco: number, rng: Rng): { comprador: number; valor: number } | null {
-  const j = jog(m, jogadorId)
-  if (j.emprestado || !Number.isInteger(preco) || preco < 0) return null
-  j.preco = preco
-  let valor = preco
-  if (preco < j.valor) valor = Math.max(preco, j.valor - Math.round(j.valor * (rng.int(100) > 50 ? 0.15 : 0.1)))
-  const c = venderParaIA(m, j, valor, tolerancia(rng), rng)
-  return c ? { comprador: c.id, valor } : null
-}
-
 /** Depois da rodada, 50%: a IA compra os listados dos humanos que pedem até valor + tolerância. Fonte: best/f_0.java:1599 (av) */
 function propostasIA(m: Mundo, rng: Rng): void {
   const hl = tolerancia(rng)

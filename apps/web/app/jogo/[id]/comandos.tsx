@@ -43,9 +43,8 @@ export function descrever(m: Mundo, c: Comando): string {
     case 'lance': return `Lance de ${dinheiro(c.valor)} por ${nome(c.jogador)}`
     case 'pedirEmprestado': return `Pedir ${nome(c.jogador)} emprestado`
     case 'responderProposta': return `${c.aceitar ? 'Aceitar' : 'Recusar'} a proposta #${c.proposta}`
-    case 'anunciar': return `Anunciar ${nome(c.jogador)} por ${dinheiro(c.preco)}`
-    case 'retirarDaLista': return `Tirar ${nome(c.jogador)} da lista`
-    case 'venderAgora': return `Vender ${nome(c.jogador)} agora por ${dinheiro(c.preco)}`
+    case 'anunciar': return `Colocar ${nome(c.jogador)} à venda por ${dinheiro(c.preco)}`
+    case 'retirarDaLista': return `Tirar ${nome(c.jogador)} da venda`
     case 'paraEmprestimo': return `${c.sim ? 'Disponibilizar' : 'Não disponibilizar'} ${nome(c.jogador)} para empréstimo`
     case 'encerrarEmprestimo': return `Encerrar o empréstimo de ${nome(c.jogador)}`
     case 'comprarEmprestado': return `Comprar ${nome(c.jogador)} (emprestado)`
