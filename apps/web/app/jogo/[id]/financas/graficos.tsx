@@ -90,6 +90,13 @@ export function LinhaCaixa({ inicial, dias, hoje, caixa, proj: pontos, base: pon
       <polyline points={linha(pts)} fill="none" stroke="var(--lavanda)" strokeWidth="2" strokeLinejoin="round" />
       {base && <polyline points={linha(base)} fill="none" stroke="var(--muted)" strokeWidth="1.5" strokeDasharray="2 4" opacity="0.7" />}
       <polyline points={linha(proj)} fill="none" stroke="var(--lavanda)" strokeWidth="2" strokeDasharray="5 5" />
+      {[[proj, 'var(--lavanda)', -8], ...(base ? [[base, 'var(--muted)', 16]] : [])].map(([p, cor, dy]) => {
+        const ps = p as [number, number][], fimV = ps.at(-1)![1]
+        // ritmo depois de hoje (sem o salto do pedido), por mês: é a inclinação que os juros mudam
+        const ini0 = ps.filter(([d]) => d <= hoje + 0.5).at(-1)![1]
+        const mes = ((fimV - ini0) / Math.max(1, fim - hoje)) * 30
+        return <text key={String(cor)} x={W - R} y={Y(fimV) + (dy as number)} textAnchor="end" fill={cor as string} fontSize="11" fontWeight="600">{dinheiro(fimV)} · {sinal(Math.round(mes))}/mês</text>
+      })}
       {[...folhas, folha].map((d) => <rect key={d} x={X(d) - 4} y={B - 4} width="8" height="8" rx="2" fill="var(--pessego)" stroke="var(--surface)" strokeWidth="2" />)}
       <line x1={X(hoje)} x2={X(hoje)} y1={T - 8} y2={B} stroke="var(--faint)" strokeDasharray="2 3" />
       <text x={X(hoje)} y={T - 14} textAnchor="middle" fill="var(--muted)" fontSize="11" fontWeight="600">hoje</text>
