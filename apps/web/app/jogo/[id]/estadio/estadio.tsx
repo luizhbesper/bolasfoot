@@ -25,6 +25,8 @@ export function Estadio({ pendentes }: { pendentes: Comando[] }) {
   const padrao = precoPadrao(1, t) as Quatro
   const total = t.estadio.setores.reduce((s, n) => s + n, 0)
   const obraPedida = pendentes.some((c) => c.tipo === 'obra')
+  const obras = f.obras ?? []
+  const bloqueada = !f.obra && obras.some((o) => o.temporada === m.temporada)
   const invalida = mais.every((n) => n === 0) || mais.some((n, i) => n < 0 || t.estadio.setores[i]! + n > teto[i]!) || orc.custo > f.caixa
 
   return (
@@ -43,7 +45,7 @@ export function Estadio({ pendentes }: { pendentes: Comando[] }) {
                     <td className="num mudo">{teto[i]!.toLocaleString('pt-BR')}</td>
                     <td className="num">
                       <input type="number" min={0} step={100} max={teto[i]! - t.estadio.setores[i]!} aria-label={`Ampliar ${nome}`} value={mais[i]} style={{ width: 110, textAlign: 'right' }}
-                        disabled={!k.aberto || !!f.obra || obraPedida}
+                        disabled={!k.aberto || !!f.obra || obraPedida || bloqueada}
                         onChange={(e) => setMais((x) => x.map((v, j) => (j === i ? Math.max(0, Math.trunc(Number(e.target.value) || 0)) : v)) as Quatro)} />
                     </td>
                   </tr>
@@ -54,6 +56,8 @@ export function Estadio({ pendentes }: { pendentes: Comando[] }) {
           <div className="secao" style={{ paddingTop: 12 }}>
             {f.obra ? (
               <p className="mudo" style={{ margin: 0 }}>Obra em andamento até {dataLonga(f.obra.fim)}.</p>
+            ) : bloqueada ? (
+              <p className="mudo" style={{ margin: 0 }}>Uma reforma por temporada: a próxima pode começar na temporada que vem.</p>
             ) : (
               <div className="linha">
                 <span>Custo <strong>{dinheiro(orc.custo)}</strong> · {orc.dias} dias</span>
@@ -65,6 +69,26 @@ export function Estadio({ pendentes }: { pendentes: Comando[] }) {
             <Fechado k={k} />
           </div>
         </div>
+        {obras.length > 0 && (
+          <div className="card" style={{ overflow: 'hidden' }}>
+            <div className="cabecalho"><h2>Reformas</h2></div>
+            <div className="rolagem">
+              <table className="tabela" style={{ minWidth: 520 }}>
+                <thead><tr><th>Início</th><th>Entrega</th><th className="num">Lugares</th><th className="num">Custo</th></tr></thead>
+                <tbody>
+                  {obras.toReversed().map((o) => (
+                    <tr key={o.dia}>
+                      <td>{dataLonga(o.dia)}</td>
+                      <td>{o.fim >= m.dia ? <span className="etiqueta pessego">{dataLonga(o.fim)}</span> : dataLonga(o.fim)}</td>
+                      <td className="num" title={SETORES.map((n, i) => `${n}: +${o.setores[i]}`).join(', ')}>+{o.setores.reduce((a, b) => a + b, 0).toLocaleString('pt-BR')}</td>
+                      <td className="num">{dinheiro(o.custo)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </section>
 
       <aside className="coluna">

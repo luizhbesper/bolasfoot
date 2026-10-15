@@ -22,6 +22,8 @@ export interface Financas {
   lancamentos?: Lancamento[]
   /** obra em andamento: lugares a mais por setor e dia em que termina */
   obra: { setores: [number, number, number, number]; fim: number } | null
+  /** reformas já feitas (regra do port: uma por temporada); não zera na virada */
+  obras?: { temporada: number; dia: number; fim: number; setores: [number, number, number, number]; custo: number }[]
 }
 
 export interface Lancamento {
@@ -241,7 +243,11 @@ const FAIXA_LUGAR = [[1000, 2500, 3500, 10000, 18000], [5000, 15000, 30000, 6000
  */
 export const tetoEstadio = (temporada: number) => TETO_ESTADIO[temporada >= 10 ? 3 : temporada >= 6 ? 2 : temporada >= 2 ? 1 : 0]!
 
-/** Custo e duração de uma ampliação. Fonte: a/cq_0.java:117-139 (oH), :160-189 (cZ, I) */
+/** Regra do port: ampliar custa 3x o original e leva o dobro do tempo (o original era barato demais para encher o estádio
+ * em poucas rodadas). */
+export const MULT_OBRA = 3
+
+/** Custo e duração de uma ampliação. Fonte: a/cq_0.java:117-139 (oH), :160-189 (cZ, I); custo × MULT_OBRA, prazo × 2 */
 export function orcamentoObra(t: TimeM, mais: readonly number[]): { custo: number; dias: number } {
   let custo = 100_000, total = 0
   mais.forEach((n, k) => {
@@ -250,7 +256,7 @@ export function orcamentoObra(t: TimeM, mais: readonly number[]): { custo: numbe
     custo += PRECO_LUGAR[k]![faixa === -1 ? 4 : faixa]! * n
     total += n
   })
-  return { custo, dias: total < 1000 ? 15 : total < 10000 ? 20 : total < 30000 ? 30 : 40 }
+  return { custo: custo * MULT_OBRA, dias: 2 * (total < 1000 ? 15 : total < 10000 ? 20 : total < 30000 ? 30 : 40) }
 }
 
 /** Começa uma obra: paga à vista. Fonte: a/cq_0.java:141-156 (oI) */
@@ -259,6 +265,7 @@ export function iniciarObra(mundo: Mundo, timeId: number, mais: [number, number,
   const f = t.financas
   if (!f) return 'time sem caixa'
   if (f.obra) return 'já há uma obra em andamento'
+  if (f.obras?.some((o) => o.temporada === mundo.temporada)) return 'só uma reforma por temporada'
   const teto = tetoEstadio(mundo.temporada)
   if (mais.some((n, k) => n < 0 || t.estadio.setores[k]! + n > teto[k]!)) return 'acima do teto do setor'
   if (mais.every((n) => n === 0)) return 'nada a construir'
@@ -266,6 +273,7 @@ export function iniciarObra(mundo: Mundo, timeId: number, mais: [number, number,
   if (f.caixa < custo) return 'sem dinheiro para essa expansão'
   pagar(t, custo, 'obras', mundo.dia, `${mais.reduce((a, b) => a + b, 0).toLocaleString('pt-BR')} lugares`)
   f.obra = { setores: [...mais], fim: mundo.dia + dias }
+  ;(f.obras ??= []).push({ temporada: mundo.temporada, dia: mundo.dia, fim: mundo.dia + dias, setores: [...mais], custo })
   return null
 }
 

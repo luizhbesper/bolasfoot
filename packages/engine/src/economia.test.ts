@@ -65,14 +65,20 @@ describe('caixa', () => {
     const t = m.times[0]!
     abrirCaixa(m, 0)
     // geral 6000 → 6500: faixa ≤ 10000 → 500/lugar; + 100 mil fixos
-    expect(orcamentoObra(t, [500, 0, 0, 0])).toEqual({ custo: 100_000 + 500 * 500, dias: 15 })
+    expect(orcamentoObra(t, [500, 0, 0, 0])).toEqual({ custo: 3 * (100_000 + 500 * 500), dias: 30 })
     expect(tetoEstadio(1)).toEqual([18000, 80000, 9000, 700])
     expect(tetoEstadio(6)).toEqual([22000, 110000, 10000, 900])
     expect(tetoEstadio(10)).toEqual([25000, 120000, 10000, 1200])
     expect(iniciarObra(m, 0, [0, 0, 0, 400])).toBe('acima do teto do setor')
     expect(iniciarObra(m, 0, [500, 0, 0, 0])).toBeNull()
-    expect(t.financas!.caixa).toBe(15_000_000 - 350_000)
+    expect(t.financas!.caixa).toBe(15_000_000 - 3 * 350_000)
     expect(iniciarObra(m, 0, [10, 0, 0, 0])).toBe('já há uma obra em andamento')
+    // terminou: só na temporada seguinte; o histórico fica
+    t.financas!.obra = null
+    expect(iniciarObra(m, 0, [10, 0, 0, 0])).toBe('só uma reforma por temporada')
+    m.temporada++
+    expect(iniciarObra(m, 0, [10, 0, 0, 0])).toBeNull()
+    expect(t.financas!.obras!.map((o) => o.setores[0])).toEqual([500, 10])
   })
 })
 

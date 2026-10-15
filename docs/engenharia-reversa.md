@@ -443,6 +443,7 @@ Ordem do `aa()` (os passos internacionais e de seleções ficam para a Fase 6):
 
   - Pago à vista. Prazo: <1000 lugares → 15 dias, <10 mil → 20, <30 mil → 30, senão 40. A obra termina no 1º dia de jogo depois do prazo.
   - Teto por setor `aq.pa`: o original testa `H >= 2` antes de `>= 6` e `>= 10`, então o teto real fica em `pa[1]` a partir da 2ª temporada. **Corrigido no port.**
+  - **Desvios do port:** custo × 3 e prazo × 2 (`MULT_OBRA`, `economia.ts`), uma reforma por temporada e histórico das reformas em `Financas.obras`.
 - **Preço de venda da IA** (`l.java:578`), pelos jogadores do vendedor na posição (sem os emprestados):
 
 | Situação | GOL / LAT / ZAG / MEI | ATA |
