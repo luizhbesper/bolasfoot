@@ -3,7 +3,8 @@ import type { Base } from '@bolasfoot/data'
 import { describe, expect, it } from 'vitest'
 import { datas, TIPO } from './calendario.ts'
 import { avancarDia, type FaseLiga } from './competicoes.ts'
-import { abrirCaixa, iniciarObra, lancamentos, limiteEmprestimo, orcamentoObra, pagarEmprestimo, pegarEmprestimo, salarioJogador, taxaJuros, tetoEstadio, valorJogador } from './economia.ts'
+import { diaDePagamento } from './calendario.ts'
+import { abrirCaixa, eventosEconomicos, iniciarObra, lancamentos, limiteEmprestimo, orcamentoObra, parcelaPrice, pegarEmprestimo, quitarEmprestimo, salarioJogador, taxaJuros, tetoEstadio, valorJogador } from './economia.ts'
 import { mundoSintetico } from './fixtures.ts'
 import { novoJogo } from './mundo.ts'
 
@@ -44,7 +45,7 @@ describe('jogador', () => {
 })
 
 describe('caixa', () => {
-  it('empréstimo: limite de 30% do elenco, valor em passos de 100 mil, juros progressivos', () => {
+  it('empréstimo: limite de 30% do elenco, parcelas Price no dia 2, juros por tamanho e prazo, quitação', () => {
     const m = mundoSintetico()
     const t = m.times[0]!
     const f = abrirCaixa(m, 0)
@@ -52,18 +53,36 @@ describe('caixa', () => {
     const elenco = t.jogadores.reduce((s, id) => s + m.jogadores[id]!.valor, 0)
     const limite = limiteEmprestimo(m, t)
     expect(limite).toBe(Math.max(500_000, Math.floor((elenco * 0.3) / 100_000) * 100_000))
-    expect(pegarEmprestimo(m, t, 150_000, m.dia)).toBe(false) // fora do passo
-    expect(pegarEmprestimo(m, t, limite + 100_000, m.dia)).toBe(false)
-    expect(pegarEmprestimo(m, t, limite, m.dia)).toBe(true)
-    expect(f.emprestimo).toBe(limite)
-    expect(f.juros).toBe(Math.floor(limite * 0.07)) // dívida no limite: 7%
-    expect(pagarEmprestimo(m, t, limite + 100_000, m.dia)).toBe(false) // mais que a dívida
-    expect(pagarEmprestimo(m, t, limite, m.dia)).toBe(true)
-    expect(f.juros).toBe(0)
-    expect(taxaJuros(0, limite)).toBe(0.01)
-    expect(taxaJuros(limite / 2, limite)).toBeCloseTo(0.04)
+    expect(taxaJuros(0, limite, 6)).toBe(0.01)
+    expect(taxaJuros(limite, limite, 6)).toBeCloseTo(0.07)
+    expect(taxaJuros(limite, limite, 36)).toBeCloseTo(0.1)
+    expect(pegarEmprestimo(m, t, 150_000, 12, m.dia)).toBe(false) // fora do passo
+    expect(pegarEmprestimo(m, t, 500_000, 10, m.dia)).toBe(false) // prazo que o banco não oferece
+    expect(pegarEmprestimo(m, t, limite + 100_000, 6, m.dia)).toBe(false)
+    expect(pegarEmprestimo(m, t, 500_000, 6, m.dia)).toBe(true)
+    const c = f.contratos![0]!
+    expect(c.parcela).toBe(parcelaPrice(500_000, c.taxa, 6))
+    expect(f.emprestimo).toBe(500_000)
+    // seis dias 2: paga tudo, e o que sai a mais que o principal (fora salários) são os juros
+    const antes = f.caixa
+    let d = m.dia + 1
+    for (let n = 0; n < 6; d++) {
+      eventosEconomicos(m, d)
+      if (diaDePagamento(d)) n++
+    }
+    expect(f.contratos).toEqual([])
+    expect(f.emprestimo).toBe(0)
+    expect(f.despesas.juros).toBeGreaterThan(0)
+    expect(antes - f.caixa - f.despesas.salarios).toBe(500_000 + f.despesas.juros)
+    // quitar: paga o saldo de uma vez
+    expect(pegarEmprestimo(m, t, 500_000, 36, d)).toBe(true)
+    const id = f.contratos![0]!.id
+    expect(quitarEmprestimo(m, t, id + 1, d)).toBe(false)
+    expect(quitarEmprestimo(m, t, id, d)).toBe(true)
+    expect(f.emprestimo).toBe(0)
     // o empréstimo entra no extrato: caixa = saldo inicial + lançamentos
     expect(f.caixa - lancamentos(f).reduce((s, l) => s + l.valor, 0)).toBe(15_000_000 - f.receitas.patrocinio)
+
   })
 
   it('obra: custo por faixa, prazo e teto por temporada (bug do pa[1] corrigido)', () => {

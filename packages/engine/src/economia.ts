@@ -9,10 +9,12 @@ import type { JogadorM, Mundo, TimeM } from './mundo.ts'
 
 export interface Financas {
   caixa: number
-  /** saldo do empréstimo (C.dW) */
+  /** saldo devedor somado dos contratos (C.dW) */
   emprestimo: number
-  /** juros do mês (C.dX): taxa progressiva do port, ver taxaJuros */
+  /** o que sai no próximo dia 2 (parcelas dos contratos); no original, C.dX eram só os juros */
   juros: number
+  /** empréstimos parcelados em aberto (port); mundos salvos antes não têm, ver `contratos` */
+  contratos?: Contrato[]
   /** extrato da temporada por categoria (C: dN, dM, dL, dO / dR, dT, dQ, dV, dS). Empréstimo do banco é do port: no
    * original ele mexia no caixa por fora do extrato, que então não fechava */
   receitas: { bilheteria: number; premios: number; vendas: number; patrocinio: number; emprestimo: number }
@@ -178,11 +180,27 @@ export function zerarExtrato(t: TimeM): void {
   t.financas.lancamentos = []
 }
 
-// Empréstimo. Fonte: best/C.java:228-238 (m) — desvio do port: valor livre, limite pelo valor do elenco, juros progressivos.
-// O original dava blocos de 500 mil até um teto por divisão (5M na Série A) com juros fixos de 3%.
+// Empréstimo. Fonte: best/C.java:228-238 (m) — desvio do port: contratos parcelados (tabela Price) com valor livre,
+// limite pelo valor do elenco e juros que sobem com o tamanho da dívida e com o prazo. O original dava blocos de
+// 500 mil até um teto por divisão (5M na Série A), juros fixos de 3% sobre o saldo e devolução manual.
 
 /** O valor do empréstimo anda de 100 em 100 mil. */
 export const PASSO_EMPRESTIMO = 100_000
+/** Prazos oferecidos pelo banco, em parcelas mensais (dia 2). */
+export const PRAZOS = [6, 12, 24, 36] as const
+
+/** Um empréstimo: parcela fixa (Price) cobrada todo dia 2 até zerar o saldo. */
+export interface Contrato {
+  id: number
+  valor: number
+  parcelas: number
+  restantes: number
+  /** ao mês */
+  taxa: number
+  parcela: number
+  saldo: number
+  dia: number
+}
 
 /** Até quanto o time pode dever: 30% do valor do elenco (mínimo 500 mil), arredondado para baixo em 100 mil. */
 export function limiteEmprestimo(mundo: Mundo, t: TimeM): number {
@@ -190,34 +208,87 @@ export function limiteEmprestimo(mundo: Mundo, t: TimeM): number {
   return Math.max(500_000, Math.floor((elenco * 0.3) / PASSO_EMPRESTIMO) * PASSO_EMPRESTIMO)
 }
 
-/** Juros ao mês: 1% + 6% × (dívida / limite), no máximo 7%. */
-export const taxaJuros = (divida: number, limite: number) => Math.min(0.07, 0.01 + (0.06 * divida) / Math.max(1, limite))
+/** Juros ao mês: 1% + 6% × (dívida com o novo / limite) + 3% × (prazo − 6) / 30. De 1% (pouco, 6x) a 10% (tudo, 36x). */
+export const taxaJuros = (divida: number, limite: number, parcelas: number) =>
+  Math.min(0.1, 0.01 + 0.06 * Math.min(1, divida / Math.max(1, limite)) + (0.03 * (parcelas - 6)) / 30)
 
-/** Juros de um mês sobre a dívida. */
-export const jurosDoMes = (divida: number, limite: number) => (divida > 0 ? Math.floor(divida * taxaJuros(divida, limite)) : 0)
+/** Parcela fixa da tabela Price. */
+export function parcelaPrice(valor: number, taxa: number, parcelas: number): number {
+  let fator = 1
+  for (let i = 0; i < parcelas; i++) fator *= 1 + taxa
+  return Math.ceil((valor * taxa * fator) / (fator - 1))
+}
 
-const atualizarJuros = (mundo: Mundo, t: TimeM) => (t.financas!.juros = jurosDoMes(t.financas!.emprestimo, limiteEmprestimo(mundo, t)))
+/** Um contrato novo, nas condições de hoje. */
+export function novoContrato(mundo: Mundo, t: TimeM, valor: number, parcelas: number, id: number, dia: number, divida = t.financas?.emprestimo ?? 0): Contrato {
+  const taxa = taxaJuros(divida + valor, limiteEmprestimo(mundo, t), parcelas)
+  return { id, valor, parcelas, restantes: parcelas, taxa, parcela: parcelaPrice(valor, taxa, parcelas), saldo: valor, dia }
+}
 
-const valorValido = (valor: number) => Number.isInteger(valor) && valor > 0 && valor % PASSO_EMPRESTIMO === 0
-
-/** Pega `valor` (múltiplo de 100 mil), se a dívida não passar do limite. */
-export function pegarEmprestimo(mundo: Mundo, t: TimeM, valor: number, dia: number): boolean {
+/** Contratos em aberto, sem mexer no mundo: o empréstimo antigo (só saldo) aparece como um contrato de 12x. */
+export const contratosDe = (mundo: Mundo, t: TimeM): Contrato[] => {
   const f = t.financas
-  if (!f || !valorValido(valor) || f.emprestimo + valor > limiteEmprestimo(mundo, t)) return false
-  f.emprestimo += valor
+  if (!f) return []
+  return f.contratos ?? (f.emprestimo > 0 ? [novoContrato(mundo, t, f.emprestimo, 12, 1, mundo.dia, 0)] : [])
+}
+
+/** Contratos em aberto, gravando no mundo a conversão do empréstimo antigo. */
+function contratos(mundo: Mundo, t: TimeM): Contrato[] {
+  return (t.financas!.contratos ??= contratosDe(mundo, t))
+}
+
+/** O que a parcela do mês paga de juros (sobre o saldo) e de principal; a última fecha o saldo. */
+export function parcelaDoMes(c: Contrato): { juros: number; amortiza: number } {
+  const juros = Math.floor(c.saldo * c.taxa)
+  return { juros, amortiza: c.restantes <= 1 ? c.saldo : Math.min(c.saldo, c.parcela - juros) }
+}
+
+/** Saldo devedor e o que sai no próximo dia 2. */
+const resumir = (f: Financas) => {
+  f.emprestimo = f.contratos!.reduce((s, c) => s + c.saldo, 0)
+  f.juros = f.contratos!.reduce((s, c) => { const p = parcelaDoMes(c); return s + p.juros + p.amortiza }, 0)
+}
+
+/** Pega `valor` (múltiplo de 100 mil) em `parcelas` vezes, se a dívida não passar do limite. */
+export function pegarEmprestimo(mundo: Mundo, t: TimeM, valor: number, parcelas: number, dia: number): boolean {
+  const f = t.financas
+  if (!f || !Number.isInteger(valor) || valor <= 0 || valor % PASSO_EMPRESTIMO !== 0 || !(PRAZOS as readonly number[]).includes(parcelas)) return false
+  const cs = contratos(mundo, t), limite = limiteEmprestimo(mundo, t)
+  if (f.emprestimo + valor > limite) return false
+  cs.push(novoContrato(mundo, t, valor, parcelas, Math.max(0, ...cs.map((c) => c.id)) + 1, dia))
   receber(t, valor, 'emprestimo', dia)
-  atualizarJuros(mundo, t)
+  resumir(f)
   return true
 }
 
-/** Devolve `valor` (múltiplo de 100 mil), até a dívida e o caixa. Fonte: best/C.java:218-226 (l) */
-export function pagarEmprestimo(mundo: Mundo, t: TimeM, valor: number, dia: number): boolean {
+/** Quita o contrato `id` pagando o saldo devedor de uma vez (sem os juros que faltavam), se houver caixa. */
+export function quitarEmprestimo(mundo: Mundo, t: TimeM, id: number, dia: number): boolean {
   const f = t.financas
-  if (!f || !valorValido(valor) || valor > Math.min(f.emprestimo, f.caixa)) return false
-  f.emprestimo -= valor
-  pagar(t, valor, 'amortizacao', dia)
-  atualizarJuros(mundo, t)
+  if (!f) return false
+  const cs = contratos(mundo, t), c = cs.find((x) => x.id === id)
+  if (!c || c.saldo > f.caixa) return false
+  pagar(t, c.saldo, 'amortizacao', dia)
+  f.contratos = cs.filter((x) => x !== c)
+  resumir(f)
   return true
+}
+
+/** Dia 2: cada contrato cobra a parcela (juros do mês sobre o saldo + o resto amortiza); a última fecha o saldo. */
+function cobrarParcelas(mundo: Mundo, t: TimeM, dia: number): void {
+  const f = t.financas!
+  // sem empréstimo não grava nada (mundos sem banco ficam iguais)
+  const cs = contratosDe(mundo, t)
+  if (!cs.length) return
+  f.contratos = cs
+  for (const c of cs) {
+    const { juros, amortiza } = parcelaDoMes(c)
+    if (juros > 0) pagar(t, juros, 'juros', dia)
+    if (amortiza > 0) pagar(t, amortiza, 'amortizacao', dia)
+    c.saldo -= amortiza
+    c.restantes--
+  }
+  f.contratos = cs.filter((c) => c.saldo > 0 && c.restantes > 0)
+  resumir(f)
 }
 
 /** O time tem jogo marcado no mês (ah.bY, best/ah.java:2228): sem jogo, não paga salário. */
@@ -241,8 +312,7 @@ export function eventosEconomicos(mundo: Mundo, dia: number): void {
   for (const t of humanos) {
     const f = t.financas!
     if (pagaSalario && jogaNoMes(mundo, t.id, ano, mes)) pagar(t, folha(mundo, t), 'salarios', dia)
-    // o limite muda com o valor do elenco: a taxa do mês sai na hora de cobrar
-    if (diaDePagamento(dia) && atualizarJuros(mundo, t) > 0) pagar(t, f.juros, 'juros', dia)
+    if (diaDePagamento(dia)) cobrarParcelas(mundo, t, dia)
     if (f.obra && f.obra.fim < dia) {
       f.obra.setores.forEach((n, k) => (t.estadio.setores[k] = t.estadio.setores[k]! + n))
       f.obra = null

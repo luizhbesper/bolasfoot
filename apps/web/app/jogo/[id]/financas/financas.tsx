@@ -2,7 +2,7 @@
 // Finanças (desenho no Claude Design): indicadores, a linha do caixa na temporada com a projeção de 6 meses (pedido da
 // rodada, salários, juros, bilheteria, patrocínio), entradas/saídas por mês, de onde veio e para onde foi, banco e o
 // extrato com filtros. Tudo sai do extrato do motor (caixa = saldo inicial + lançamentos); o pedido da rodada só mexe no caixa quando ela resolve.
-import { folha, jurosDoMes, limiteEmprestimo, orcamentoObra, PASSO_EMPRESTIMO, taxaJuros, type Comando, type Financas as FinancasM, type Lancamento, type Mundo, type TimeM } from '@bolasfoot/engine'
+import { contratosDe, folha, limiteEmprestimo, novoContrato, orcamentoObra, PASSO_EMPRESTIMO, PRAZOS, type Comando, type Contrato, type Financas as FinancasM, type Lancamento, type Mundo, type TimeM } from '@bolasfoot/engine'
 import { useState, type ReactNode } from 'react'
 import { descrever, Fechado, useComandos, type Comandos } from '../comandos.tsx'
 import { dataLonga, dinheiro } from '../consultas.ts'
@@ -37,15 +37,16 @@ function custo(m: Mundo, t: TimeM, c: Comando): number | null {
   if (c.tipo === 'comprar' || c.tipo === 'lance') return c.valor
   if (c.tipo === 'comprarEmprestado') return m.jogadores[c.jogador]?.valor ?? 0
   if (c.tipo === 'obra') return orcamentoObra(t, c.mais).custo
-  if (c.tipo === 'banco') return c.acao === 'pagar' ? c.valor : -c.valor
+  if (c.tipo === 'banco') return c.acao === 'pegar' ? -c.valor : contratosDe(m, t).find((x) => x.id === c.contrato)?.saldo ?? 0
   return null
 }
 
 export function Financas({ pendentes }: { pendentes: Comando[] }) {
   const { mundo: m, meuTime: t } = useJogo()
   const k = useComandos(pendentes)
-  // valor no controle do banco (+ pega, − devolve), ainda não confirmado: já entra na projeção
+  // empréstimo no controle do banco, ainda não confirmado: já entra na projeção
   const [banco, setBanco] = useState(0)
+  const [prazo, setPrazo] = useState<number>(12)
   if (!m) return <Carregando />
   if (!t?.financas) return <SemClube />
   const f = t.financas
@@ -62,14 +63,15 @@ export function Financas({ pendentes }: { pendentes: Comando[] }) {
   const saiu = DESPESAS.reduce((x, [c]) => x + (c === 'amortizacao' ? 0 : f.despesas[c] ?? 0), 0)
   const emDias = prox.dia - m.dia
   const limite = limiteEmprestimo(m, t)
-  const divida = f.emprestimo + pendentes.reduce((x, c) => x + (c.tipo !== 'banco' ? 0 : c.acao === 'pegar' ? c.valor : -c.valor), 0)
-  const passos = (v: number) => Math.floor(Math.max(0, v) / PASSO_EMPRESTIMO) * PASSO_EMPRESTIMO
-  const faixa = { min: -passos(Math.min(divida, f.caixa - pedido)), max: passos(limite - divida) }
-  const valorBanco = Math.min(faixa.max, Math.max(faixa.min, banco))
-  const proj = projetar(m, t, { pedido: pedido - valorBanco, divida: divida + valorBanco })
-  // sem o valor do controle: a diferença no fim da janela, tirando o principal, é o juro que ele custa (ou economiza)
-  const base = valorBanco ? projetar(m, t, { pedido, divida }) : null
-  const juros6 = base ? base.pontos.at(-1)![1] + valorBanco - proj.pontos.at(-1)![1] : 0
+  // pedidos do banco já mandados nesta rodada
+  const novos = pendentes.flatMap((c) => (c.tipo === 'banco' && c.acao === 'pegar' ? [{ valor: c.valor, parcelas: c.parcelas }] : []))
+  const quitar = pendentes.flatMap((c) => (c.tipo === 'banco' && c.acao === 'quitar' ? [c.contrato] : []))
+  const contratos = contratosDe(m, t)
+  const divida = contratos.filter((c) => !quitar.includes(c.id)).reduce((x, c) => x + c.saldo, 0) + novos.reduce((x, n) => x + n.valor, 0)
+  const maximo = Math.floor(Math.max(0, limite - divida) / PASSO_EMPRESTIMO) * PASSO_EMPRESTIMO
+  const valorBanco = Math.min(maximo, banco)
+  const proj = projetar(m, t, { pedido: pedido - valorBanco, quitar, novos: valorBanco ? [...novos, { valor: valorBanco, parcelas: prazo }] : novos })
+  const base = valorBanco ? projetar(m, t, { pedido, quitar, novos }) : null
   const meses = porMes(dias)
   for (const p of proj.meses) {
     const x = meses.find((y) => y.ano === p.ano && y.mes === p.mes)
@@ -86,7 +88,7 @@ export function Financas({ pendentes }: { pendentes: Comando[] }) {
           sub={<>{dataCurta(prox.dia)} · <span style={{ color: 'var(--pessego)', fontWeight: 600 }}>{emDias <= 0 ? 'hoje' : emDias === 1 ? 'amanhã' : `em ${emDias} dias`}</span>{!prox.cobra && ' · sem jogo no mês, não cobra'}</>} />
         <Kpi rotulo="Resultado da temporada" valor={sinal(entrou - saiu)} cor={entrou - saiu < 0 ? 'rosa' : 'menta'}
           sub={`entrou ${dinheiro(entrou)} · saiu ${dinheiro(saiu)}`} />
-        <Kpi rotulo="Empréstimo do banco" valor={dinheiro(f.emprestimo)} sub={`de ${dinheiro(limite)} · juros ${dinheiro(f.juros)}/mês`} />
+        <Kpi rotulo="Empréstimo do banco" valor={dinheiro(f.emprestimo)} sub={`de ${dinheiro(limite)} · parcelas ${dinheiro(f.juros)}/mês`} />
       </section>
 
       <div className={s.topo}>
@@ -104,7 +106,7 @@ export function Financas({ pendentes }: { pendentes: Comando[] }) {
 
         <div className="coluna" style={{ gap: 16 }}>
           {pedidos.length > 0 && <Pedido k={k} m={m} pedidos={pedidos} caixa={f.caixa} folha={proxFolha} />}
-          <Banco k={k} divida={divida} limite={limite} faixa={faixa} valor={valorBanco} setValor={setBanco} juros6={juros6} />
+          <Banco k={k} m={m} t={t} contratos={contratos} quitar={quitar} divida={divida} limite={limite} maximo={maximo} valor={valorBanco} setValor={setBanco} prazo={prazo} setPrazo={setPrazo} />
         </div>
       </div>
 
@@ -179,38 +181,47 @@ function Pedido({ k, m, pedidos, caixa, folha }: {
   )
 }
 
-function Banco({ k, divida, limite, faixa, valor, setValor, juros6 }: {
-  k: Comandos; divida: number; limite: number; faixa: { min: number; max: number }; valor: number; setValor: (v: number) => void; juros6: number
+function Banco({ k, m, t, contratos, quitar, divida, limite, maximo, valor, setValor, prazo, setPrazo }: {
+  k: Comandos; m: Mundo; t: TimeM; contratos: Contrato[]; quitar: number[]; divida: number; limite: number; maximo: number
+  valor: number; setValor: (v: number) => void; prazo: number; setPrazo: (n: number) => void
 }) {
-  const nova = divida + valor
+  const c = valor ? novoContrato(m, t, valor, prazo, 0, m.dia, divida) : null
+  const pct = (x: number) => `${(x * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`
   return (
     <section className={`card ${s.painel}`} aria-label="Banco">
       <div className="linha" style={{ justifyContent: 'space-between' }}>
-        <h2>Banco</h2><span className={s.nota}>{dinheiro(divida)} de {dinheiro(limite)}</span>
+        <h2>Banco</h2><span className={s.nota}>deve {dinheiro(divida)} de {dinheiro(limite)}</span>
       </div>
-      <input type="range" min={faixa.min} max={faixa.max} step={PASSO_EMPRESTIMO} value={valor} disabled={!k.aberto || faixa.min === faixa.max} list="banco-zero"
-        onChange={(e) => setValor(Number(e.target.value))} aria-label="Pegar (direita) ou devolver (esquerda)" aria-valuetext={sinal(valor)} />
-      <datalist id="banco-zero"><option value={0} /></datalist>
-      <div className={s.linhaValor} style={{ fontSize: 12 }}>
-        <span className="fraco">{faixa.min < 0 ? `devolver ${dinheiro(-faixa.min)}` : 'R$ 0'}</span>
-        {valor !== 0 && <button className="fantasma" style={{ height: 24, padding: '0 8px', fontSize: 12 }} onClick={() => setValor(0)}>Zerar</button>}
-        <span className="fraco">pegar {dinheiro(faixa.max)}</span>
+      <input type="range" min={0} max={maximo} step={PASSO_EMPRESTIMO} value={valor} disabled={!k.aberto || maximo === 0}
+        onChange={(e) => setValor(Number(e.target.value))} aria-label="Valor do empréstimo" aria-valuetext={dinheiro(valor)} />
+      <div className={s.linhaValor} style={{ fontSize: 12 }}><span className="fraco">R$ 0</span><span className="fraco">até {dinheiro(maximo)}</span></div>
+      <div className="chips" role="group" aria-label="Parcelas">
+        {PRAZOS.map((n) => <button key={n} aria-pressed={prazo === n} onClick={() => setPrazo(n)}>{n}x</button>)}
       </div>
-      <div className={s.linhaValor}><span className="mudo">{valor < 0 ? 'Devolver' : 'Pegar'}</span><strong>{dinheiro(Math.abs(valor))}</strong></div>
-      <div className={s.linhaValor}><span className="mudo">Dívida depois</span><strong>{dinheiro(nova)}</strong></div>
-      <div className={s.linhaValor}>
-        <span className="mudo">Juros ({(taxaJuros(nova, limite) * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}% ao mês)</span>
-        <strong>{dinheiro(jurosDoMes(nova, limite))}/mês</strong>
-      </div>
-      {valor !== 0 && (
+      <div className={s.linhaValor}><span className="mudo">Pegar</span><strong>{dinheiro(valor)}</strong></div>
+      {c && <>
+        <div className={s.linhaValor}><span className="mudo">Parcela</span><strong>{prazo}x de {dinheiro(c.parcela)}</strong></div>
+        <div className={s.linhaValor}><span className="mudo">Juros</span><strong>{pct(c.taxa)} ao mês</strong></div>
         <div className={s.linhaValor}>
-          <span className="mudo">{juros6 >= 0 ? 'Juros a mais em 6 meses' : 'Juros a menos em 6 meses'}</span>
-          <strong style={{ color: juros6 > 0 ? 'var(--rosa)' : 'var(--menta)' }}>{dinheiro(Math.abs(juros6))}</strong>
+          <span className="mudo">Total a pagar</span>
+          <strong>{dinheiro(c.parcela * prazo)} <span style={{ color: 'var(--rosa)', fontWeight: 500 }}>(+{dinheiro(c.parcela * prazo - valor)})</span></strong>
+        </div>
+      </>}
+      <span className={s.nota}>Limite: 30% do valor do elenco. Juros de 1% a 10% ao mês: sobem com o tamanho da dívida e com o prazo. Parcelas todo dia 2. No gráfico, o pontilhado claro é a projeção sem este empréstimo.</span>
+      <button className={s.botaoBanco} disabled={!k.aberto || k.ocupado || valor === 0}
+        onClick={() => void k.mandar({ tipo: 'banco', acao: 'pegar', valor, parcelas: prazo }).then((e) => { if (!e) setValor(0) })}>Pegar {dinheiro(valor)} em {prazo}x</button>
+      {contratos.length > 0 && (
+        <div className="coluna" style={{ gap: 8 }}>
+          <span className="mudo" style={{ fontSize: 13 }}>Em aberto</span>
+          {contratos.map((x) => (
+            <div key={x.id} className={s.linhaValor} style={{ fontSize: 13 }}>
+              <span>{dinheiro(x.valor)} · faltam {x.restantes} de {x.parcelas}x de {dinheiro(x.parcela)} <span className="fraco">({pct(x.taxa)})</span></span>
+              <button style={{ height: 28, padding: '0 10px', fontSize: 12 }} disabled={!k.aberto || k.ocupado || quitar.includes(x.id)}
+                onClick={() => void k.mandar({ tipo: 'banco', acao: 'quitar', contrato: x.id })}>{quitar.includes(x.id) ? 'Quitação pedida' : `Quitar ${dinheiro(x.saldo)}`}</button>
+            </div>
+          ))}
         </div>
       )}
-      <span className={s.nota}>Limite: 30% do valor do elenco. Juros de 1% a 7% ao mês, mais caros perto do limite, todo dia 2. No gráfico, o pontilhado claro é a projeção sem esta operação.</span>
-      <button className={s.botaoBanco} disabled={!k.aberto || k.ocupado || valor === 0}
-        onClick={() => void k.mandar({ tipo: 'banco', acao: valor > 0 ? 'pegar' : 'pagar', valor: Math.abs(valor) }).then((e) => { if (!e) setValor(0) })}>Confirmar</button>
       <Fechado k={k} />
     </section>
   )

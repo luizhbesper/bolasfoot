@@ -302,8 +302,10 @@ export async function comandosPendentes(q: Q, gameId: number, userId: number): P
   if (etapa === null) return []
   const [c] = await q.select({ list: commands.list }).from(commands).innerJoin(gameMembers, eq(gameMembers.id, commands.memberId))
     .where(and(eq(commands.gameId, gameId), eq(commands.n, g.round), eq(commands.etapa, etapa), eq(gameMembers.userId, userId)))
-  // 'venderAgora' saiu do motor: um pedido antigo ainda guardado travaria a validação dos próximos
-  return ((c?.list as Comando[] | undefined) ?? []).filter((x) => (x.tipo as string) !== 'venderAgora')
+  // 'venderAgora' e o banco sem prazo (pegar/pagar avulso) saíram do motor: um pedido antigo ainda guardado travaria a
+  // validação dos próximos
+  return ((c?.list as Comando[] | undefined) ?? []).filter((x) => (x.tipo as string) !== 'venderAgora' &&
+    !(x.tipo === 'banco' && x.acao === 'pegar' ? !x.parcelas : x.tipo === 'banco' && x.acao !== 'quitar'))
 }
 
 /** Tipos que valem uma vez por fase: o novo substitui o anterior; os outros (compras, propostas…) se somam. */

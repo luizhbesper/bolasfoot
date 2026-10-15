@@ -35,7 +35,7 @@ export type Comandos = ReturnType<typeof useComandos>
 export function descrever(m: Mundo, c: Comando): string {
   const nome = (id: number) => m.jogadores[id]?.nome ?? '?'
   switch (c.tipo) {
-    case 'banco': return c.acao === 'pegar' ? `Pegar ${dinheiro(c.valor)} emprestados` : `Devolver ${dinheiro(c.valor)} do empréstimo`
+    case 'banco': return c.acao === 'pegar' ? `Pegar ${dinheiro(c.valor)} emprestados em ${c.parcelas}x` : `Quitar o empréstimo nº ${c.contrato}`
     case 'obra': return `Ampliar o estádio: ${c.mais.map((n) => n.toLocaleString('pt-BR')).join(' / ')} lugares`
     case 'ingresso': return c.precos ? `Ingressos: ${c.precos.map((p) => `R$ ${p}`).join(' / ')}` : 'Ingressos no preço automático'
     case 'treino': return `Treino: ${c.auxiliar ? 'o auxiliar decide' : c.foco === 0 ? 'características principais' : 'características secundárias'}`

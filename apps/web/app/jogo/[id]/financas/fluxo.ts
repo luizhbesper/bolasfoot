@@ -1,7 +1,7 @@
 // Contas da tela de Finanças a partir do extrato (lançamentos com dia): a série do caixa, os meses, o próximo salário e
 // a projeção dos próximos 6 meses.
 import {
-  data, diaAbsoluto, diaDePagamento, domingo, folha, jogaNoMes, jurosDoMes, limiteEmprestimo, precoPadrao, valorPatrocinio,
+  contratosDe, data, diaAbsoluto, diaDePagamento, domingo, folha, jogaNoMes, novoContrato, parcelaDoMes, precoPadrao, valorPatrocinio,
   type Financas, type Lancamento, type Mundo, type TimeM,
 } from '@bolasfoot/engine'
 
@@ -53,15 +53,21 @@ export function proximaFolha(m: Mundo, t: TimeM): { dia: number; cobra: boolean 
 
 /**
  * Caixa dia a dia de hoje até 6 meses à frente: o pedido da rodada (`pedido`, + sai do caixa), salários pela regra do
- * motor (eventosEconomicos), juros do dia 2 sobre `divida` (já com o pedido do banco), bilheteria dos jogos em casa e o
- * patrocínio da virada. Depois do fim do calendário não há jogos marcados: o salário é cobrado todo mês.
+ * motor (eventosEconomicos), as parcelas do dia 2 dos contratos (menos os `quitar`, mais os `novos` empréstimos),
+ * bilheteria dos jogos em casa e o patrocínio da virada. Depois do fim do calendário não há jogos marcados: o salário é cobrado todo mês.
  */
-export function projetar(m: Mundo, t: TimeM, { pedido = 0, divida = t.financas?.emprestimo ?? 0 } = {}): { pontos: [number, number][]; meses: Mes[] } {
+export function projetar(m: Mundo, t: TimeM, { pedido = 0, novos = [] as { valor: number; parcelas: number }[], quitar = [] as number[] } = {}): { pontos: [number, number][]; meses: Mes[] } {
   const mensal = m.opcoes.salarioMensal ?? true
   const { ano, mes, dia } = data(m.dia)
   const fim = diaAbsoluto(ano + Math.floor((mes + 5) / 12), ((mes + 5) % 12) + 1, Math.min(dia, 28))
   const virada = m.calendario.inicio + m.calendario.tipos.length
-  const valorFolha = folha(m, t), juros = jurosDoMes(divida, limiteEmprestimo(m, t))
+  const valorFolha = folha(m, t)
+  const cs = contratosDe(m, t).filter((c) => !quitar.includes(c.id)).map((c) => ({ ...c }))
+  let divida = cs.reduce((x, c) => x + c.saldo, 0)
+  for (const n of novos) {
+    cs.push(novoContrato(m, t, n.valor, n.parcelas, -1, m.dia, divida))
+    divida += n.valor
+  }
   // ponytail: bilheteria por média histórica, não publico() com RNG
   const rendas = (t.financas?.lancamentos ?? []).filter((l) => l.cat === 'bilheteria' && l.valor > 0)
   const renda = rendas.length
@@ -93,7 +99,13 @@ export function projetar(m: Mundo, t: TimeM, { pedido = 0, divida = t.financas?.
     lancar(d, (emCasa.get(d) ?? 0) * renda)
     if (d > m.diaEventos) {
       if ((mensal ? diaDePagamento(d) : domingo(d)) && (d >= virada || !mensal || jogaNoMes(m, t.id, x.ano, x.mes))) lancar(d, -valorFolha)
-      if (diaDePagamento(d)) lancar(d, -juros)
+      if (diaDePagamento(d))
+        for (const c of cs.filter((c) => c.restantes > 0 && c.saldo > 0)) {
+          const p = parcelaDoMes(c)
+          lancar(d, -(p.juros + p.amortiza))
+          c.saldo -= p.amortiza
+          c.restantes--
+        }
     }
     if (saldo !== pontos.at(-1)![1]) pontos.push([Math.max(d, m.dia), saldo])
   }

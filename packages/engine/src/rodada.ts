@@ -4,7 +4,7 @@
 import type { Base } from '@bolasfoot/data'
 import { aceitarOferta, aposentar, definirTreino, MOTIVOS_DEMISSAO, pedirDemissao } from './carreira.ts'
 import { comecarDia, jogosDoDia, terminarDia, type Competicao, type DiaEmJogo, type PartidaDoDia } from './competicoes.ts'
-import { iniciarObra, PASSO_EMPRESTIMO, pagarEmprestimo, pegarEmprestimo } from './economia.ts'
+import { iniciarObra, PASSO_EMPRESTIMO, PRAZOS, pegarEmprestimo, quitarEmprestimo } from './economia.ts'
 import { BANCO, FORMACOES } from './escalacao.ts'
 import {
   anunciar, comprarEmprestado, darLance, disponibilizarEmprestimo, dispensarJunior, encerrarEmprestimo, pedirEmprestado,
@@ -26,7 +26,8 @@ export type Comando =
   | { tipo: 'config'; energiaMin?: number; renovarAuto?: boolean }
   | { tipo: 'treino'; foco: 0 | 1; auxiliar: boolean }
   | { tipo: 'ingresso'; precos: Setores | null }
-  | { tipo: 'banco'; acao: 'pegar' | 'pagar'; valor: number }
+  | { tipo: 'banco'; acao: 'pegar'; valor: number; parcelas: number }
+  | { tipo: 'banco'; acao: 'quitar'; contrato: number }
   | { tipo: 'obra'; mais: Setores }
   | { tipo: 'comprar'; jogador: number; valor: number; aceitarContraproposta?: boolean }
   | { tipo: 'responderProposta'; proposta: number; aceitar: boolean }
@@ -156,7 +157,9 @@ export function validar(m: Mundo, tecnicoId: number, c: Comando): string | null 
     case 'ingresso':
       return c.precos === null || (c.precos.length === 4 && c.precos.every((p) => inteiro(p))) ? null : 'preços inválidos'
     case 'banco':
-      if (c.acao !== 'pegar' && c.acao !== 'pagar') return 'ação inválida'
+      if (c.acao === 'quitar') return inteiro(c.contrato, 1) ? null : 'contrato inválido'
+      if (c.acao !== 'pegar') return 'ação inválida'
+      if (!(PRAZOS as readonly number[]).includes(c.parcelas)) return 'prazo inválido'
       return inteiro(c.valor, PASSO_EMPRESTIMO) && c.valor % PASSO_EMPRESTIMO === 0 ? null : 'valor inválido'
     case 'obra':
       return c.mais.length === 4 && c.mais.every((n) => inteiro(n)) ? null : 'obra inválida'
@@ -231,7 +234,7 @@ function executar(m: Mundo, base: Base, tc: number, t: TimeM | null, c: Comando,
       t!.estadio.precos = c.precos && [...c.precos]
       return ok()
     case 'banco':
-      return ok((c.acao === 'pegar' ? pegarEmprestimo(m, t!, c.valor, m.dia) : pagarEmprestimo(m, t!, c.valor, m.dia)) ? null : c.acao === 'pegar' ? 'limite de empréstimo' : 'nada a pagar ou sem caixa')
+      return ok(c.acao === 'pegar' ? (pegarEmprestimo(m, t!, c.valor, c.parcelas, m.dia) ? null : 'limite de empréstimo') : (quitarEmprestimo(m, t!, c.contrato, m.dia) ? null : 'contrato inexistente ou sem caixa'))
     case 'obra':
       return ok(iniciarObra(m, id, c.mais))
     case 'comprar': {

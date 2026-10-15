@@ -409,7 +409,7 @@ Ordem do `aa()` (os passos internacionais e de seleções ficam para a Fase 6):
   - Blocos de 500 mil, até 5M / 3M / 2M / 1,5M nas Séries A a D, ou 1M fora delas.
   - Devolve 500 mil se houver caixa.
   - Juros = `floor(saldo × 3 / 100)`, cobrados no dia 2 (`dJ`, `a.o`).
-  - **Desvio no port**: valor livre em passos de 100 mil; limite = 30% do valor do elenco (mínimo 500 mil); juros ao mês = 1% + 6% × (dívida / limite), no máximo 7%, recalculados no dia 2.
+  - **Desvio no port**: contratos parcelados (tabela Price) em 6, 12, 24 ou 36 vezes, valor livre em passos de 100 mil; limite = 30% do valor do elenco (mínimo 500 mil) somando os saldos; juros ao mês = 1% + 6% × (dívida com o novo / limite) + 3% × (prazo − 6) / 30, de 1% a 10%; parcela no dia 2; quitação antecipada paga só o saldo.
 - **Bilheteria** (`I.hf`): só para o mandante humano, nunca no Mundial nem em jogo de seleções. O público vem de `v_0` (ver acima).
 - **Prêmios** (só humanos):
 
