@@ -36,7 +36,7 @@ test('pede empréstimo, obra e proposta; vê o resultado depois da rodada', asyn
 
   await page.getByRole('link', { name: 'Procurar jogadores' }).click()
   await page.getByRole('button', { name: 'ATA' }).click()
-  await page.getByLabel('Preço máximo').selectOption({ label: 'até R$ 1 mi' })
+  await page.getByLabel('Preço máximo').fill('1') // R$ mi
   await page.locator('tbody tr').first().click()
   await expect(page.getByRole('heading', { name: 'Proposta' })).toBeVisible()
   await foto('procura')
