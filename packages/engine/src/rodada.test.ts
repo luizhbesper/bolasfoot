@@ -117,6 +117,7 @@ describe('rodada', () => {
     expect(m.jogadores[j2!]!.time).toBe(timeDe(m, b).id)
     expect(m.propostasHumanas).toHaveLength(0)
     expect(m.avisos.some((x) => x.tecnico === a && /Sem resposta/.test(x.texto))).toBe(true)
+    expect(m.historicoPropostas!.map((h) => [h.jogador, h.status])).toEqual([[j1, 'aceita'], [j2, 'expirada']])
   })
 
   it('dois humanos no mesmo jogador da IA: a maior oferta leva', () => {

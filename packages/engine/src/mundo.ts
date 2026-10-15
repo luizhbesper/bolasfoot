@@ -116,6 +116,8 @@ export interface TimeM extends Omit<Time, 'jogadores' | 'juniores' | 'estadio' |
   /** ah.hr: desempate aleatório 1..1000 */
   desempate: number
   humano: boolean
+  /** regra do port: dia do último jogo (descanso longo zera o cansaço, competicoes.ts); ausente = ainda não jogou */
+  ultimoJogo?: number
   /** id em Mundo.tecnicos (ah.mZ) */
   tecnico: number
   /** ah.nu: pontos de reputação (títulos somam, cada temporada desconta) */
@@ -192,6 +194,8 @@ export interface Mundo {
   avisos: Aviso[]
   /** propostas de um humano por jogador de outro humano, respondidas na rodada seguinte */
   propostasHumanas: PropostaHumana[]
+  /** regra do port: toda proposta com um humano numa ponta e como acabou; ausente em mundos antigos */
+  historicoPropostas?: RegistroProposta[]
   /** jogadores de humanos que pediram para se aposentar na virada (F.ge); o técnico decide até a próxima */
   queremParar: number[]
   /** o dia entre o 1º e o 2º tempo, no modo com intervalo */
@@ -201,7 +205,7 @@ export interface Mundo {
 }
 
 /** O que o aviso é, para a caixa de entrada filtrar e oferecer a ação certa. */
-export type TipoAviso = 'proposta' | 'mercado' | 'emprego' | 'demissao' | 'aposentadoria' | 'temporada' | 'competicao' | 'contrato'
+export type TipoAviso = 'proposta' | 'mercado' | 'emprego' | 'demissao' | 'aposentadoria' | 'temporada' | 'competicao' | 'contrato' | 'suspensao'
 
 export interface Aviso {
   tecnico: number
@@ -210,6 +214,20 @@ export interface Aviso {
   tipo: TipoAviso
   /** proposta (id em propostasHumanas) ou jogador (mercado, aposentadoria) */
   ref?: number
+}
+
+export interface RegistroProposta {
+  dia: number
+  jogador: number
+  /** -1: ninguém (venda imediata sem comprador) */
+  vendedor: number
+  comprador: number
+  /** a oferta (ou o preço da venda) */
+  valor: number
+  status: 'aceita' | 'recusada' | 'contraproposta' | 'expirada'
+  motivo?: string
+  /** contraproposta: o que o clube pede e o salário que o jogador quer (0 = mantém) */
+  contra?: { valor: number; salario: number }
 }
 
 export interface PropostaHumana {

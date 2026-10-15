@@ -1,5 +1,5 @@
 // Leituras do mundo e formatos usados pelas telas (só cliente/servidor web; o motor não formata).
-import type { Competicao, FaseMataMata, JogadorM, Jogo, Linha, Mundo } from '@bolasfoot/engine'
+import { jogosSuspenso, type Competicao, type FaseMataMata, type JogadorM, type Jogo, type Linha, type Mundo } from '@bolasfoot/engine'
 
 const DIA_MS = 86_400_000
 const SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
@@ -116,9 +116,20 @@ export function tabelaDoTime(m: Mundo, compId: string, time: number): { nome: st
 export const jogadoresDe = (m: Mundo, ids: number[]): JogadorM[] => ids.map((id) => m.jogadores[id]!)
 
 /** Por que o jogador pode não jogar (ou merece atenção); null = tudo certo. */
-export function alerta(m: Mundo, j: JogadorM): { texto: string; cor: 'rosa' | 'pessego' | 'manteiga' } | null {
+// listas chamam alerta por jogador: o próximo jogo de cada time sai uma vez por mundo
+const proximos = new WeakMap<Mundo, Map<number, string | undefined>>()
+function compDoProximo(m: Mundo, time: number): string | undefined {
+  let c = proximos.get(m)
+  if (!c) proximos.set(m, (c = new Map()))
+  if (!c.has(time)) c.set(time, proximoJogo(m, time)?.compId)
+  return c.get(time)
+}
+
+/** `comp`: competição do próximo jogo (a suspensão vale só nela); padrão: a do próximo jogo do time. */
+export function alerta(m: Mundo, j: JogadorM, comp = compDoProximo(m, j.time)): { texto: string; cor: 'rosa' | 'pessego' | 'manteiga' } | null {
   if (j.lesaoAte > m.dia) return { texto: `Lesionado (${j.lesaoAte - m.dia} d)`, cor: 'rosa' }
-  if (Object.values(j.suspensoes).some((s) => s.jogos >= 1 || s.amarelos >= 3)) return { texto: 'Suspenso', cor: 'rosa' }
+  const n = comp && j.suspensoes[comp] ? jogosSuspenso(j.suspensoes[comp]) : 0
+  if (n > 0) return { texto: `Suspenso (${n} jogo${n > 1 ? 's' : ''})`, cor: 'rosa' }
   if (j.energia < 70) return { texto: `Energia ${j.energia}%`, cor: 'pessego' }
   // mesmo corte da renovação no motor (mercado.ts:555)
   if (j.contratoAte - m.dia < 60) return { texto: j.contratoAte <= m.dia ? 'Contrato vencido' : `Contrato: ${j.contratoAte - m.dia} d`, cor: 'manteiga' }

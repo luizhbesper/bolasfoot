@@ -8,9 +8,9 @@ import { iniciarObra, pagarEmprestimo, pegarEmprestimo } from './economia.ts'
 import { BANCO, FORMACOES } from './escalacao.ts'
 import {
   anunciar, comprarEmprestado, darLance, disponibilizarEmprestimo, dispensarJunior, encerrarEmprestimo, pedirEmprestado,
-  promoverJunior, proporCompra, renovarContrato, retirarDaLista, transferir, venderAgora, type Proposta,
+  promoverJunior, proporCompra, registrarProposta, renovarContrato, retirarDaLista, transferir, venderAgora, type Proposta,
 } from './mercado.ts'
-import type { Mundo, Tatica, TimeM, TipoAviso } from './mundo.ts'
+import type { Mundo, RegistroProposta, Tatica, TimeM, TipoAviso } from './mundo.ts'
 import { ANO_INICIAL } from './calendario.ts'
 import { mudarTatica, substituir, type Partida } from './partida.ts'
 import { derivar, type Rng } from './rng.ts'
@@ -245,7 +245,13 @@ function executar(m: Mundo, base: Base, tc: number, t: TimeM | null, c: Comando,
         avisar(m, dono.tecnico, 'proposta', `${t!.nome} oferece ${reais(c.valor)} por ${j.nome}.`, p.id)
         return ok()
       }
+      const vendedor = j.time
       const proposta = proporCompra(m, id, j.id, c.valor, rng, c.aceitarContraproposta ?? false, base)
+      registrarProposta(m, {
+        jogador: j.id, vendedor, comprador: id, valor: proposta.tipo === 'fechada' ? proposta.valor : c.valor,
+        ...(proposta.tipo === 'fechada' ? { status: 'aceita' } : proposta.tipo === 'recusada' ? { status: 'recusada', motivo: proposta.motivo }
+          : { status: 'contraproposta', contra: { valor: proposta.valor, salario: proposta.salario } }),
+      })
       return { erro: proposta.tipo === 'recusada' ? proposta.motivo : null, proposta }
     }
     case 'responderProposta': {
@@ -253,12 +259,20 @@ function executar(m: Mundo, base: Base, tc: number, t: TimeM | null, c: Comando,
       m.propostasHumanas = m.propostasHumanas.filter((x) => x !== p)
       const j = m.jogadores[p.jogador]!, comp = m.times[p.comprador]!
       const tecComp = comp.tecnico
+      const reg = (status: RegistroProposta['status'], motivo?: string) =>
+        registrarProposta(m, { jogador: j.id, vendedor: id, comprador: comp.id, valor: p.valor, status, ...(motivo ? { motivo } : {}) })
       if (!c.aceitar) {
+        reg('recusada', `${t!.nome} recusou`)
         avisar(m, tecComp, 'mercado', `${t!.nome} recusou a proposta por ${j.nome}.`, j.id)
         return ok()
       }
-      if (!comp.humano || !comp.financas || comp.financas.caixa < p.valor) return ok('o comprador não tem mais o dinheiro')
-      if (comp.jogadores.length >= 35) return ok('o elenco do comprador está cheio')
+      const erro = !comp.humano || !comp.financas || comp.financas.caixa < p.valor ? 'o comprador não tem mais o dinheiro'
+        : comp.jogadores.length >= 35 ? 'o elenco do comprador está cheio' : null
+      if (erro) {
+        reg('recusada', erro)
+        return ok(erro)
+      }
+      reg('aceita')
       transferir(m, j, comp.id, p.valor)
       avisar(m, tecComp, 'mercado', `${t!.nome} aceitou: ${j.nome} é seu por ${reais(p.valor)}.`, j.id)
       return ok()
@@ -270,6 +284,8 @@ function executar(m: Mundo, base: Base, tc: number, t: TimeM | null, c: Comando,
       return ok()
     case 'venderAgora': {
       const r = venderAgora(m, c.jogador, c.preco, rng)
+      registrarProposta(m, r ? { jogador: c.jogador, vendedor: id, comprador: r.comprador, valor: r.valor, status: 'aceita', motivo: 'venda imediata' }
+        : { jogador: c.jogador, vendedor: id, comprador: -1, valor: c.preco, status: 'recusada', motivo: 'venda imediata: nenhum clube pagou esse preço' })
       return ok(r ? null : 'nenhum clube pagou esse preço')
     }
     case 'paraEmprestimo':
@@ -431,8 +447,10 @@ export function avancarRodada(m: Mundo, base: Base, comandos: readonly ComandoDe
   for (const l of m.leiloes) l.visto = true // os humanos planejaram vendo esses leilões
   const pendentes = new Set(m.propostasHumanas)
   const resultados = aplicarComandos(m, base, comandos, derivar(seed, 'comandos'))
-  for (const p of m.propostasHumanas.filter((x) => pendentes.has(x)))
+  for (const p of m.propostasHumanas.filter((x) => pendentes.has(x))) {
+    registrarProposta(m, { jogador: p.jogador, vendedor: m.jogadores[p.jogador]!.time, comprador: p.comprador, valor: p.valor, status: 'expirada', motivo: 'sem resposta' })
     avisar(m, m.times[p.comprador]!.tecnico, 'mercado', `Sem resposta pela proposta por ${m.jogadores[p.jogador]!.nome}: recusada.`, p.jogador)
+  }
   m.propostasHumanas = m.propostasHumanas.filter((x) => !pendentes.has(x))
   m.queremParar = m.queremParar.filter((id) => m.jogadores[id]!.time >= 0)
   const humano = humanoJoga(m)

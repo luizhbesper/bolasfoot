@@ -25,6 +25,10 @@ beforeAll(() => {
   fimDeTemporada(m, B)
 })
 
+it('a virada zera as suspensões (F.gc/gd)', () => {
+  expect(m.jogadores.filter((j) => Object.keys(j.suspensoes).length)).toEqual([])
+})
+
 describe('zonasDaTabela', () => {
   it('mundo novo: A com vagas continentais e queda, B sobe e cai, C classifica e cai, D não cai', () => {
     const n = novoJogo(B, { habilidadeIndividual: false }, 'zonas')
@@ -100,6 +104,6 @@ describe('fim de temporada', () => {
     expect((comp('BR-4').fases[0] as FaseLiga).times).toEqual(expect.arrayContaining(m.historico.filter((x) => x.competicao === 'BR-3')[0]!.cairam))
     fimDeTemporada(m, B)
     expect(m.temporada).toBe(3)
-    expect(criarRng(JSON.stringify(m)).int(1e9)).toMatchInlineSnapshot(`36362452`)
+    expect(criarRng(JSON.stringify(m)).int(1e9)).toMatchInlineSnapshot(`443530557`)
   }, 20_000)
 })

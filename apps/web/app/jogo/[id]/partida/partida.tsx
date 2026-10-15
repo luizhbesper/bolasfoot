@@ -10,7 +10,8 @@ import { ChipPosicao, Escudo, fundoEstadio } from '../../../_ui/ui.tsx'
 import { enviarComandosAcao } from '../acoes.ts'
 import { BotaoPronto, Prontos, Relogio } from '../casca.tsx'
 import { useJogo, useRelogio, type EstadoFase } from '../contexto.tsx'
-import { dataLonga, etapaDoJogo } from '../consultas.ts'
+import { dataLonga, dinheiro, etapaDoJogo } from '../consultas.ts'
+import { caracteristicas } from '../elenco/elenco.tsx'
 import { ESTILOS, JOGADAS, MARCACOES } from '../escalacao/escalacao.tsx'
 import s from './partida.module.css'
 import { classificacao, Seta, TabelaRodada, variacao, type Classificacao } from './tabela.tsx'
@@ -187,7 +188,8 @@ function Placar({ p, pt, m, dias }: { p: PartidaLog; pt: Ponto; m: Mundo | null;
   // o que é o jogo: "Paulista, 7ª rodada · Itaquerão"
   const etapa = m ? dias.map((d) => etapaDoJogo(m, p.comp, p.times[0]!, p.times[1]!, d)).find(Boolean) : ''
   const sede = p.sede ? m?.times[p.sede.time] : null
-  const sobre = [[p.compNome, etapa].filter(Boolean).join(', '), p.sede && `Final em ${p.sede.cidade}`, (sede ?? t(0))?.estadio.nome].filter(Boolean).join(' · ')
+  const sobre = [[p.compNome, etapa].filter(Boolean).join(', '), p.sede && `Final em ${p.sede.cidade}`, (sede ?? t(0))?.estadio.nome,
+    p.publico && `${p.publico.toLocaleString('pt-BR')} pagantes`].filter(Boolean).join(' · ')
   return (
     <section className={s.placar} style={{ '--c0': t(0)?.cor1 ?? 'transparent', '--c1': t(1)?.cor1 ?? 'transparent', '--estadio': fundoEstadio(p.times[0]!) } as CSSProperties}>
       <div className={s.sobre}>{sobre}</div>
@@ -371,7 +373,8 @@ function Resumo({ m, partidas, minha, amigos, humanos, eu, tabela }: {
       <div className={c ? s.resumoGrade : undefined}>
         {c && <TabelaRodada c={c} m={m} eu={eu} destaque={amigosIds} animar />}
         <div className={s.importantes}>
-          {minha && <div className="coluna" style={{ gap: 8 }}><h3>Seu jogo</h3>{linha(minha, '', eu)}</div>}
+          {minha && <div className="coluna" style={{ gap: 8 }}><h3>Seu jogo</h3>{linha(minha, '', eu)}
+            {minha.publico && <span className="mudo" style={{ fontSize: 13 }}>Público {minha.publico.toLocaleString('pt-BR')}{minha.times[0] === eu && minha.renda ? ` · renda ${dinheiro(minha.renda)}` : ''}</span>}</div>}
           {amigos.length > 0 && (
             <div className="coluna" style={{ gap: 8 }}><h3>Amigos</h3>
               {amigos.map((p) => {
@@ -453,6 +456,7 @@ function PainelIntervalo({ m, timeId, pendentes }: { m: Mundo; timeId: number; p
           <ChipPosicao posicao={j.posicao} />
           <span className={s.nomeJog}>{j.nome}</span>
           {emCampo && j.lesao > 0 && <span className="etiqueta rosa">lesionado</span>}
+          <span className="fraco" title="Características">{caracteristicas(j)}</span>
           <span className="fraco">F {j.forca}</span>
           <span className={j.energia < 70 ? s.cansado : 'mudo'}>E {j.energia}</span>
         </button>

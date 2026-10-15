@@ -18,7 +18,7 @@ const COLUNAS: { chave: Coluna; rotulo: string; num?: boolean }[] = [
   { chave: 'valor', rotulo: 'Valor', num: true }, { chave: 'contratoAte', rotulo: 'Contrato', num: true }, { chave: 'gols', rotulo: 'Gols', num: true },
 ]
 export const lado = (j: JogadorM) => (j.lado === 1 ? 'E' : 'D')
-export const caracteristicas = (j: JogadorM) => `${CARACTERISTICAS[j.cr1]}/${CARACTERISTICAS[j.cr2]}`
+export const caracteristicas = (j: { cr1: number; cr2: number }) => `${CARACTERISTICAS[j.cr1]}/${CARACTERISTICAS[j.cr2]}`
 
 export function Elenco({ paises, pendentes }: { paises: string[]; pendentes: Comando[] }) {
   const { mundo: m, meuTime: t } = useJogo()

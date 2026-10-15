@@ -1,25 +1,42 @@
 'use client'
 // Minhas propostas: as que amigos fizeram pelos seus jogadores (responder até a próxima rodada), as suas esperando
-// resposta, os pedidos desta rodada e o que aconteceu com os da última (com a contraproposta, quando houver).
-import type { Comando, ResultadoComando } from '@bolasfoot/engine'
+// resposta, o histórico de todas (feitas e recebidas, com o porquê) e os outros pedidos da última rodada.
+import type { Comando, RegistroProposta, ResultadoComando } from '@bolasfoot/engine'
+import { useState } from 'react'
 import { ChipPosicao } from '../../../_ui/ui.tsx'
 import { descrever, Fechado, Pendentes, useComandos } from '../comandos.tsx'
-import { dinheiro } from '../consultas.ts'
+import { dataLonga, dinheiro } from '../consultas.ts'
 import { useJogo } from '../contexto.tsx'
 import { Carregando, SemClube } from '../hub.tsx'
 
 const MERCADO: Comando['tipo'][] = ['comprar', 'lance', 'pedirEmprestado', 'responderProposta', 'anunciar', 'retirarDaLista', 'venderAgora',
   'paraEmprestimo', 'encerrarEmprestimo', 'comprarEmprestado', 'renovar']
+// estes já aparecem no histórico
+const NO_HISTORICO: Comando['tipo'][] = ['comprar', 'responderProposta', 'venderAgora']
+
+const STATUS: Record<RegistroProposta['status'], [string, string]> = {
+  aceita: ['Aceita', 'menta'], recusada: ['Recusada', 'rosa'], contraproposta: ['Contraproposta', 'pessego'], expirada: ['Expirada', ''],
+}
+type Filtro = 'todas' | 'feitas' | 'recebidas' | RegistroProposta['status']
+const FILTROS: [Filtro, string][] = [['todas', 'Todas'], ['feitas', 'Feitas'], ['recebidas', 'Recebidas'], ['aceita', 'Aceitas'], ['recusada', 'Recusadas'],
+  ['contraproposta', 'Contrapropostas'], ['expirada', 'Expiradas']]
 
 export function Propostas({ pendentes, ultima }: { pendentes: Comando[]; ultima: { n: number; resultados: ResultadoComando[] } | null }) {
   const { mundo: m, meuTime: t, eu } = useJogo()
   const k = useComandos(pendentes)
+  const [filtro, setFiltro] = useState<Filtro>('todas')
   if (!m) return <Carregando />
   if (!t) return <SemClube />
   const recebidas = m.propostasHumanas.filter((p) => t.jogadores.includes(p.jogador))
   const enviadas = m.propostasHumanas.filter((p) => p.comprador === t.id)
   const respondida = (id: number) => pendentes.find((c) => c.tipo === 'responderProposta' && c.proposta === id)
-  const meus = (ultima?.resultados ?? []).filter((r) => r.tecnico === eu.tecnicoId && MERCADO.includes(r.comando.tipo))
+  const meus = (ultima?.resultados ?? []).filter((r) => r.tecnico === eu.tecnicoId && MERCADO.includes(r.comando.tipo) && !NO_HISTORICO.includes(r.comando.tipo))
+  const historico = (m.historicoPropostas ?? []).filter((h) => h.comprador === t.id || h.vendedor === t.id)
+  const visiveis = historico.filter((h) => filtro === 'todas' || (filtro === 'feitas' ? h.comprador === t.id : filtro === 'recebidas' ? h.vendedor === t.id : h.status === filtro)).reverse()
+  // contraproposta ainda aceitável: a última sua por esse jogador, que continua no mesmo clube
+  const aceitavel = (h: RegistroProposta) => h.status === 'contraproposta' && h.comprador === t.id && m.jogadores[h.jogador]!.time === h.vendedor &&
+    historico.findLast((x) => x.jogador === h.jogador && x.comprador === t.id) === h
+  const nome = (time: number) => (time < 0 ? '—' : m.times[time]?.nome ?? '?')
 
   return (
     <div className="grade2">
@@ -61,7 +78,43 @@ export function Propostas({ pendentes, ultima }: { pendentes: Comando[]; ultima:
         )}
 
         <div className="card" style={{ overflow: 'hidden' }}>
-          <div className="cabecalho"><h2>Na última rodada {ultima && <span className="fraco" style={{ fontWeight: 400 }}>· {ultima.n}</span>}</h2></div>
+          <div className="cabecalho"><h2>Histórico <span className="fraco" style={{ fontWeight: 400 }}>{historico.length}</span></h2></div>
+          <div className="chips" style={{ padding: '0 20px 12px' }}>
+            {FILTROS.map(([f, r]) => <button key={f} aria-pressed={filtro === f} onClick={() => setFiltro(f)}>{r}</button>)}
+          </div>
+          {visiveis.length === 0 ? <p className="mudo" style={{ margin: 0, padding: '0 20px 20px' }}>Nenhuma proposta.</p> : (
+            <div className="rolagem">
+              <table className="tabela">
+                <thead><tr><th>Data</th><th>Jogador</th><th>De → Para</th><th className="num">Valor</th><th>Resultado</th></tr></thead>
+                <tbody>
+                  {visiveis.map((h, i) => {
+                    const j = m.jogadores[h.jogador]!
+                    const [rotulo, cor] = STATUS[h.status]
+                    return (
+                      <tr key={i}>
+                        <td className="mudo" style={{ whiteSpace: 'nowrap' }}>{dataLonga(h.dia)}</td>
+                        <td><span className="clube"><ChipPosicao posicao={j.posicao} />{j.nome}</span></td>
+                        <td className="mudo">{nome(h.vendedor)} → {nome(h.comprador)} <span className="fraco">{h.comprador === t.id ? '(feita)' : '(recebida)'}</span></td>
+                        <td className="num">{dinheiro(h.valor)}</td>
+                        <td>
+                          <span className={`etiqueta ${cor}`}>{rotulo}</span>
+                          {h.motivo && <span className="mudo" style={{ marginLeft: 6, fontSize: 13 }}>{h.motivo}</span>}
+                          {h.contra && <span className="mudo" style={{ marginLeft: 6, fontSize: 13 }}>
+                            pede {dinheiro(h.contra.valor)}{h.contra.salario ? `, salário ${dinheiro(h.contra.salario)}` : ''}</span>}
+                          {aceitavel(h) && <> <button disabled={!k.aberto || k.ocupado}
+                            onClick={() => void k.mandar({ tipo: 'comprar', jogador: h.jogador, valor: h.contra!.valor, aceitarContraproposta: true })}>Aceitar</button></>}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        <div className="card" style={{ overflow: 'hidden' }}>
+          <div className="cabecalho"><h2>Outros pedidos na última rodada {ultima && <span className="fraco" style={{ fontWeight: 400 }}>· {ultima.n}</span>}</h2></div>
           {meus.length === 0 ? <p className="mudo" style={{ margin: 0, padding: '0 20px 20px' }}>Nenhum pedido de mercado.</p> : (
             <table className="tabela">
               <tbody>

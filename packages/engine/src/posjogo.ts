@@ -1,6 +1,6 @@
 // Pós-jogo: suspensões, notas, lesões e energia de volta ao mundo; recuperação; público e renda.
 import { foraDePosicao } from './escalacao.ts'
-import type { Mundo, TimeM } from './mundo.ts'
+import type { Mundo, Suspensao, TimeM } from './mundo.ts'
 import { possePct, type JogadorPartida, type Partida, type ContextoPartida } from './partida.ts'
 import type { Rng } from './rng.ts'
 
@@ -92,6 +92,9 @@ export function nota(p: Partida, j: JogadorPartida, rng: Rng): number {
   return d
 }
 
+/** Jogos que faltam cumprir numa competição: o gancho + 1 se tem 3 amarelos. */
+export const jogosSuspenso = (s: Suspensao): number => s.jogos + (s.amarelos >= 3 ? 1 : 0)
+
 /** Gancho do vermelho direto: 1/2/3/5/10 jogos. Fonte: best/F.java:2177-2190 */
 export function ganchoVermelho(rng: Rng): number {
   const r = rng.int(1000)
@@ -142,24 +145,40 @@ export function aplicarPosJogo(mundo: Mundo, p: Partida, rng: Rng): { notas: Rec
     if (e.tipo === 2 || e.tipo === 3) est(e.jogador)[3]++
     if (e.tipo === 3 || e.tipo === 4) est(e.jogador)[4]++
   }
-  if (p.ctx.tipoComp !== 0)
+  if (p.ctx.tipoComp !== 0) {
+    const antes = new Map<number, [number, string]>()
     for (const e of p.eventos) {
       if ((e.tipo !== 2 && e.tipo !== 3 && e.tipo !== 4) || e.jogador === null) continue
       if (mundo.jogadores[e.jogador]!.juvenil) continue
       const s = suspensao(mundo, e.jogador, comp)
+      if (!antes.has(e.jogador)) antes.set(e.jogador, [jogosSuspenso(s), ''])
       if (e.tipo === 2) s.amarelos++
       else if (e.tipo === 3) {
         s.amarelos++
         s.jogos++
       } else s.jogos += ganchoVermelho(rng)
+      antes.get(e.jogador)![1] = e.tipo === 2 ? '3º cartão amarelo' : 'expulsão'
     }
+    // aviso ao técnico humano de quem pegou gancho (não é do original)
+    for (const [id, [n0, motivo]] of antes) {
+      const j = mundo.jogadores[id]!, t = mundo.times[j.time]!
+      const n = jogosSuspenso(j.suspensoes[comp]!)
+      if (n <= n0 || !t.humano) continue
+      const nome = mundo.competicoes.find((c) => c.id === comp)?.nome ?? comp
+      mundo.avisos.push({ tecnico: t.tecnico, dia: mundo.dia, texto: `${j.nome} está suspenso por ${n} jogo${n > 1 ? 's' : ''} em ${nome} (${motivo}).`, tipo: 'suspensao', ref: id })
+    }
+  }
   return { notas }
 }
 
-/** Recuperação de energia após a rodada. Fonte: best/F.java:363-403 (fr) */
-export function recuperarEnergia(mundo: Mundo): void {
+/**
+ * Recuperação de energia após o jogo. Fonte: best/F.java:363-403 (fr)
+ * Regra do port: só o elenco de quem jogou (`jogaram`) recupera; o original recupera todos a cada dia com jogo de
+ * qualquer competição, e o elenco voltava a 100 entre quase todos os jogos.
+ */
+export function recuperarEnergia(mundo: Mundo, jogaram: ReadonlySet<number>): void {
   for (const j of mundo.jogadores) {
-    if (j.juvenil) continue
+    if (j.juvenil || (mundo.times[j.time] && !jogaram.has(j.time))) continue
     const i = j.idade
     const humano = mundo.times[j.time]?.humano ?? false
     const ganho = j.jogou

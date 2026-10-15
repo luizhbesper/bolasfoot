@@ -44,7 +44,7 @@ function Lote({ m, l, k, meuTime, daRodada }: { m: Mundo; l: Leilao; k: Comandos
     .sort((a, b) => b.valor - a.valor)
   const maior = lances[0]?.valor ?? 0
   const meu = lances.find((x) => x.time === meuTime)
-  const [valor, setValor] = useState(meu?.valor ?? l.minimo)
+  const [valor, setValor] = useState(meu?.valor ?? 0)
   const v = m.times[l.vendedor]!
   const prorrogado = l.prorrogacoes ?? 0
   return (

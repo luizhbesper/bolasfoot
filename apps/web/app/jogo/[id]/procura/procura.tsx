@@ -5,12 +5,13 @@ import { useState } from 'react'
 import { Gaveta } from '../../../_ui/gaveta.tsx'
 import { ChipPosicao, Escudo, Forca, POSICOES } from '../../../_ui/ui.tsx'
 import { Fechado, Pendentes, useComandos, type Comandos } from '../comandos.tsx'
-import { dinheiro, jogadoresDe } from '../consultas.ts'
+import { dinheiro, jogadoresDe, NOMES_CARACTERISTICAS } from '../consultas.ts'
 import { useJogo } from '../contexto.tsx'
-import { Ficha } from '../elenco/elenco.tsx'
+import { caracteristicas, Ficha } from '../elenco/elenco.tsx'
 import { Carregando, SemClube } from '../hub.tsx'
 import { Valor } from '../valor.tsx'
 
+const POR_PAGINA = 50
 const PRECOS = [0, 500_000, 1_000_000, 3_000_000, 10_000_000]
 type Coluna = 'posicao' | 'nome' | 'idade' | 'forca' | 'time' | 'valor'
 const COLUNAS: { chave: Coluna; rotulo: string; num?: boolean }[] = [
@@ -22,7 +23,10 @@ export function Procura({ pendentes, paises }: { pendentes: Comando[]; paises: s
   const { mundo: m, meuTime: t } = useJogo()
   const k = useComandos(pendentes)
   const [busca, setBusca] = useState('')
-  const [pos, setPos] = useState<number | null>(null)
+  // posições: qualquer uma das marcadas; características: todas as marcadas (cr1/cr2)
+  const [pos, setPos] = useState<number[]>([])
+  const [cars, setCars] = useState<number[]>([])
+  const [pagina, setPagina] = useState(0)
   const [forcaMin, setForcaMin] = useState(0)
   const [idadeMax, setIdadeMax] = useState(40)
   const [precoMax, setPrecoMax] = useState(0)
@@ -30,38 +34,48 @@ export function Procura({ pendentes, paises }: { pendentes: Comando[]; paises: s
   const [soEmprestimo, setSoEmprestimo] = useState(false)
   const [aberto, setAberto] = useState<number | null>(null)
   const [ordem, setOrdem] = useState<{ col: Coluna; desc: boolean }>({ col: 'forca', desc: true })
+  const alternar = (xs: number[], x: number) => (xs.includes(x) ? xs.filter((y) => y !== x) : [...xs, x])
+  // qualquer filtro novo volta para a 1ª página
+  const filtro = <T,>(set: (v: T) => void) => (v: T) => { set(v); setPagina(0) }
   if (!m) return <Carregando />
   if (!t) return <SemClube />
 
   const q = busca.trim().toLowerCase()
   const lista = m.jogadores.filter((j) => j.time >= 0 && j.time !== t.id && !j.juvenil &&
-    (pos === null || j.posicao === pos) && j.forca >= forcaMin && j.idade <= idadeMax &&
+    (!pos.length || pos.includes(j.posicao)) && cars.every((c) => j.cr1 === c || j.cr2 === c) && j.forca >= forcaMin && j.idade <= idadeMax &&
     (!precoMax || (j.aVenda ? j.preco : j.valor) <= precoMax) && (!soVenda || j.aVenda) && (!soEmprestimo || j.paraEmprestimo) &&
     (!q || j.nome.toLowerCase().includes(q))).sort((a, b) => {
-    // ordena antes de cortar nos 100: "mais baratos" são os mais baratos de todos com esses filtros
     const va = ordem.col === 'time' ? m.times[a.time]!.nome : a[ordem.col], vb = ordem.col === 'time' ? m.times[b.time]!.nome : b[ordem.col]
     const c = typeof va === 'string' ? va.localeCompare(vb as string, 'pt-BR') : (va as number) - (vb as number)
     return (ordem.desc ? -c : c) || b.forca - a.forca || a.valor - b.valor
-  }).slice(0, 100)
-  const ordenar = (col: Coluna) => setOrdem((o) => ({ col, desc: o.col === col ? !o.desc : col === 'forca' || col === 'valor' }))
+  })
+  const paginas = Math.max(1, Math.ceil(lista.length / POR_PAGINA))
+  const pag = Math.min(pagina, paginas - 1)
+  const visiveis = lista.slice(pag * POR_PAGINA, (pag + 1) * POR_PAGINA)
+  const ordenar = (col: Coluna) => { setOrdem((o) => ({ col, desc: o.col === col ? !o.desc : col === 'forca' || col === 'valor' })); setPagina(0) }
   const sel = aberto === null ? null : m.jogadores[aberto]!
 
   return (
     <div className="coluna">
       <div className="card secao" style={{ gap: 12 }}>
         <div className="chips">
-          <input type="search" placeholder="Nome do jogador" aria-label="Nome do jogador" value={busca} onChange={(e) => setBusca(e.target.value)} style={{ height: 34, minWidth: 200 }} />
-          <button aria-pressed={pos === null} onClick={() => setPos(null)}>Todas</button>
-          {POSICOES.map((p, i) => <button key={p} aria-pressed={pos === i} onClick={() => setPos(pos === i ? null : i)}>{p}</button>)}
+          <input type="search" placeholder="Nome do jogador" aria-label="Nome do jogador" value={busca} onChange={(e) => filtro(setBusca)(e.target.value)} style={{ height: 34, minWidth: 200 }} />
+          <button aria-pressed={!pos.length} onClick={() => filtro(setPos)([])}>Todas</button>
+          {POSICOES.map((p, i) => <button key={p} aria-pressed={pos.includes(i)} onClick={() => filtro(setPos)(alternar(pos, i))}>{p}</button>)}
+        </div>
+        <div className="chips" role="group" aria-label="Características">
+          <span className="mudo" style={{ fontSize: 13 }}>Características</span>
+          {NOMES_CARACTERISTICAS.map((c, i) => <button key={c} aria-pressed={cars.includes(i)} onClick={() => filtro(setCars)(alternar(cars, i))}>{c}</button>)}
+          {cars.length > 0 && <button className="fantasma" onClick={() => filtro(setCars)([])}>Limpar</button>}
         </div>
         <div className="chips">
-          <label className="linha mudo" style={{ gap: 6, fontSize: 13 }}>Força ≥ <input type="number" min={0} max={100} value={forcaMin} onChange={(e) => setForcaMin(Number(e.target.value) || 0)} style={{ width: 70, height: 34 }} /></label>
-          <label className="linha mudo" style={{ gap: 6, fontSize: 13 }}>Idade ≤ <input type="number" min={15} max={45} value={idadeMax} onChange={(e) => setIdadeMax(Number(e.target.value) || 45)} style={{ width: 70, height: 34 }} /></label>
-          <select aria-label="Preço máximo" value={precoMax} onChange={(e) => setPrecoMax(Number(e.target.value))}>
+          <label className="linha mudo" style={{ gap: 6, fontSize: 13 }}>Força ≥ <input type="number" min={0} max={100} value={forcaMin} onChange={(e) => filtro(setForcaMin)(Number(e.target.value) || 0)} style={{ width: 70, height: 34 }} /></label>
+          <label className="linha mudo" style={{ gap: 6, fontSize: 13 }}>Idade ≤ <input type="number" min={15} max={45} value={idadeMax} onChange={(e) => filtro(setIdadeMax)(Number(e.target.value) || 45)} style={{ width: 70, height: 34 }} /></label>
+          <select aria-label="Preço máximo" value={precoMax} onChange={(e) => filtro(setPrecoMax)(Number(e.target.value))}>
             {PRECOS.map((p) => <option key={p} value={p}>{p ? `até ${dinheiro(p)}` : 'Qualquer preço'}</option>)}
           </select>
-          <button aria-pressed={soVenda} onClick={() => setSoVenda(!soVenda)}>À venda</button>
-          <button aria-pressed={soEmprestimo} onClick={() => setSoEmprestimo(!soEmprestimo)}>Para empréstimo</button>
+          <button aria-pressed={soVenda} onClick={() => filtro(setSoVenda)(!soVenda)}>À venda</button>
+          <button aria-pressed={soEmprestimo} onClick={() => filtro(setSoEmprestimo)(!soEmprestimo)}>Para empréstimo</button>
         </div>
       </div>
 
@@ -75,11 +89,12 @@ export function Procura({ pendentes, paises }: { pendentes: Comando[]; paises: s
                   <button className="ordenar" onClick={() => ordenar(c.chave)}>{c.rotulo}{ordem.col === c.chave && (ordem.desc ? ' ↓' : ' ↑')}</button>
                 </th>
               ))}
+              <th>Caract.</th>
               <th />
             </tr>
           </thead>
           <tbody>
-            {lista.map((j) => {
+            {visiveis.map((j) => {
               const dono = m.times[j.time]!
               return (
                 <tr key={j.id} style={{ cursor: 'pointer' }} onClick={() => setAberto(j.id)}>
@@ -90,6 +105,7 @@ export function Procura({ pendentes, paises }: { pendentes: Comando[]; paises: s
                   <td className="num"><Forca valor={j.forca} /></td>
                   <td><span className="clube"><Escudo fileRef={dono.fileRef} tamanho={18} mini />{dono.nome}</span></td>
                   <td className="num">{dinheiro(j.valor)}</td>
+                  <td className="mudo">{caracteristicas(j)}</td>
                   <td className="num">
                     {j.aVenda && <span className="etiqueta ceu">à venda {dinheiro(j.preco)}</span>}
                     {j.paraEmprestimo && <span className="etiqueta menta" style={{ marginLeft: 4 }}>empréstimo</span>}
@@ -101,6 +117,13 @@ export function Procura({ pendentes, paises }: { pendentes: Comando[]; paises: s
         </table>
         {lista.length === 0 && <p className="mudo" style={{ padding: 20, margin: 0 }}>Ninguém com esses filtros.</p>}
       </div>
+      {lista.length > POR_PAGINA && (
+        <div className="linha" style={{ justifyContent: 'flex-end' }}>
+          <span className="mudo" style={{ fontSize: 13 }}>{pag * POR_PAGINA + 1}–{pag * POR_PAGINA + visiveis.length} de {lista.length}</span>
+          <button disabled={pag === 0} onClick={() => setPagina(pag - 1)}>Anterior</button>
+          <button disabled={pag >= paginas - 1} onClick={() => setPagina(pag + 1)}>Próxima</button>
+        </div>
+      )}
 
       <Gaveta aberta={sel !== null} titulo={sel?.nome ?? ''} aoFechar={() => setAberto(null)}>
         {sel && (
@@ -144,7 +167,10 @@ export function Proposta({ m, j, t, k }: { m: Mundo; j: JogadorM; t: TimeM; k: C
       {amigo
         ? <p className="mudo" style={{ margin: 0, fontSize: 13 }}>{dono.nome} é do <strong>{amigo}</strong>: a proposta vai para a caixa dele, que responde na próxima rodada.</p>
         : <p className="fraco" style={{ margin: 0, fontSize: 12 }}>Se um amigo propuser pelo mesmo jogador nesta rodada, leva a maior oferta.</p>}
-      <Valor valor={valor} mudar={setValor} extras={j.aVenda && <button onClick={() => setValor(j.preco)}>Pedido {dinheiro(j.preco)}</button>} />
+      <Valor valor={valor} mudar={setValor} extras={<>
+        <button onClick={() => setValor(j.valor)}>Valor {dinheiro(j.valor)}</button>
+        {j.aVenda && <button onClick={() => setValor(j.preco)}>Pedido {dinheiro(j.preco)}</button>}
+      </>} />
       {p && <span className={`etiqueta ${p.cor}`} style={{ alignSelf: 'flex-start', whiteSpace: 'normal' }}>{p.texto}</span>}
       {!amigo && <label className="check"><input type="checkbox" checked={aceitar} onChange={(e) => setAceitar(e.target.checked)} /> Aceitar a contraproposta, se houver</label>}
       {pendente && (

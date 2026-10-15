@@ -4,11 +4,13 @@ import type { JogadorM, Mundo } from '@bolasfoot/engine'
 import { useState } from 'react'
 import { descrever, Fechado, type Comandos } from '../comandos.tsx'
 import { dinheiro } from '../consultas.ts'
+import { Valor } from '../valor.tsx'
 
 const DURACOES = ['6 meses', '1 ano', '2 anos', '3 anos']
 
 export function Negociar({ m, j, k }: { m: Mundo; j: JogadorM; k: Comandos }) {
-  const [preco, setPreco] = useState(j.aVenda ? j.preco : j.valor)
+  // começa do zero: o valor e o preço pedido ficam em atalhos
+  const [preco, setPreco] = useState(0)
   const [salario, setSalario] = useState(Math.round(j.salario * 1.1))
   const [duracao, setDuracao] = useState<0 | 1 | 2 | 3>(1)
   const pedidos = k.pendentes.filter((c) => 'jogador' in c && c.jogador === j.id)
@@ -35,14 +37,15 @@ export function Negociar({ m, j, k }: { m: Mundo; j: JogadorM; k: Comandos }) {
         </div>
       ) : (
         <>
-          <label className="linha" style={{ justifyContent: 'space-between' }}>Preço (R$)
-            <input type="number" min={0} step={10_000} value={preco} onChange={(e) => setPreco(num(e.target.value))} style={{ width: 150, textAlign: 'right' }} />
-          </label>
+          <Valor valor={preco} mudar={setPreco} rotulo="Preço (R$ milhões)" extras={<>
+            <button onClick={() => setPreco(j.valor)}>Valor {dinheiro(j.valor)}</button>
+            {j.aVenda && <button onClick={() => setPreco(j.preco)}>Pedido {dinheiro(j.preco)}</button>}
+          </>} />
           <div className="linha">
             {j.aVenda
               ? <button disabled={off} onClick={() => void k.mandar({ tipo: 'retirarDaLista', jogador: j.id })}>Tirar da lista ({dinheiro(j.preco)})</button>
-              : <button disabled={off} onClick={() => void k.mandar({ tipo: 'anunciar', jogador: j.id, preco })}>Pôr na lista</button>}
-            <button disabled={off} onClick={() => void k.mandar({ tipo: 'venderAgora', jogador: j.id, preco })}>Vender agora</button>
+              : <button disabled={off || !preco} onClick={() => void k.mandar({ tipo: 'anunciar', jogador: j.id, preco })}>Pôr na lista</button>}
+            <button disabled={off || !preco} onClick={() => void k.mandar({ tipo: 'venderAgora', jogador: j.id, preco })}>Vender agora</button>
           </div>
           <p className="fraco" style={{ margin: 0, fontSize: 12 }}>
             Na lista, a IA pode comprar depois de cada rodada pagando até 10–15% acima do valor ({dinheiro(j.valor)}). Vender agora aceita até 15% de desconto.

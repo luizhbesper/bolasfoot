@@ -131,6 +131,7 @@ const resumo = (m: Mundo, r: Rodada, antes: Record<string, number[][]>) => ({
       placar: p.placar, acrescimos: p.acrescimos,
       // final em sede rotativa: cidade e o clube dono do estádio
       sede: p.ctx.sede ?? null,
+      publico: p.publico ?? null, renda: p.renda ?? null,
       numeros: p.lados.map((l, i) => ({ posse: posse[i]!, chutes: l.chutes, noAlvo: l.noAlvo, fora: l.fora, desarmes: l.desarmes, passesErrados: l.passesErrados })),
       eventos: p.eventos.map((e) => ({ ...e, nome: e.jogador === null ? null : nome(e.jogador), nome2: nome(e.jogador2) })),
       penaltis: p.penaltis && { placar: p.penaltis.placar, vencedor: p.penaltis.vencedor },

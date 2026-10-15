@@ -129,6 +129,9 @@ export interface Partida {
   eventos: Evento[]
   /** disputa de pênaltis, se houve */
   penaltis: { placar: [number, number]; vencedor: 0 | 1; cobrancas: Cobranca[] } | null
+  /** público pagante e renda (v_0), calculados antes do jogo; ausentes no Mundial e em seleções */
+  publico?: number
+  renda?: number
 }
 
 const outro = (l: 0 | 1): 0 | 1 => (l === 0 ? 1 : 0)

@@ -11,7 +11,7 @@ import type { Base } from '@bolasfoot/data'
 import { gerarJunior } from './carreira.ts'
 import { classificacaoFinal } from './competicoes.ts'
 import { pagar, receber, salarioJogador, valorJogador } from './economia.ts'
-import { BRA, batedorFalta, habilidadesIniciais, type JogadorM, type Mundo, type TimeM } from './mundo.ts'
+import { BRA, batedorFalta, habilidadesIniciais, type JogadorM, type Mundo, type RegistroProposta, type TimeM } from './mundo.ts'
 import type { Rng } from './rng.ts'
 
 export interface Emprestimo {
@@ -54,6 +54,11 @@ export type Proposta =
   | { tipo: 'fechada'; valor: number }
   | { tipo: 'contraproposta'; valor: number; salario: number }
   | { tipo: 'recusada'; motivo: string }
+
+/** Guarda a proposta no histórico (tela de propostas). ponytail: sem poda; podar por temporada se o snapshot crescer */
+export function registrarProposta(m: Mundo, r: Omit<RegistroProposta, 'dia'>): void {
+  ;(m.historicoPropostas ??= []).push({ dia: m.dia, ...r })
+}
 
 const ELENCO_MAX = 35
 const JUNIORES_MAX = 20
@@ -398,7 +403,11 @@ function propostasIA(m: Mundo, rng: Rng): void {
   const hl = tolerancia(rng)
   for (const t of m.times) {
     if (!t.humano) continue
-    for (const j of elenco(m, t)) if (j.aVenda) venderParaIA(m, j, j.preco, hl, rng)
+    for (const j of elenco(m, t)) {
+      if (!j.aVenda) continue
+      const c = venderParaIA(m, j, j.preco, hl, rng)
+      if (c) registrarProposta(m, { jogador: j.id, vendedor: t.id, comprador: c.id, valor: j.preco, status: 'aceita', motivo: 'comprado da lista' })
+    }
   }
 }
 

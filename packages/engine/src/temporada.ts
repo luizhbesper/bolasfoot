@@ -184,6 +184,7 @@ export function fimDeTemporada(m: Mundo, base: Base, seed = m.seed): void {
         artilheiros.set(comp, { jogador: j.id, nome: j.nome, time: j.time, gols, jogos })
     }
     delete j.estatisticas
+    j.suspensoes = {} // F.gc/gd: eS.clear() na virada. Fonte: best/F.java:1569
   }
   for (const h of hist.values()) {
     const a = artilheiros.get(h.competicao)

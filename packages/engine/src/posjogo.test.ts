@@ -79,7 +79,7 @@ test('aplicarPosJogo cumpre a suspensão antes de lançar os cartões desta part
   expect(m.jogadores[b!]!.suspensoes.serieA!.jogos).toBeGreaterThanOrEqual(1)
   expect(m.jogadores[c!]!).toMatchObject({ lesaoAte: 112, energia: 70, jogou: true })
   expect(Object.keys(notas)).toHaveLength(22)
-  recuperarEnergia(m)
+  recuperarEnergia(m, new Set([m.jogadores[c!]!.time]))
   expect(m.jogadores[c!]!.energia).toBe(100) // 26 anos, jogou, IA: +50
 })
 
@@ -94,4 +94,16 @@ test('aplicarPosJogo soma as estatísticas da temporada na competição', () => 
   expect([j, g, a, ca, cv]).toEqual([1, 1, 0, 0, 0])
   expect(n).toBeCloseTo(notas[at.id]!)
   expect(m.jogadores[meia.id]!.estatisticas!.serieA!.slice(0, 5)).toEqual([1, 0, 1, 1, 1])
+})
+
+test('aplicarPosJogo avisa o técnico humano de quem pegou gancho', () => {
+  const { p, m } = preparar()
+  const t = m.times[p.lados[0].time]!
+  t.humano = true
+  const [a] = p.lados[0].titulares
+  m.jogadores[a!]!.suspensoes.serieA = { amarelos: 0, jogos: 1 }
+  p.eventos.push({ tipo: 4, tempo: 1, minuto: 9, lado: 0, jogador: a! })
+  aplicarPosJogo(m, p, criarRng('x'))
+  const n = m.jogadores[a!]!.suspensoes.serieA!.jogos
+  expect(m.avisos).toEqual([expect.objectContaining({ tecnico: t.tecnico, tipo: 'suspensao', ref: a, texto: expect.stringContaining(`${n} jogo`) })])
 })

@@ -516,6 +516,18 @@ function escalar(mundo: Mundo, timeId: number, comp: string, rng: Rng): Escalaca
   return { titulares, banco, tatica: { ...t.tatica } }
 }
 
+/**
+ * Público e renda do jogo, antes da partida (nunca no Mundial nem em seleções). A renda só entra no caixa do mandante
+ * humano. v_0.java:172: o público cai com a torcida do técnico; 80 sem técnico.
+ */
+function bilheteria(mundo: Mundo, comp: Competicao, jogo: Jogo, ctx: ContextoPartida, rng: Rng): { publico: number; renda: number } | null {
+  if (comp.tipo === 5 || comp.tipo === 7) return null
+  const casa = mundo.times[jogo.casa]!
+  const torcida = mundo.tecnicos[casa.tecnico]?.time === casa.id ? mundo.tecnicos[casa.tecnico]!.torcida : 80
+  const r = publico(casa, mundo.times[jogo.fora]!, ctx, rng, torcida, ctx.sede && mundo.times[ctx.sede.time]!.estadio)
+  return { publico: r.setores.reduce((a, b) => a + b, 0), renda: r.renda }
+}
+
 /** Fase e jogo de uma partida do dia, para achar o Jogo de volta. */
 function jogoDe(mundo: Mundo, x: Pick<PartidaDoDia, 'comp' | 'fase' | 'jogo'>): { comp: Competicao; fase: Fase; jogo: Jogo } {
   const comp = mundo.competicoes.find((c) => c.id === x.comp)!
@@ -523,6 +535,9 @@ function jogoDe(mundo: Mundo, x: Pick<PartidaDoDia, 'comp' | 'fase' | 'jogo'>): 
   const jogo = (fase.tipo === 'liga' ? fase.jogos : fase.rodadas.at(-1)!.jogos)[x.jogo]!
   return { comp, fase, jogo }
 }
+
+/** Dias sem jogo a partir dos quais o elenco volta com energia 100 (regra do port). */
+const DESCANSO = 7
 
 /**
  * Começa o dia: fecha os leilões, escala e simula o 1º tempo de todos os jogos. `pilotoAutomatico`: o humano joga
@@ -533,12 +548,19 @@ export function comecarDia(mundo: Mundo, seed = mundo.seed, pilotoAutomatico = t
   mercadoAntesDosJogos(mundo, derivar(seed, `mercado:${hoje}:antes`))
   const partidas: PartidaDoDia[] = []
   for (const { comp, fase, jogo, ctx } of jogosDoDia(mundo)) {
+    // regra do port: mais de uma semana sem jogar, o elenco volta descansado (a recuperação é só depois de cada jogo)
+    for (const id of [jogo.casa, jogo.fora]) {
+      const t = mundo.times[id]!
+      if (t.ultimoJogo === undefined || hoje - t.ultimoJogo > DESCANSO) for (const j of t.jogadores) mundo.jogadores[j]!.energia = 100
+    }
     const rotulo = `partida:${comp.id}:${hoje}:${jogo.casa}`
     const rng = derivar(seed, rotulo)
     // f_0.ay + ah.kh: o humano escala (ou a IA por ele); a IA escala os outros
     const esc = [escalar(mundo, jogo.casa, comp.id, rng), escalar(mundo, jogo.fora, comp.id, rng)] as const
     const p = iniciarPartida(mundo, [jogo.casa, jogo.fora], [esc[0], esc[1]], ctx, rng)
     if (pilotoAutomatico) for (const l of p.lados) l.humano = false
+    const pub = bilheteria(mundo, comp, jogo, ctx, derivar(seed, `${rotulo}:publico`))
+    if (pub) Object.assign(p, pub)
     simularTempo(p, 1, derivar(seed, `${rotulo}:1T`))
     const lista = fase.tipo === 'liga' ? fase.jogos : fase.rodadas.at(-1)!.jogos
     partidas.push({ comp: comp.id, fase: comp.fases.indexOf(fase), jogo: lista.indexOf(jogo), rotulo, partida: p })
@@ -559,12 +581,11 @@ export function terminarDia(mundo: Mundo, emJogo: DiaEmJogo, seed = mundo.seed):
     const ctx = p.ctx
     simularTempo(p, 2, derivar(seed, `${rotulo}:2T`))
     aplicarPosJogo(mundo, p, derivar(seed, `${rotulo}:pos`))
-    // I.hf: bilheteria do mandante humano (nunca no Mundial nem em seleções)
-    // (v_0.java:172: o público cai com a torcida do técnico; 80 sem técnico)
+    // I.hf: bilheteria do mandante humano, calculada antes da partida (dia em jogo antigo, sem p.renda: calcula agora)
     const casa = mundo.times[jogo.casa]!
-    const torcida = mundo.tecnicos[casa.tecnico]?.time === casa.id ? mundo.tecnicos[casa.tecnico]!.torcida : 80
-    if (casa.financas && comp.tipo !== 5 && comp.tipo !== 7)
-      receber(casa, publico(casa, mundo.times[jogo.fora]!, ctx, derivar(seed, `${rotulo}:publico`), torcida, ctx.sede && mundo.times[ctx.sede.time]!.estadio).renda, 'bilheteria', jogo.dia, `× ${mundo.times[jogo.fora]!.nome}`)
+    const pub = p.renda === undefined ? bilheteria(mundo, comp, jogo, ctx, derivar(seed, `${rotulo}:publico`)) : p
+    if (casa.financas && pub?.renda !== undefined)
+      receber(casa, pub.renda, 'bilheteria', jogo.dia, `× ${mundo.times[jogo.fora]!.nome} · ${String(pub.publico).replace(/\B(?=(\d{3})+(?!\d))/g, '.')} pagantes`)
     jogo.gols = [...p.placar]
     if (p.penaltis) jogo.penaltis = p.penaltis.vencedor
     // I.java:407-421: campanha, pontos, diretoria e torcida dos técnicos
@@ -573,8 +594,10 @@ export function terminarDia(mundo: Mundo, emJogo: DiaEmJogo, seed = mundo.seed):
   }
   const jogos = emJogo.partidas.map((x) => jogoDe(mundo, x).comp)
   if (jogos.length > 0) {
-    // f_0.as(): recuperação de todos; juniores voltam a 100
-    recuperarEnergia(mundo)
+    // f_0.as(): recuperação de quem jogou hoje (regra do port, ver recuperarEnergia); juniores voltam a 100
+    const jogaram = new Set(emJogo.partidas.flatMap((x) => x.partida.lados.map((l) => l.time)))
+    for (const id of jogaram) mundo.times[id]!.ultimoJogo = hoje
+    recuperarEnergia(mundo, jogaram)
     for (const j of mundo.jogadores) if (j.juvenil) j.energia = 100
     // f_0.ax: empréstimos, propostas da IA e leilões
     mercadoDepoisDosJogos(mundo, jogos.map((c) => c.tipo), derivar(seed, `mercado:${hoje}`))

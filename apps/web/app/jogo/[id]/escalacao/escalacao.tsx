@@ -12,9 +12,11 @@ import { Camisa } from '../../../_ui/camisa.tsx'
 import { Gaveta } from '../../../_ui/gaveta.tsx'
 import { ChipPosicao, Energia, Forca, POSICOES, tomForca } from '../../../_ui/ui.tsx'
 import { definirComandosAcao } from '../acoes.ts'
+import { useComandos } from '../comandos.tsx'
 import { alerta, dinheiro, proximoJogo } from '../consultas.ts'
 import { useJogo } from '../contexto.tsx'
 import { caracteristicas, Ficha, lado } from '../elenco/elenco.tsx'
+import { Negociar } from '../elenco/negociar.tsx'
 import { Carregando, SemClube } from '../hub.tsx'
 import s from './escalacao.module.css'
 
@@ -88,6 +90,7 @@ function Editor({ m, t, pendentes, editavel, paises }: { m: Mundo; t: TimeM; pen
   const [e, setE] = useState(() => inicial(m, t, pendentes, comp))
   const [sel, setSel] = useState<number | null>(null)
   const [ficha, setFicha] = useState<number | null>(null)
+  const k = useComandos(pendentes)
   const [salvo, setSalvo] = useState<'nada' | 'ok' | 'salvando' | string>('nada')
   const mudou = useRef(false)
 
@@ -324,7 +327,10 @@ function Editor({ m, t, pendentes, editavel, paises }: { m: Mundo; t: TimeM; pen
         </div>
 
         <Gaveta aberta={ficha !== null} titulo={ficha === null ? '' : m.jogadores[ficha]!.nome} aoFechar={() => setFicha(null)}>
-          {ficha !== null && <Ficha m={m} j={m.jogadores[ficha]!} pais={paises[m.jogadores[ficha]!.pais] ?? ''} forcas={forcas} />}
+          {ficha !== null && <>
+            <Ficha m={m} j={m.jogadores[ficha]!} pais={paises[m.jogadores[ficha]!.pais] ?? ''} forcas={forcas} />
+            <Negociar key={ficha} m={m} j={m.jogadores[ficha]!} k={k} />
+          </>}
         </Gaveta>
         <div className="card secao">
           <h2>Batedores</h2>
@@ -357,7 +363,7 @@ const slotDe = (e: Estado, id: number) => {
 function Cartao({ m, t, j, slot, banco, forcas, comp, aoFechar, aoAbrirFicha }: {
   m: Mundo; t: TimeM; j: JogadorM; slot: number | null; banco: boolean; forcas: number[]; comp: string; aoFechar: () => void; aoAbrirFicha: () => void
 }) {
-  const a = alerta(m, j)
+  const a = alerta(m, j, comp)
   const deSlot = slot === null ? null : SLOTS[slot]![0]
   const fora = slot !== null && foraDePosicao(j.posicao, slot)
   const gols = Object.values(j.estatisticas ?? {}).reduce((s, x) => s + x[1], 0)
