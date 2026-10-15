@@ -2,7 +2,7 @@ import base from '@bolasfoot/data/base.json' with { type: 'json' }
 import type { Base } from '@bolasfoot/data'
 import { describe, expect, it } from 'vitest'
 import { formatarData } from './calendario.ts'
-import { avancarDia, compararLinha, nTurnos, rodadasRoundRobin, tabelaFixa, type Competicao, type FaseLiga, type FaseMataMata } from './competicoes.ts'
+import { avancarDia, compararLinha, nTurnos, rodadasRoundRobin, tabelaCom, tabelaFixa, type Competicao, type FaseLiga, type FaseMataMata } from './competicoes.ts'
 import { novoJogo } from './mundo.ts'
 import { criarRng } from './rng.ts'
 
@@ -167,5 +167,22 @@ describe('temporada sem estaduais', () => {
     const cb = m.competicoes.find((c) => c.id === 'CB')!
     expect((cb.fases[0] as FaseMataMata).rodadas[0]!.confrontos).toHaveLength(40)
     expect([d.campeao, cb.campeao]).not.toContain(null)
+  })
+})
+
+describe('tabelaCom', () => {
+  const vazia = () => ({ pts: 0, j: 0, v: 0, e: 0, d: 0, gp: 0, gc: 0 })
+  const f: FaseLiga = {
+    tipo: 'liga', times: [1, 2, 3], grupos: [], linhas: { 1: { ...vazia(), pts: 3, j: 1, v: 1, gp: 1 }, 2: vazia(), 3: vazia() },
+    jogos: [{ casa: 2, fora: 3, dia: 1 }], avancam: 0, idaVolta: [], formato: 0,
+  }
+  it('soma o placar parcial, desfaz o final e ignora jogo de fora da fase', () => {
+    const viva = tabelaCom(f, [{ casa: 2, fora: 3, gols: [2, 0] }, { casa: 1, fora: 3, gols: [0, 5] }])
+    expect(viva.grupos).toEqual([[2, 1, 3]]) // 2 e 1 com 3 pts e 1 V: o saldo (+2 × +1) desempata
+    expect(viva.linhas[2]).toEqual({ pts: 3, j: 1, v: 1, e: 0, d: 0, gp: 2, gc: 0 })
+    expect(f.linhas[2]).toEqual(vazia()) // não mexe na fase
+    const antes = tabelaCom({ ...f, linhas: viva.linhas, times: viva.grupos[0]! }, [{ casa: 2, fora: 3, gols: [2, 0] }], -1)
+    expect(antes.linhas).toEqual(f.linhas)
+    expect(antes.grupos[0]![0]).toBe(1)
   })
 })

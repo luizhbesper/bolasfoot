@@ -13,6 +13,7 @@ import { useJogo, useRelogio, type EstadoFase } from '../contexto.tsx'
 import { dataLonga, etapaDoJogo } from '../consultas.ts'
 import { ESTILOS, JOGADAS, MARCACOES } from '../escalacao/escalacao.tsx'
 import s from './partida.module.css'
+import { classificacao, Seta, TabelaRodada, variacao, type Classificacao } from './tabela.tsx'
 
 type PartidaLog = ResumoRodada['partidas'][number]
 type EventoLog = PartidaLog['eventos'][number]
@@ -121,6 +122,13 @@ export function Partida({ log, pendentes }: { log: Log | null; pendentes: Comand
   const humanos = new Map(membros.filter((x) => x.teamRef).map((x) => [m?.times.find((t) => t.fileRef === x.teamRef)?.id, x.nome]))
   const amigos = partidas.filter((p) => p !== minha && p.times.some((t) => humanos.has(t)))
 
+  // classificação: ao vivo o mundo é o de antes da rodada; nos resultados (e no planejamento seguinte), o de depois
+  const depoisDaRodada = resultados || (fase.fase === 'planejamento' && log?.n === fase.rodada - 1)
+  const modo = aoVivo || noIntervalo ? 'vivo' : depoisDaRodada ? 'depois' : null
+  const tabela = (comp: string) => m && modo
+    ? classificacao(m, comp, partidas.filter((p) => p.comp === comp).map((p) => ({ casa: p.times[0]!, fora: p.times[1]!, gols: placar(p, pt) })), modo, meuTime?.id, log?.resumo.antes?.[comp])
+    : null
+
   return (
     <div className={s.tela}>
       <header className={s.topo}>
@@ -150,10 +158,11 @@ export function Partida({ log, pendentes }: { log: Log | null; pendentes: Comand
                   {amigos.map((p, i) => <Amigo key={i} p={p} pt={pt} m={m} quem={p.times.map((t) => humanos.get(t)).filter(Boolean).join(' e ')} />)}
                 </div>
               )}
+              {resultados && m && <Resumo m={m} partidas={partidas} minha={minha} amigos={amigos} humanos={humanos} eu={meuTime?.id ?? -1} tabela={tabela} />}
               {noIntervalo && m && meuTime ? <PainelIntervalo key={log.n} m={m} timeId={meuTime.id} pendentes={pendentes} />
                 : minha ? <Lances p={minha} pt={pt} /> : <p className="mudo">Seu time não joga nesta rodada.</p>}
             </section>
-            <OutrosJogos partidas={partidas} minha={minha} amigos={amigos} pt={pt} m={m} />
+            <OutrosJogos partidas={partidas} minha={minha} amigos={amigos} pt={pt} m={m} tabela={tabela} vivo={modo === 'vivo'} eu={meuTime?.id ?? -1} />
           </div>
         </>
       )}
@@ -278,11 +287,16 @@ function Amigo({ p, pt, m, quem }: { p: PartidaLog; pt: Ponto; m: Mundo | null; 
 }
 
 /** Os outros jogos do dia por competição: a sua primeiro, depois as dos amigos, depois o resto. */
-function OutrosJogos({ partidas, minha, amigos, pt, m }: { partidas: PartidaLog[]; minha?: PartidaLog; amigos: PartidaLog[]; pt: Ponto; m: Mundo | null }) {
+function OutrosJogos({ partidas, minha, amigos, pt, m, tabela, vivo, eu }: {
+  partidas: PartidaLog[]; minha?: PartidaLog; amigos: PartidaLog[]; pt: Ponto; m: Mundo | null
+  tabela: (comp: string) => Classificacao | null; vivo: boolean; eu: number
+}) {
   const peso = (c: string) => (c === minha?.comp ? 0 : amigos.some((a) => a.comp === c) ? 1 : 2)
   const comps = [...new Map(partidas.map((p) => [p.comp, p.compNome]))].sort((a, b) => peso(a[0]) - peso(b[0]))
   const [comp, setComp] = useState<string | null>(null)
+  const [verTabela, setVerTabela] = useState(false)
   const atual = comps.some(([c]) => c === comp) ? comp! : comps[0]?.[0]
+  const c = atual && m ? tabela(atual) : null
   return (
     <aside className={`card ${s.outros}`}>
       <div className={s.chips} role="tablist" aria-label="Competições">
@@ -290,8 +304,15 @@ function OutrosJogos({ partidas, minha, amigos, pt, m }: { partidas: PartidaLog[
           <button key={c} role="tab" aria-selected={c === atual} className={c === atual ? s.chipSel : undefined} onClick={() => setComp(c)}>{nome}</button>
         ))}
       </div>
+      {c && (
+        <div className={s.modo} role="group" aria-label="Mostrar">
+          <button aria-pressed={!verTabela} onClick={() => setVerTabela(false)}>Jogos</button>
+          <button aria-pressed={verTabela} onClick={() => setVerTabela(true)}>{vivo ? 'Tabela em tempo real' : 'Tabela'}</button>
+        </div>
+      )}
       <div className={s.rolagem}>
-        {partidas.filter((p) => p.comp === atual).map((p, i) => <LinhaJogo key={i} p={p} pt={pt} m={m} minha={p === minha} />)}
+        {c && verTabela && m ? <TabelaRodada c={c} m={m} eu={eu} />
+          : partidas.filter((p) => p.comp === atual).map((p, i) => <LinhaJogo key={i} p={p} pt={pt} m={m} minha={p === minha} />)}
       </div>
     </aside>
   )
@@ -313,6 +334,64 @@ function LinhaJogo({ p, pt, m, minha }: { p: PartidaLog; pt: Ponto; m: Mundo | n
         </span>
       )}
     </div>
+  )
+}
+
+// --- fim da rodada -------------------------------------------------------------------------------------------------
+
+/** Resumo dos resultados: a tabela da sua liga mudando de posição e os jogos que importam (o seu, os dos amigos e os dos
+ * adversários diretos, até duas posições acima ou abaixo). */
+function Resumo({ m, partidas, minha, amigos, humanos, eu, tabela }: {
+  m: Mundo; partidas: PartidaLog[]; minha?: PartidaLog; amigos: PartidaLog[]; humanos: Map<number | undefined, string>; eu: number
+  tabela: (comp: string) => Classificacao | null
+}) {
+  // a liga do seu jogo; num dia de copa, a primeira liga com jogo de um amigo
+  const comp = [minha, ...amigos].map((p) => p?.comp).find((x) => x && tabela(x))
+  const c = comp ? tabela(comp) : null
+  const amigosIds = new Set([...humanos.keys()].filter((t): t is number => t !== undefined && t !== eu))
+  const i = c ? c.depois.indexOf(eu) : -1
+  const rivais = c && i >= 0 ? c.depois.slice(Math.max(0, i - 2), i + 3).filter((t) => t !== eu && !amigosIds.has(t)) : []
+  const jogoDe = (t: number) => partidas.find((p) => p.times.includes(t))
+  const pos = (t: number) => `${c!.depois.indexOf(t) + 1}º ${m.times[t]!.nome}`
+  // um jogo só quando dois adversários diretos se enfrentaram
+  const jogosRivais = [...new Set(rivais.map(jogoDe).filter((p) => p && p !== minha))] as PartidaLog[]
+  const semJogo = rivais.filter((t) => !jogoDe(t))
+  const linha = (p: PartidaLog, quem: string, foco: number) => (
+    <div key={`${quem}${p.times.join()}`} className={s.importante}>
+      {quem && <span className={s.quem}>{quem}</span>}
+      <span className="clube" style={{ justifyContent: 'flex-end', minWidth: 0 }}><span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.nomes[0]}</span><Escudo fileRef={m.times[p.times[0]!]!.fileRef} tamanho={18} mini /></span>
+      <strong className={s.placarJogo}>{p.placar[0]}–{p.placar[1]}</strong>
+      <span className="clube" style={{ minWidth: 0 }}><Escudo fileRef={m.times[p.times[1]!]!.fileRef} tamanho={18} mini /><span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.nomes[1]}</span></span>
+      <span className={s.num}>{c && c.depois.includes(foco) ? <Seta v={variacao(c, foco)} /> : null}</span>
+    </div>
+  )
+  return (
+    <section className={`card ${s.resumo}`} aria-label="Fim da rodada">
+      <div className="cabecalho"><h2>Fim da rodada</h2>{c && <span className="mudo" style={{ fontSize: 13 }}>{c.nome}</span>}</div>
+      <div className={c ? s.resumoGrade : undefined}>
+        {c && <TabelaRodada c={c} m={m} eu={eu} destaque={amigosIds} animar />}
+        <div className={s.importantes}>
+          {minha && <div className="coluna" style={{ gap: 8 }}><h3>Seu jogo</h3>{linha(minha, '', eu)}</div>}
+          {amigos.length > 0 && (
+            <div className="coluna" style={{ gap: 8 }}><h3>Amigos</h3>
+              {amigos.map((p) => {
+                const t = p.times.find((x) => amigosIds.has(x))!
+                return linha(p, humanos.get(t) ?? '', t)
+              })}
+            </div>
+          )}
+          {rivais.length > 0 && (
+            <div className="coluna" style={{ gap: 8 }}><h3>Adversários diretos</h3>
+              {jogosRivais.map((p) => {
+                const deles = p.times.filter((t) => rivais.includes(t))
+                return linha(p, deles.map(pos).join(' e '), deles[0]!)
+              })}
+              {semJogo.map((t) => <span key={t} className="mudo" style={{ fontSize: 13 }}>{pos(t)} não jogou</span>)}
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
   )
 }
 
