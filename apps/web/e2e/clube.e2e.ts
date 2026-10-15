@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-// Plano §6.5 #3 (mobile smoke): jogo novo sozinho, escolhe o time, abre hub e escalação no celular e troca um jogador.
+// Plano §6.5 #3 (mobile smoke): jogo novo sozinho, escolhe o time, abre hub e escalação no celular e arrasta um jogador do banco para o campo.
 test.use({ viewport: { width: 390, height: 844 } })
 
 test('celular: escolhe o time, abre o hub e troca um jogador na escalação', async ({ page }) => {
@@ -30,8 +30,14 @@ test('celular: escolhe o time, abre o hub e troca um jogador na escalação', as
   await expect(campo).toBeVisible()
   const banco = page.getByRole('button', { name: /, banco 1$/ })
   const nome = (await banco.getAttribute('aria-label'))!.split(',')[0]!
-  await banco.click()
-  await campo.getByRole('button').nth(10).click()
+  // arrasta (Pointer Events via mouse) do banco até o último titular do campo
+  // campo no topo da tela: o banco 1 aparece logo abaixo dele
+  await campo.evaluate((el) => el.scrollIntoView())
+  const de = (await banco.boundingBox())!, para = (await campo.getByRole('button').nth(10).boundingBox())!
+  await page.mouse.move(de.x + de.width / 2, de.y + de.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(para.x + para.width / 2, para.y + para.height / 2, { steps: 10 })
+  await page.mouse.up()
   await expect(campo.getByRole('button', { name: new RegExp(`^${nome},`) })).toBeVisible()
   await expect(page.getByText('Salvando…')).toBeVisible()
   await expect(page.getByText('Salvo.')).toBeVisible({ timeout: 10_000 })
