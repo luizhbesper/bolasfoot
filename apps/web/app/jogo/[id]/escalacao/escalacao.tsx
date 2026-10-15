@@ -249,6 +249,7 @@ function Editor({ m, t, pendentes, editavel, paises }: { m: Mundo; t: TimeM; pen
               {MARCACOES.map((n, i) => <option key={i} value={i}>{n}</option>)}
             </select>
           </label>
+          <AutoSub t={t} pendentes={pendentes} editavel={editavel} />
           <label>Jogadas
             <select value={e.jogada} disabled={!editavel} onChange={(ev) => mudar((x) => ({ ...x, jogada: Number(ev.target.value) }))}>
               {JOGADAS.map((n, i) => <option key={i} value={i}>{n}</option>)}
@@ -406,6 +407,25 @@ function Linha({ j, t, m, forcas, sel, onClick, rotulo, dnd, sobre }: {
       <Energia valor={j.energia} />
       <Forca valor={j.forca} tom={tomForca(j.forca, forcas)} />
     </button>
+  )
+}
+
+/** Energia mínima em campo: abaixo dela, o motor troca sozinho pelo melhor do banco para a posição. */
+function AutoSub({ t, pendentes, editavel }: { t: TimeM; pendentes: Comando[]; editavel: boolean }) {
+  const { jogo } = useJogo()
+  const pendente = pendentes.findLast((c) => c.tipo === 'config' && c.energiaMin !== undefined) as Extract<Comando, { tipo: 'config' }> | undefined
+  const [v, setV] = useState(pendente?.energiaMin ?? t.config?.energiaMin ?? 0)
+  return (
+    <label title="Durante a partida, quem cair abaixo dessa energia sai para o melhor reserva da posição">Trocar cansados
+      <select value={v} disabled={!editavel} onChange={(ev) => {
+        const energiaMin = Number(ev.target.value)
+        setV(energiaMin)
+        void definirComandosAcao(jogo, [{ tipo: 'config', energiaMin }])
+      }}>
+        <option value={0}>Não</option>
+        {[40, 50, 60, 70, 80].map((x) => <option key={x} value={x}>abaixo de {x}%</option>)}
+      </select>
+    </label>
   )
 }
 

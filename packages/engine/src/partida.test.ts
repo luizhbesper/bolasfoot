@@ -188,3 +188,16 @@ test('com humano, só troca no intervalo; no 2º tempo, só o lesionado sai na h
   }
   expect(lesoes2T).toBeGreaterThan(0)
 })
+
+test('humano com energia mínima: sai sozinho quem cai abaixo dela; sem ela, ninguém', () => {
+  for (const energiaMin of [0, 80]) {
+    const p = partidaSintetica(liga, 'cansaco')
+    p.lados[0].humano = true
+    if (energiaMin) p.lados[0].energiaMin = energiaMin
+    const alvo = p.jogadores[p.lados[0].emCampo.find((id) => p.jogadores[id]!.slot !== 1)!]!
+    alvo.energia = 50
+    simularTempo(p, 1, derivar('cansaco', '1T'))
+    const saiu = p.eventos.some((e) => e.tipo === 6 && e.lado === 0 && e.jogador === alvo.id && e.tempo === 1 && e.minuto === 0)
+    expect(saiu).toBe(energiaMin > 0)
+  }
+})

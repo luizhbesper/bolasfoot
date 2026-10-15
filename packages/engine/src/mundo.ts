@@ -129,6 +129,9 @@ export interface TimeM extends Omit<Time, 'jogadores' | 'juniores' | 'estadio' |
   /** batedor de faltas/pênaltis (ke) e de escanteios (lq): ids de jogador */
   batedores: { falta: number | null; escanteio: number | null }
   estadio: Estadio
+  /** preferências do técnico humano (regra do port): substituir em campo quem cair abaixo de `energiaMin`% (0/ausente =
+   * desligado) e renovar sozinho os contratos perto do fim */
+  config?: { energiaMin?: number; renovarAuto?: boolean }
 }
 
 export interface OpcoesJogo {

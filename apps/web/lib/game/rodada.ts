@@ -278,7 +278,10 @@ const alvo = (c: Comando) => (PROPOSTAS.has(c.tipo) && 'jogador' in c ? c.jogado
 export function juntarComandos(atuais: Comando[], novos: Comando[]): Comando[] {
   const trocados = new Set(novos.map((c) => c.tipo).filter((t) => UNICOS.has(t)))
   const jogadores = new Set(novos.map(alvo).filter((j) => j !== null))
-  return [...atuais.filter((c) => !trocados.has(c.tipo) && !jogadores.has(alvo(c) ?? -1)), ...novos]
+  const lista = [...atuais.filter((c) => !trocados.has(c.tipo) && !jogadores.has(alvo(c) ?? -1)), ...novos]
+  // preferências vêm de telas diferentes (escalação, elenco): um comando só, com os campos somados
+  const config = lista.filter((c) => c.tipo === 'config')
+  return config.length < 2 ? lista : [...lista.filter((c) => c.tipo !== 'config'), Object.assign({}, ...config) as Comando]
 }
 
 /** Soma `novos` aos comandos já guardados da fase (ver `juntarComandos`) e grava tudo com `enviarComandos`. */

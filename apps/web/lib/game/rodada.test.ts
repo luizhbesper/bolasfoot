@@ -53,6 +53,13 @@ test('definirComandos troca os únicos (escalação, tática) e soma o resto', a
   expect(await comandosPendentes(db(), jogo, bia!)).toEqual([])
 })
 
+test('preferências de telas diferentes viram um comando só', async () => {
+  await definirComandos(db(), jogo, ana!, [{ tipo: 'config', energiaMin: 60 }])
+  await definirComandos(db(), jogo, ana!, [{ tipo: 'config', renovarAuto: true }])
+  await definirComandos(db(), jogo, ana!, [{ tipo: 'config', energiaMin: 70 }])
+  expect(await comandosPendentes(db(), jogo, ana!)).toEqual([{ tipo: 'config', renovarAuto: true, energiaMin: 70 }])
+})
+
 test('uma proposta por jogador: a nova substitui a anterior', async () => {
   const m = await carregarMundo(db(), jogo, 1, 0)
   const [j1, j2] = m.times.find((t) => t.fileRef === t2!.fileRef)!.jogadores as [number, number]

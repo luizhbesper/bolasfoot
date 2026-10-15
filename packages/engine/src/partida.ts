@@ -78,6 +78,8 @@ export interface LadoPartida {
   /** minutos de substituição da IA (I.gn, I.gm; -1 = vazio, I.java:113-114) */
   minTatica: [number, number, number]
   minCansaco: [number, number, number, number]
+  /** humano: sai sozinho quem cair abaixo dessa energia (0 = desligado; regra do port, TimeM.config) */
+  energiaMin?: number
   posse: number
   chutes: number
   noAlvo: number
@@ -180,6 +182,7 @@ export function iniciarPartida(mundo: Mundo, times: [number, number], escalacoes
       subs: 5,
       minTatica: [-1, -1, -1],
       minCansaco: [-1, -1, -1, -1],
+      ...(t.humano && t.config?.energiaMin ? { energiaMin: t.config.energiaMin } : {}),
       posse: 0,
       chutes: 0,
       noAlvo: 0,
@@ -562,7 +565,10 @@ function incidentes(p: Partida, tempo: 1 | 2, minuto: number, rng: Rng): void {
   const lista = emCampo(p, l)
   const marc = [30, 10, 0][p.lados[l].tatica.marcacao] ?? 30
   const f = minuto < 15 ? 0 : minuto < 30 ? 1 : 2
-  if (minuto % 7 === 0) drenarEnergia(p, tempo)
+  if (minuto % 7 === 0) {
+    drenarEnergia(p, tempo)
+    cansadosHumano(p, tempo, minuto, rng)
+  }
   let Y = (tempo === 1 ? [70, 40, 30] : [45, 40, 30])[f]! + marc
   const R = (tempo === 1 ? [1200, 900, 800] : [800, 700, 550])[f]!
   const J = (tempo === 1 ? [1500, 1000, 800] : [800, 600, 600])[f]!
@@ -718,6 +724,22 @@ function trocaIA(p: Partida, l: 0 | 1, tipo: 'tatica' | 'cansaco', minuto: numbe
 }
 
 // ── Comandos do técnico humano (intervalo) ─────────────────────────────────
+
+/** Regra do port: o humano escolhe uma energia mínima; a cada queda de energia sai o mais cansado abaixo dela (um por
+ * vez), trocado pelo melhor do banco para a posição. Não sorteia nada: partidas só de IA ficam iguais ao original. */
+function cansadosHumano(p: Partida, tempo: 1 | 2, minuto: number, rng: Rng): void {
+  for (const l of [0, 1] as const) {
+    const lado = p.lados[l]
+    if (!lado.energiaMin || lado.subs <= 0) continue
+    const cansado = emCampo(p, l).filter((j) => j.slot > 0 && j.energia < lado.energiaMin!).sort((a, b) => a.energia - b.energia)
+    for (const j of cansado) {
+      const antes = lado.subs
+      // `repor` só sorteia na expulsão; `lesao` = não põe goleiro na linha. Sem ninguém para a posição, tenta o próximo
+      repor(p, l, j, false, true, tempo, minuto, rng)
+      if (lado.subs < antes) break
+    }
+  }
+}
 
 /** Substituição pedida pelo humano; `slot` opcional muda a posição de quem entra. */
 export function substituir(p: Partida, l: 0 | 1, saiId: number, entraId: number, slot?: number): void {

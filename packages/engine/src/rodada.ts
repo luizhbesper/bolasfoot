@@ -23,6 +23,7 @@ export type Comando =
   | { tipo: 'escalar'; formacao: number; titulares: { id: number; slot: number }[]; banco: number[] }
   | { tipo: 'tatica'; estilo?: number; marcacao?: number; jogada?: number }
   | { tipo: 'batedores'; falta: number | null; escanteio: number | null }
+  | { tipo: 'config'; energiaMin?: number; renovarAuto?: boolean }
   | { tipo: 'treino'; foco: 0 | 1; auxiliar: boolean }
   | { tipo: 'ingresso'; precos: Setores | null }
   | { tipo: 'banco'; acao: 'pegar' | 'pagar' }
@@ -76,7 +77,7 @@ export interface Rodada {
 
 const INTERVALO = new Set<Comando['tipo']>(['substituir', 'mudarTatica'])
 const TIPOS = new Set<string>([
-  'escalar', 'tatica', 'batedores', 'treino', 'ingresso', 'banco', 'obra', 'comprar', 'responderProposta', 'anunciar',
+  'escalar', 'tatica', 'batedores', 'config', 'treino', 'ingresso', 'banco', 'obra', 'comprar', 'responderProposta', 'anunciar',
   'retirarDaLista', 'venderAgora', 'paraEmprestimo', 'pedirEmprestado', 'encerrarEmprestimo', 'comprarEmprestado', 'lance',
   'promoverJunior', 'dispensarJunior', 'renovar', 'aposentar', 'aceitarOferta', 'pedirDemissao', 'substituir', 'mudarTatica',
 ] satisfies Comando['tipo'][])
@@ -148,6 +149,9 @@ export function validar(m: Mundo, tecnicoId: number, c: Comando): string | null 
     }
     case 'batedores':
       return [c.falta, c.escanteio].every((id) => id === null || meu(id)) ? null : 'jogador fora do elenco'
+    case 'config':
+      return (c.energiaMin === undefined || (inteiro(c.energiaMin) && c.energiaMin < 100)) &&
+        (c.renovarAuto === undefined || typeof c.renovarAuto === 'boolean') ? null : 'configuração inválida'
     case 'treino':
       return [0, 1].includes(c.foco) && typeof c.auxiliar === 'boolean' ? null : 'treino inválido'
     case 'ingresso':
@@ -216,6 +220,9 @@ function executar(m: Mundo, base: Base, tc: number, t: TimeM | null, c: Comando,
       return ok()
     case 'batedores':
       t!.batedores = { falta: c.falta, escanteio: c.escanteio }
+      return ok()
+    case 'config':
+      t!.config = { ...t!.config, ...(c.energiaMin === undefined ? {} : { energiaMin: c.energiaMin }), ...(c.renovarAuto === undefined ? {} : { renovarAuto: c.renovarAuto }) }
       return ok()
     case 'treino':
       definirTreino(m, id, c.foco, c.auxiliar)
