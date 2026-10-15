@@ -107,10 +107,6 @@
   opacity: 1;
 }
 
-.selecionado {
-  outline: 2px solid var(--lavanda);
-  background: rgba(195, 188, 245, 0.18);
-}
 
 .camisa {
   position: relative;
@@ -139,6 +135,22 @@
   background: var(--pessego);
   color: var(--sobre-pessego);
   border-color: transparent;
+}
+
+.energiaSelo {
+  position: absolute;
+  bottom: 0;
+  right: -10px;
+  min-width: 22px;
+  height: 16px;
+  padding: 0 3px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  font-weight: 600;
+  background: var(--menu);
+  border: 1px solid var(--line);
 }
 
 .ausente {
@@ -180,47 +192,10 @@
   color: var(--pessego);
 }
 
-/* cartão do jogador tocado: no topo das listas (desktop), folha fixa acima do menu (celular) */
-.cartao {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  gap: 10px;
-  border: 1px solid var(--lavanda);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
-}
 
-.numerosCartao {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
-}
 
-.numerosCartao > div {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
-  padding: 8px 10px;
-  border-radius: 10px;
-  background: var(--bg);
-}
 
-.numerosCartao span:first-child {
-  font-size: 11px;
-  color: var(--faint);
-}
 
-@media (max-width: 900px) {
-  .cartao {
-    position: fixed;
-    top: auto;
-    left: 8px;
-    right: 8px;
-    bottom: 72px;
-    z-index: 20;
-  }
-}
 
 .vazio {
   width: 42px;
@@ -253,9 +228,6 @@
   background: var(--raised);
 }
 
-.selecionadoLinha {
-  background: rgba(195, 188, 245, 0.14);
-}
 
 .nomeLinha {
   flex: 1;
@@ -266,14 +238,6 @@
   white-space: nowrap;
 }
 
-.alvo {
-  width: 100%;
-  border: 0;
-  border-top: 1px dashed var(--lavanda);
-  border-radius: 0;
-  background: rgba(195, 188, 245, 0.08);
-  color: var(--lavanda);
-}
 
 .aviso {
   margin: 0;
@@ -307,4 +271,28 @@
 .ordenacao [aria-pressed='true'] {
   color: var(--text);
   font-weight: 600;
+}
+
+/* arrastáveis: o toque arrasta em vez de rolar a página */
+.slot[data-arrastavel],
+.linha[data-arrastavel] {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: grab;
+}
+
+/* o jogador que segue o ponteiro durante o arraste */
+.fantasma {
+  position: fixed;
+  z-index: 50;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  font-size: 12px;
+  opacity: 0.9;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.5));
 }

@@ -43,12 +43,17 @@ export function Forca({ valor, tom }: { valor: number; tom?: Tom }) {
   return <span className={`${s.forca} ${tom ? s[tom] : ''}`}>{valor}</span>
 }
 
+/** Cor da energia: menta ≥ 85, manteiga ≥ 70, rosa abaixo. */
+export const corEnergia = (valor: number) => (valor >= 85 ? 'var(--menta)' : valor >= 70 ? 'var(--manteiga)' : 'var(--rosa)')
+
 export function Energia({ valor }: { valor: number }) {
-  const cor = valor >= 85 ? 'var(--menta)' : valor >= 70 ? 'var(--manteiga)' : 'var(--rosa)'
   return (
-    <div className={s.energia} role="meter" aria-valuenow={valor} aria-valuemin={0} aria-valuemax={100} aria-label="Energia">
-      <div style={{ width: `${valor}%`, background: cor }} />
-    </div>
+    <span className={s.energiaCom}>
+      <span className={s.energiaNum}>{valor}%</span>
+      <span className={s.energia} role="meter" aria-valuenow={valor} aria-valuemin={0} aria-valuemax={100} aria-label="Energia">
+        <span style={{ width: `${valor}%`, background: corEnergia(valor) }} />
+      </span>
+    </span>
   )
 }
 

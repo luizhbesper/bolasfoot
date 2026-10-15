@@ -1,21 +1,21 @@
 'use client'
-// Escalação: campo com as camisas do original, banco e reservas. Arraste um jogador (drag-and-drop nativo do HTML) ou
-// toque nele e depois num lugar (posição do campo, vaga do banco, outro jogador para trocar ou "tirar do time"); o toque
-// é o caminho do celular, onde o arraste nativo não existe.
+// Escalação: campo com as camisas do original, banco e reservas. Arraste um jogador (Pointer Events: mouse e toque,
+// já que o drag-and-drop nativo do HTML não existe no celular) para uma posição do campo, o banco, outro jogador (troca)
+// ou "fora do jogo". Clicar (ou Enter) num jogador abre a ficha.
 // Cada mudança é salva sozinha (escalar + tática + batedores) e validada pelo motor no servidor.
 import {
-  derivar, disponivel, escalarIA, escolherParaSlot, foraDePosicao, FORMACOES, NOMES_FORMACAO, porForca, SLOTS,
+  derivar, disponivel, escalarIA, escolherParaSlot, foraDePosicao, FORMACOES, NOMES_FORMACAO, porForca,
   type Comando, type JogadorM, type Mundo, type TimeM,
 } from '@bolasfoot/engine'
-import { useEffect, useRef, useState, type HTMLAttributes } from 'react'
+import { useEffect, useRef, useState, type HTMLAttributes, type PointerEvent as ReactPointerEvent } from 'react'
 import { Camisa } from '../../../_ui/camisa.tsx'
 import { Gaveta } from '../../../_ui/gaveta.tsx'
-import { ChipPosicao, Energia, Forca, POSICOES, tomForca } from '../../../_ui/ui.tsx'
+import { ChipPosicao, corEnergia, Energia, Forca, POSICOES, tomForca } from '../../../_ui/ui.tsx'
 import { definirComandosAcao } from '../acoes.ts'
 import { useComandos } from '../comandos.tsx'
-import { alerta, dinheiro, proximoJogo } from '../consultas.ts'
+import { alerta, proximoJogo } from '../consultas.ts'
 import { useJogo } from '../contexto.tsx'
-import { caracteristicas, Ficha, lado } from '../elenco/elenco.tsx'
+import { caracteristicas, Ficha } from '../elenco/elenco.tsx'
 import { Negociar } from '../elenco/negociar.tsx'
 import { Carregando, SemClube } from '../hub.tsx'
 import s from './escalacao.module.css'
@@ -34,6 +34,7 @@ export const JOGADAS = ['Pelo meio', 'Pelas laterais']
 const MAX_BANCO = 11
 type Coluna = 'posicao' | 'nome' | 'energia' | 'forca'
 const COLUNAS: [Coluna, string][] = [['posicao', 'Pos'], ['nome', 'Nome'], ['energia', 'Energia'], ['forca', 'Força']]
+type Arraste = HTMLAttributes<HTMLElement> & { 'data-arrastavel'?: string }
 type Ordem = { col: Coluna; desc: boolean }
 const ordenarPor = (o: Ordem) => (a: JogadorM, b: JogadorM) => {
   const c = o.col === 'nome' ? a.nome.localeCompare(b.nome, 'pt-BR') : a[o.col] - b[o.col]
@@ -88,7 +89,6 @@ function Editor({ m, t, pendentes, editavel, paises }: { m: Mundo; t: TimeM; pen
   const prox = proximoJogo(m, t.id)
   const comp = prox?.compId ?? ''
   const [e, setE] = useState(() => inicial(m, t, pendentes, comp))
-  const [sel, setSel] = useState<number | null>(null)
   const [ficha, setFicha] = useState<number | null>(null)
   const k = useComandos(pendentes)
   const [salvo, setSalvo] = useState<'nada' | 'ok' | 'salvando' | string>('nada')
@@ -161,52 +161,58 @@ function Editor({ m, t, pendentes, editavel, paises }: { m: Mundo; t: TimeM; pen
     if (lb === null && la !== null) mover(b, la)
     else mover(a, lb)
   }
-  const tocarJogador = (id: number) => {
-    if (sel === null) return setSel(id)
-    if (sel !== id) trocar(sel, id)
-    setSel(null)
+  /** O que acontece ao soltar `a` no alvo `chave` (o `data-alvo` debaixo do ponteiro). */
+  const soltar = (chave: string, a: number) => {
+    if (chave === 'banco') {
+      if (!('banco' in (lugar(e, a) ?? {})) && e.banco.length < MAX_BANCO) mover(a, { banco: e.banco.length })
+    } else if (chave === 'fora') {
+      if (lugar(e, a) !== null) mover(a, null)
+    } else if (chave.startsWith('s')) mover(a, { slot: Number(chave.slice(1)) })
+    else if (Number(chave.slice(1)) !== a) trocar(a, Number(chave.slice(1)))
   }
 
-  // arrastar: o jogador vai para o slot/vaga/jogador onde soltar, como o toque
-  const [arrastando, setArrastando] = useState<number | null>(null)
+  // arrastar com Pointer Events (mouse e toque): um fantasma segue o ponteiro e o alvo debaixo dele fica marcado
+  const [arrastando, setArrastando] = useState<{ id: number; x: number; y: number } | null>(null)
   const [sobre, setSobre] = useState<string | null>(null)
-  const arrastavel = (id: number): HTMLAttributes<HTMLElement> & { draggable?: boolean } => !editavel ? {} : {
-    draggable: true,
-    onDragStart: (ev) => {
-      ev.dataTransfer.setData('text/plain', String(id))
-      ev.dataTransfer.effectAllowed = 'move'
-      // o fantasma do arraste é só a camisa, não a linha inteira
-      const img = ev.currentTarget.querySelector('img')
-      if (img) ev.dataTransfer.setDragImage(img, img.width / 2, img.height / 2)
-      setArrastando(id)
-      setSel(null)
-    },
-    onDragEnd: () => {
-      setArrastando(null)
-      setSobre(null)
+  const arrastou = useRef(false) // o click que vem depois de um arraste não abre a ficha
+  const alvoEm = (x: number, y: number) => document.elementFromPoint(x, y)?.closest<HTMLElement>('[data-alvo]')?.dataset.alvo ?? null
+  const arrastavel = (id: number): Arraste => !editavel ? {} : {
+    'data-arrastavel': '',
+    onDragStart: (ev) => ev.preventDefault(), // nada de arraste nativo da imagem da camisa
+    onPointerDown: (ev: ReactPointerEvent) => {
+      if (ev.button !== 0) return
+      const x0 = ev.clientX, y0 = ev.clientY
+      let ativo = false
+      const mexer = (p: PointerEvent) => {
+        if (!ativo && Math.hypot(p.clientX - x0, p.clientY - y0) < 6) return // pouco movimento ainda é clique
+        ativo = true
+        // no celular o campo e o banco não cabem juntos: perto da borda, a página rola
+        // ponytail: só rola enquanto o dedo mexe; um loop com requestAnimationFrame se parado na borda fizer falta
+        if (p.clientY < 48) window.scrollBy(0, -16)
+        else if (p.clientY > window.innerHeight - 48) window.scrollBy(0, 16)
+        setArrastando({ id, x: p.clientX, y: p.clientY })
+        setSobre(alvoEm(p.clientX, p.clientY))
+      }
+      const fim = (p: PointerEvent) => {
+        window.removeEventListener('pointermove', mexer)
+        window.removeEventListener('pointerup', fim)
+        window.removeEventListener('pointercancel', fim)
+        if (ativo) {
+          arrastou.current = true
+          setTimeout(() => { arrastou.current = false })
+          const chave = p.type === 'pointerup' ? alvoEm(p.clientX, p.clientY) : null
+          if (chave) soltar(chave, id)
+        }
+        setArrastando(null)
+        setSobre(null)
+      }
+      window.addEventListener('pointermove', mexer)
+      window.addEventListener('pointerup', fim)
+      window.addEventListener('pointercancel', fim)
     },
   }
-  const soltavel = (chave: string, soltar: (id: number) => void): HTMLAttributes<HTMLElement> => !editavel ? {} : {
-    onDragOver: (ev) => {
-      if (arrastando === null) return
-      ev.preventDefault()
-      ev.stopPropagation()
-      setSobre(chave)
-    },
-    onDragLeave: () => setSobre((x) => (x === chave ? null : x)),
-    onDrop: (ev) => {
-      ev.preventDefault()
-      ev.stopPropagation()
-      if (arrastando !== null) soltar(arrastando)
-      setArrastando(null)
-      setSobre(null)
-    },
-  }
-  const dnd = (id: number) => ({ ...arrastavel(id), ...soltavel(`j${id}`, (a) => a !== id && trocar(a, id)) })
-  const tocarVazio = (alvo: Lugar) => {
-    if (sel === null) return
-    mover(sel, alvo)
-    setSel(null)
+  const abrirFicha = (id: number) => {
+    if (!arrastou.current) setFicha(id)
   }
 
   const trocarFormacao = (f: number) => mudar((x) => {
@@ -267,15 +273,16 @@ function Editor({ m, t, pendentes, editavel, paises }: { m: Mundo; t: TimeM; pen
             const j = id === undefined ? null : m.jogadores[id]!
             const [x, y] = POS[slot] ?? [50, 50]
             return (
-              <button key={slot} className={`${s.slot} ${j && sel === j.id ? s.selecionado : ''} ${sobre === (j ? `j${j.id}` : `s${slot}`) ? s.sobre : ''}`}
-                style={{ left: `${x}%`, top: `${y}%` }} {...(j ? dnd(j.id) : soltavel(`s${slot}`, (a) => mover(a, { slot })))}
-                onClick={() => (j ? tocarJogador(j.id) : tocarVazio({ slot }))} disabled={!editavel && !j}
-                aria-label={j ? `${j.nome}, força ${j.forca}` : 'Posição vazia'} aria-pressed={j ? sel === j.id : undefined}>
+              <button key={slot} className={`${s.slot} ${sobre === (j ? `j${j.id}` : `s${slot}`) ? s.sobre : ''}`}
+                style={{ left: `${x}%`, top: `${y}%` }} data-alvo={j ? `j${j.id}` : `s${slot}`} {...(j ? arrastavel(j.id) : {})}
+                onClick={j ? () => abrirFicha(j.id) : undefined} disabled={!j}
+                aria-label={j ? `${j.nome}, força ${j.forca}, energia ${j.energia}` : 'Posição vazia'}>
                 {j ? (
                   <>
                     <span className={s.camisa}>
                       <Camisa fileRef={t.fileRef} cor1={t.cor1} goleiro={slot === 1} tamanho={46} />
                       <span className={`${s.selo} ${foraDePosicao(j.posicao, slot) ? s.foraPos : ''}`}>{j.forca}</span>
+                      <span className={s.energiaSelo} style={{ color: corEnergia(j.energia) }} title="Energia">{j.energia}</span>
                       {!disponivel(j, comp, m.dia) && <span className={s.ausente} title="Não pode jogar">!</span>}
                     </span>
                     <span className={s.nomeCampo}>{nomeCurto(j)}
@@ -287,43 +294,33 @@ function Editor({ m, t, pendentes, editavel, paises }: { m: Mundo; t: TimeM; pen
           })}
         </div>
         <p className="mudo" style={{ margin: 0, fontSize: 13 }}>
-          {editavel ? (sel === null ? 'Arraste um jogador (ou toque nele e depois no destino) para uma posição, o banco ou outro jogador.' : `${m.jogadores[sel]!.nome} selecionado: escolha para onde ele vai.`)
-            : 'Travada enquanto a rodada roda: as trocas do jogo são no intervalo, na tela da partida. Abre de novo no planejamento.'}
-          {' '}Força <strong style={{ color: 'var(--text)' }}>{total}</strong>
+          {!editavel && 'Travada enquanto a rodada roda: as trocas do jogo são no intervalo, na tela da partida. Abre de novo no planejamento. '}
+          Força <strong style={{ color: 'var(--text)' }}>{total}</strong>
           {fora > 0 && <> · <span style={{ color: 'var(--pessego)' }}>{fora} fora de posição</span></>}
         </p>
         <Status salvo={salvo} editavel={editavel} indisponiveis={indisponiveis.map((id) => m.jogadores[id]!.nome)} />
       </section>
 
       <section className={s.listas}>
-        {sel !== null && <Cartao m={m} t={t} j={m.jogadores[sel]!} slot={slotDe(e, sel)} banco={e.banco.includes(sel)} forcas={forcas}
-          comp={comp} aoFechar={() => setSel(null)} aoAbrirFicha={() => setFicha(sel)} />}
-        <div className={`card ${s.lista} ${sobre === 'banco' ? s.sobreLista : ''}`}
-          {...soltavel('banco', (a) => !('banco' in (lugar(e, a) ?? {})) && e.banco.length < MAX_BANCO && mover(a, { banco: e.banco.length }))}>
+        <div className={`card ${s.lista} ${sobre === 'banco' ? s.sobreLista : ''}`} data-alvo="banco">
           <div className="cabecalho">
             <h2 style={{ flex: 1 }}>Banco <span className="fraco" style={{ fontWeight: 400 }}>{e.banco.length} de {MAX_BANCO}</span></h2>
             <Ordenacao ordem={ordem} ordenar={ordenar} />
           </div>
           {bancoOrdenado.map((j) => (
-            <Linha key={j.id} j={j} t={t} m={m} forcas={forcas} sel={sel === j.id} onClick={() => tocarJogador(j.id)} rotulo={`banco ${e.banco.indexOf(j.id) + 1}`}
-              dnd={dnd(j.id)} sobre={sobre === `j${j.id}`} />
+            <Linha key={j.id} j={j} t={t} m={m} forcas={forcas} onClick={() => abrirFicha(j.id)} rotulo={`banco ${e.banco.indexOf(j.id) + 1}`}
+              arraste={arrastavel(j.id)} sobre={sobre === `j${j.id}`} />
           ))}
-          {editavel && sel !== null && e.banco.length < MAX_BANCO && lugar(e, sel) && !('banco' in lugar(e, sel)!) && (
-            <button className={s.alvo} onClick={() => tocarVazio({ banco: e.banco.length })}>Pôr no banco</button>
-          )}
         </div>
 
-        <div className={`card ${s.lista} ${sobre === 'fora' ? s.sobreLista : ''}`} {...soltavel('fora', (a) => lugar(e, a) !== null && mover(a, null))}>
+        <div className={`card ${s.lista} ${sobre === 'fora' ? s.sobreLista : ''}`} data-alvo="fora">
           <div className="cabecalho">
             <h2 style={{ flex: 1 }}>Fora do jogo <span className="fraco" style={{ fontWeight: 400 }}>{reservas.length}</span></h2>
             <Ordenacao ordem={ordem} ordenar={ordenar} />
           </div>
           {reservas.map((j) => (
-            <Linha key={j.id} j={j} t={t} m={m} forcas={forcas} sel={sel === j.id} onClick={() => tocarJogador(j.id)} dnd={dnd(j.id)} sobre={sobre === `j${j.id}`} />
+            <Linha key={j.id} j={j} t={t} m={m} forcas={forcas} onClick={() => abrirFicha(j.id)} arraste={arrastavel(j.id)} sobre={sobre === `j${j.id}`} />
           ))}
-          {editavel && sel !== null && lugar(e, sel) !== null && (
-            <button className={s.alvo} onClick={() => tocarVazio(null)}>Tirar do time</button>
-          )}
         </div>
 
         <Gaveta aberta={ficha !== null} titulo={ficha === null ? '' : m.jogadores[ficha]!.nome} aoFechar={() => setFicha(null)}>
@@ -350,61 +347,24 @@ function Editor({ m, t, pendentes, editavel, paises }: { m: Mundo; t: TimeM; pen
           </div>
         </div>
       </section>
-    </div>
-  )
-}
 
-const slotDe = (e: Estado, id: number) => {
-  const x = Object.entries(e.titulares).find(([, v]) => v === id)
-  return x ? Number(x[0]) : null
-}
-
-/** Cartão do jogador tocado: quem é, onde joga e onde está escalado (para entender o "fora de posição"). */
-function Cartao({ m, t, j, slot, banco, forcas, comp, aoFechar, aoAbrirFicha }: {
-  m: Mundo; t: TimeM; j: JogadorM; slot: number | null; banco: boolean; forcas: number[]; comp: string; aoFechar: () => void; aoAbrirFicha: () => void
-}) {
-  const a = alerta(m, j, comp)
-  const deSlot = slot === null ? null : SLOTS[slot]![0]
-  const fora = slot !== null && foraDePosicao(j.posicao, slot)
-  const gols = Object.values(j.estatisticas ?? {}).reduce((s, x) => s + x[1], 0)
-  return (
-    <div className={`card secao ${s.cartao}`} role="region" aria-label={`Jogador ${j.nome}`}>
-      <div className="linha" style={{ gap: 12, flexWrap: 'nowrap' }}>
-        <Camisa fileRef={t.fileRef} cor1={t.cor1} goleiro={j.posicao === 0} tamanho={40} />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <h2 style={{ fontSize: 17, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{j.nome}</h2>
-          <div className="mudo" style={{ fontSize: 12 }}>{j.idade} anos · lado {lado(j) === 'D' ? 'direito' : 'esquerdo'} · {caracteristicas(j)}</div>
+      {arrastando && (
+        <div className={s.fantasma} style={{ left: arrastando.x, top: arrastando.y }} aria-hidden="true">
+          <Camisa fileRef={t.fileRef} cor1={t.cor1} goleiro={m.jogadores[arrastando.id]!.posicao === 0} tamanho={46} />
+          <span className={s.nomeCampo}>{nomeCurto(m.jogadores[arrastando.id]!)}</span>
         </div>
-        <button className="fantasma" onClick={aoFechar} aria-label="Fechar">✕</button>
-      </div>
-      <div className="linha" style={{ gap: 8 }}>
-        <ChipPosicao posicao={j.posicao} />
-        {deSlot !== null
-          ? fora
-            ? <span style={{ color: 'var(--pessego)', fontSize: 13 }}>fora de posição: escalado de <strong>{POSICOES[deSlot]}</strong></span>
-            : <span className="mudo" style={{ fontSize: 13 }}>titular na posição dele</span>
-          : <span className="mudo" style={{ fontSize: 13 }}>{banco ? 'no banco' : 'fora do jogo'}</span>}
-        {a && <span className={`etiqueta ${a.cor === 'manteiga' ? '' : a.cor}`}>{a.texto}</span>}
-        {!disponivel(j, comp, m.dia) && !a && <span className="etiqueta rosa">não pode jogar</span>}
-      </div>
-      <div className={s.numerosCartao}>
-        <div><span>Força</span><Forca valor={j.forca} tom={tomForca(j.forca, forcas)} /></div>
-        <div><span>Energia</span><strong>{j.energia}%</strong><div style={{ width: '100%' }}><Energia valor={j.energia} /></div></div>
-        <div><span>Gols</span><strong>{gols}</strong></div>
-        <div><span>Valor</span><strong>{dinheiro(j.valor)}</strong></div>
-      </div>
-      <button onClick={aoAbrirFicha} style={{ alignSelf: 'flex-start' }}>Ficha completa</button>
+      )}
     </div>
   )
 }
 
-function Linha({ j, t, m, forcas, sel, onClick, rotulo, dnd, sobre }: {
-  j: JogadorM; t: TimeM; m: Mundo; forcas: number[]; sel: boolean; onClick: () => void; rotulo?: string
-  dnd: HTMLAttributes<HTMLElement>; sobre: boolean
+function Linha({ j, t, m, forcas, onClick, rotulo, arraste, sobre }: {
+  j: JogadorM; t: TimeM; m: Mundo; forcas: number[]; onClick: () => void; rotulo?: string
+  arraste: Arraste; sobre: boolean
 }) {
   const a = alerta(m, j)
   return (
-    <button className={`${s.linha} ${sel ? s.selecionadoLinha : ''} ${sobre ? s.sobre : ''}`} onClick={onClick} {...dnd} aria-pressed={sel} aria-label={rotulo ? `${j.nome}, ${rotulo}` : j.nome}>
+    <button className={`${s.linha} ${sobre ? s.sobre : ''}`} onClick={onClick} {...arraste} data-alvo={`j${j.id}`} aria-label={rotulo ? `${j.nome}, ${rotulo}` : j.nome}>
       <Camisa fileRef={t.fileRef} cor1={t.cor1} goleiro={j.posicao === 0} tamanho={26} />
       <ChipPosicao posicao={j.posicao} />
       <span className={s.nomeLinha}>{j.nome}</span>
