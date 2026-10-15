@@ -9,10 +9,10 @@ import { dataLonga, dinheiro } from '../consultas.ts'
 import { useJogo } from '../contexto.tsx'
 import { Carregando, SemClube } from '../hub.tsx'
 
-const MERCADO: Comando['tipo'][] = ['comprar', 'lance', 'pedirEmprestado', 'responderProposta', 'anunciar', 'retirarDaLista', 'venderAgora',
+const MERCADO: Comando['tipo'][] = ['comprar', 'lance', 'pedirEmprestado', 'responderProposta', 'anunciar', 'retirarDaLista',
   'paraEmprestimo', 'encerrarEmprestimo', 'comprarEmprestado', 'renovar']
 // estes já aparecem no histórico
-const NO_HISTORICO: Comando['tipo'][] = ['comprar', 'responderProposta', 'venderAgora']
+const NO_HISTORICO: Comando['tipo'][] = ['comprar', 'responderProposta']
 
 const STATUS: Record<RegistroProposta['status'], [string, string]> = {
   aceita: ['Aceita', 'menta'], recusada: ['Recusada', 'rosa'], contraproposta: ['Contraproposta', 'pessego'], expirada: ['Expirada', ''],

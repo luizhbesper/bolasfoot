@@ -6,7 +6,7 @@ import { abrirCaixa } from './economia.ts'
 import { mundoSintetico } from './fixtures.ts'
 import {
   aceitaIr, anunciar, darLance, encerrarEmprestimo, janelaIA, listarIA, mercadoAntesDosJogos, mercadoDepoisDosJogos,
-  pedirEmprestado, porPosicao, precoVendaIA, promoverJunior, proporCompra, renovarContrato, venderAgora,
+  pedirEmprestado, porPosicao, precoVendaIA, promoverJunior, proporCompra, renovarContrato,
 } from './mercado.ts'
 import { novoJogo, type Mundo } from './mundo.ts'
 import { derivar } from './rng.ts'
@@ -97,23 +97,18 @@ describe('humano compra', () => {
 })
 
 describe('humano vende', () => {
-  it('venda imediata para a IA, com multa de rescisão pelos dias de contrato', () => {
+  it('a IA compra os listados depois das rodadas, com multa de rescisão pelos dias de contrato', () => {
     const m = mundo()
-    const j = doTime(m, 0, 3)[0]!
-    j.contratoAte = m.dia + 45 // 31..60 dias: 20%
-    expect(venderAgora(m, j.id, 1_050_000, rng())).toEqual({ comprador: 1, valor: 1_050_000 })
+    const [j, caro] = doTime(m, 0, 3)
+    j!.contratoAte = m.dia + 45 // 31..60 dias: 20%
+    anunciar(m, j!.id, 1_050_000)
+    anunciar(m, caro!.id, 5_000_000) // acima da tolerância: ninguém paga
+    for (let d = 0; d < 20 && j!.time === 0; d++) mercadoDepoisDosJogos(m, [], derivar('dia', String(d)))
+    expect(j!.time).toBe(1)
+    expect(caro!.time).toBe(0)
     const f = m.times[0]!.financas!
     expect(f.receitas.vendas).toBe(1_050_000)
     expect(f.despesas.comissoes).toBe(210_000)
-    expect(venderAgora(m, doTime(m, 0, 3)[0]!.id, 5_000_000, rng())).toBeNull() // acima da tolerância
-  })
-
-  it('a IA compra os listados depois das rodadas', () => {
-    const m = mundo()
-    const j = doTime(m, 0, 3)[0]!
-    anunciar(m, j.id, j.valor)
-    for (let d = 0; d < 20 && j.time === 0; d++) mercadoDepoisDosJogos(m, [], derivar('dia', String(d)))
-    expect(j.time).toBe(1)
   })
 })
 

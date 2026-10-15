@@ -43,12 +43,11 @@ export function Negociar({ m, j, k }: { m: Mundo; j: JogadorM; k: Comandos }) {
           </>} />
           <div className="linha">
             {j.aVenda
-              ? <button disabled={off} onClick={() => void k.mandar({ tipo: 'retirarDaLista', jogador: j.id })}>Tirar da lista ({dinheiro(j.preco)})</button>
-              : <button disabled={off || !preco} onClick={() => void k.mandar({ tipo: 'anunciar', jogador: j.id, preco })}>Pôr na lista</button>}
-            <button disabled={off || !preco} onClick={() => void k.mandar({ tipo: 'venderAgora', jogador: j.id, preco })}>Vender agora</button>
+              ? <button disabled={off} onClick={() => void k.mandar({ tipo: 'retirarDaLista', jogador: j.id })}>Tirar da venda ({dinheiro(j.preco)})</button>
+              : <button disabled={off || !preco} onClick={() => void k.mandar({ tipo: 'anunciar', jogador: j.id, preco })}>Colocar à venda</button>}
           </div>
           <p className="fraco" style={{ margin: 0, fontSize: 12 }}>
-            Na lista, a IA pode comprar depois de cada rodada pagando até 10–15% acima do valor ({dinheiro(j.valor)}). Vender agora aceita até 15% de desconto.
+            À venda, a IA pode comprar depois de cada rodada pagando até 10–15% acima do valor ({dinheiro(j.valor)}).
           </p>
           <label className="check">
             <input type="checkbox" checked={j.paraEmprestimo} disabled={off} onChange={(e) => void k.mandar({ tipo: 'paraEmprestimo', jogador: j.id, sim: e.target.checked })} />
