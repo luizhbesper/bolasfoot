@@ -34,8 +34,8 @@ function useLargura(inicial: number) {
 const H = 260, L = 64, R = 14, T = 30, B = 226
 
 /** `proj`: saldo projetado ([dia, saldo] a cada mudança, de hoje em diante); `folha`: dia da próxima folha. */
-export function LinhaCaixa({ inicial, dias, hoje, caixa, proj: pontos, folha }: {
-  inicial: number; dias: Dia[]; hoje: number; caixa: number; proj: [number, number][]; folha: number
+export function LinhaCaixa({ inicial, dias, hoje, caixa, proj: pontos, base: pontosBase, folha }: {
+  inicial: number; dias: Dia[]; hoje: number; caixa: number; proj: [number, number][]; base?: [number, number][]; folha: number
 }) {
   const [ref, W] = useLargura(820)
   const ini = Math.min(dias[0]?.dia ?? hoje, hoje)
@@ -46,8 +46,15 @@ export function LinhaCaixa({ inicial, dias, hoje, caixa, proj: pontos, folha }: 
   pts.push([hoje, caixa])
   // degraus também na projeção; o pedido de hoje aparece meio dia depois
   const proj: [number, number][] = [[hoje, caixa]]
-  for (const [d, v] of pontos.slice(1)) proj.push([d === hoje ? hoje + 0.5 : d, proj.at(-1)![1]], [d === hoje ? hoje + 0.5 : d, v])
-  const vals = [...pts, ...proj].map((p) => p[1])
+  const degraus = (ps: [number, number][]) => {
+    const r: [number, number][] = [[hoje, caixa]]
+    for (const [d, v] of ps.slice(1)) r.push([d === hoje ? hoje + 0.5 : d, r.at(-1)![1]], [d === hoje ? hoje + 0.5 : d, v])
+    return r
+  }
+  proj.push(...degraus(pontos).slice(1))
+  // projeção sem a operação do banco ainda não confirmada, para comparar
+  const base = pontosBase ? degraus(pontosBase) : null
+  const vals = [...pts, ...proj, ...(base ?? [])].map((p) => p[1])
   const st = passo(Math.max(...vals) - Math.min(...vals))
   const v0 = Math.floor(Math.min(...vals) / st) * st
   const v1 = Math.max(Math.ceil(Math.max(...vals) / st) * st, v0 + st)
@@ -81,6 +88,7 @@ export function LinhaCaixa({ inicial, dias, hoje, caixa, proj: pontos, folha }: 
       {meses.map((x, i) => <text key={i} x={x.x} y={252} textAnchor="start" fill="var(--faint)" fontSize="11">{x.rotulo}</text>)}
       <path d={`M${X(ini)},${B} L${linha(pts).replaceAll(' ', ' L')} L${X(hoje)},${B} Z`} fill="var(--lavanda)" fillOpacity="0.1" />
       <polyline points={linha(pts)} fill="none" stroke="var(--lavanda)" strokeWidth="2" strokeLinejoin="round" />
+      {base && <polyline points={linha(base)} fill="none" stroke="var(--muted)" strokeWidth="1.5" strokeDasharray="2 4" opacity="0.7" />}
       <polyline points={linha(proj)} fill="none" stroke="var(--lavanda)" strokeWidth="2" strokeDasharray="5 5" />
       {[...folhas, folha].map((d) => <rect key={d} x={X(d) - 4} y={B - 4} width="8" height="8" rx="2" fill="var(--pessego)" stroke="var(--surface)" strokeWidth="2" />)}
       <line x1={X(hoje)} x2={X(hoje)} y1={T - 8} y2={B} stroke="var(--faint)" strokeDasharray="2 3" />

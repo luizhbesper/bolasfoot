@@ -24,7 +24,8 @@ test('pede empréstimo, obra e proposta; vê o resultado depois da rodada', asyn
   await expect(page.getByText('Próximo jogo')).toBeVisible({ timeout: 30_000 })
 
   await page.getByRole('link', { name: 'Finanças' }).click()
-  await page.getByRole('button', { name: /^Pegar/ }).click()
+  await page.getByLabel('Pegar (direita) ou devolver (esquerda)').fill('500000')
+  await page.getByRole('button', { name: 'Confirmar' }).click()
   await expect(page.getByText('Pegar R$ 500 mil emprestados')).toBeVisible()
   await foto('financas')
 

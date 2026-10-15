@@ -3,7 +3,7 @@
 import { aceitaIr, BRA, precoVendaIA, type Comando, type JogadorM, type Mundo, type TimeM } from '@bolasfoot/engine'
 import { useMemo, useState } from 'react'
 import { Gaveta } from '../../../_ui/gaveta.tsx'
-import { ChipPosicao, Energia, Escudo, Forca, POSICOES } from '../../../_ui/ui.tsx'
+import { ChipPosicao, corEnergia, Escudo, Forca, POSICOES } from '../../../_ui/ui.tsx'
 import { Fechado, Pendentes, useComandos, type Comandos } from '../comandos.tsx'
 import { dinheiro, jogadoresDe, NOMES_CARACTERISTICAS } from '../consultas.ts'
 import { useJogo } from '../contexto.tsx'
@@ -32,7 +32,7 @@ const VAZIO: Filtros = { nome: '', time: '', pais: -1, pos: [], cars: [], soVend
 type Coluna = 'posicao' | 'nome' | 'idade' | 'forca' | 'energia' | 'time' | 'salario' | 'valor'
 const COLUNAS: { chave: Coluna; rotulo: string; num?: boolean }[] = [
   { chave: 'posicao', rotulo: 'Pos' }, { chave: 'nome', rotulo: 'Jogador' }, { chave: 'idade', rotulo: 'Idade', num: true },
-  { chave: 'forca', rotulo: 'Força', num: true }, { chave: 'energia', rotulo: 'Energia' }, { chave: 'time', rotulo: 'Time' },
+  { chave: 'forca', rotulo: 'Força', num: true }, { chave: 'energia', rotulo: 'Energia', num: true }, { chave: 'time', rotulo: 'Time' },
   { chave: 'salario', rotulo: 'Salário', num: true }, { chave: 'valor', rotulo: 'Valor', num: true },
 ]
 
@@ -190,7 +190,7 @@ export function Procura({ pendentes, paises }: { pendentes: Comando[]; paises: s
                       <span className={s.sub}>{j.pais !== BRA && `${paises[j.pais]} · `}{caracteristicas(j)}</span></td>
                     <td className="num mudo">{j.idade}</td>
                     <td className="num"><Forca valor={j.forca} /></td>
-                    <td><Energia valor={j.energia} /></td>
+                    <td className="num" style={{ color: corEnergia(j.energia), fontWeight: 600 }}>{j.energia}%</td>
                     <td><span className="clube"><Escudo fileRef={dono.fileRef} tamanho={18} mini />{dono.nome}</span></td>
                     <td className="num mudo">{dinheiro(j.salario)}</td>
                     <td className="num">{dinheiro(j.valor)}</td>

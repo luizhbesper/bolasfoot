@@ -56,12 +56,12 @@ describe('caixa', () => {
     expect(pegarEmprestimo(m, t, limite + 100_000, m.dia)).toBe(false)
     expect(pegarEmprestimo(m, t, limite, m.dia)).toBe(true)
     expect(f.emprestimo).toBe(limite)
-    expect(f.juros).toBe(Math.floor(limite * 0.05)) // dívida no limite: 5%
+    expect(f.juros).toBe(Math.floor(limite * 0.07)) // dívida no limite: 7%
     expect(pagarEmprestimo(m, t, limite + 100_000, m.dia)).toBe(false) // mais que a dívida
     expect(pagarEmprestimo(m, t, limite, m.dia)).toBe(true)
     expect(f.juros).toBe(0)
     expect(taxaJuros(0, limite)).toBe(0.01)
-    expect(taxaJuros(limite / 2, limite)).toBeCloseTo(0.03)
+    expect(taxaJuros(limite / 2, limite)).toBeCloseTo(0.04)
     // o empréstimo entra no extrato: caixa = saldo inicial + lançamentos
     expect(f.caixa - lancamentos(f).reduce((s, l) => s + l.valor, 0)).toBe(15_000_000 - f.receitas.patrocinio)
   })

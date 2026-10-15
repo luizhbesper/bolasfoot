@@ -67,6 +67,9 @@ export function Financas({ pendentes }: { pendentes: Comando[] }) {
   const faixa = { min: -passos(Math.min(divida, f.caixa - pedido)), max: passos(limite - divida) }
   const valorBanco = Math.min(faixa.max, Math.max(faixa.min, banco))
   const proj = projetar(m, t, { pedido: pedido - valorBanco, divida: divida + valorBanco })
+  // sem o valor do controle: a diferença no fim da janela, tirando o principal, é o juro que ele custa (ou economiza)
+  const base = valorBanco ? projetar(m, t, { pedido, divida }) : null
+  const juros6 = base ? base.pontos.at(-1)![1] + valorBanco - proj.pontos.at(-1)![1] : 0
   const meses = porMes(dias)
   for (const p of proj.meses) {
     const x = meses.find((y) => y.ano === p.ano && y.mes === p.mes)
@@ -96,12 +99,12 @@ export function Financas({ pendentes }: { pendentes: Comando[] }) {
             <span className={s.legenda}><i style={{ width: 16, borderTop: '2px dashed var(--lavanda)' }} />projeção</span>
             <span className={s.legenda}><i style={{ width: 8, height: 8, borderRadius: 2, background: 'var(--pessego)' }} />dia de folha</span>
           </div>
-          <LinhaCaixa inicial={inicial} dias={dias} hoje={m.dia} caixa={f.caixa} proj={proj.pontos} folha={proxFolha.dia} />
+          <LinhaCaixa inicial={inicial} dias={dias} hoje={m.dia} caixa={f.caixa} proj={proj.pontos} base={base?.pontos} folha={proxFolha.dia} />
         </section>
 
         <div className="coluna" style={{ gap: 16 }}>
           {pedidos.length > 0 && <Pedido k={k} m={m} pedidos={pedidos} caixa={f.caixa} folha={proxFolha} />}
-          <Banco k={k} divida={divida} limite={limite} faixa={faixa} valor={valorBanco} setValor={setBanco} />
+          <Banco k={k} divida={divida} limite={limite} faixa={faixa} valor={valorBanco} setValor={setBanco} juros6={juros6} />
         </div>
       </div>
 
@@ -176,8 +179,8 @@ function Pedido({ k, m, pedidos, caixa, folha }: {
   )
 }
 
-function Banco({ k, divida, limite, faixa, valor, setValor }: {
-  k: Comandos; divida: number; limite: number; faixa: { min: number; max: number }; valor: number; setValor: (v: number) => void
+function Banco({ k, divida, limite, faixa, valor, setValor, juros6 }: {
+  k: Comandos; divida: number; limite: number; faixa: { min: number; max: number }; valor: number; setValor: (v: number) => void; juros6: number
 }) {
   const nova = divida + valor
   return (
@@ -185,15 +188,27 @@ function Banco({ k, divida, limite, faixa, valor, setValor }: {
       <div className="linha" style={{ justifyContent: 'space-between' }}>
         <h2>Banco</h2><span className={s.nota}>{dinheiro(divida)} de {dinheiro(limite)}</span>
       </div>
-      <input type="range" min={faixa.min} max={faixa.max} step={PASSO_EMPRESTIMO} value={valor} disabled={!k.aberto || faixa.min === faixa.max}
+      <input type="range" min={faixa.min} max={faixa.max} step={PASSO_EMPRESTIMO} value={valor} disabled={!k.aberto || faixa.min === faixa.max} list="banco-zero"
         onChange={(e) => setValor(Number(e.target.value))} aria-label="Pegar (direita) ou devolver (esquerda)" aria-valuetext={sinal(valor)} />
+      <datalist id="banco-zero"><option value={0} /></datalist>
+      <div className={s.linhaValor} style={{ fontSize: 12 }}>
+        <span className="fraco">{faixa.min < 0 ? `devolver ${dinheiro(-faixa.min)}` : 'R$ 0'}</span>
+        {valor !== 0 && <button className="fantasma" style={{ height: 24, padding: '0 8px', fontSize: 12 }} onClick={() => setValor(0)}>Zerar</button>}
+        <span className="fraco">pegar {dinheiro(faixa.max)}</span>
+      </div>
       <div className={s.linhaValor}><span className="mudo">{valor < 0 ? 'Devolver' : 'Pegar'}</span><strong>{dinheiro(Math.abs(valor))}</strong></div>
       <div className={s.linhaValor}><span className="mudo">Dívida depois</span><strong>{dinheiro(nova)}</strong></div>
       <div className={s.linhaValor}>
         <span className="mudo">Juros ({(taxaJuros(nova, limite) * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}% ao mês)</span>
         <strong>{dinheiro(jurosDoMes(nova, limite))}/mês</strong>
       </div>
-      <span className={s.nota}>Limite: 30% do valor do elenco. Juros de 1% a 5% ao mês, mais caros perto do limite, todo dia 2.</span>
+      {valor !== 0 && (
+        <div className={s.linhaValor}>
+          <span className="mudo">{juros6 >= 0 ? 'Juros a mais em 6 meses' : 'Juros a menos em 6 meses'}</span>
+          <strong style={{ color: juros6 > 0 ? 'var(--rosa)' : 'var(--menta)' }}>{dinheiro(Math.abs(juros6))}</strong>
+        </div>
+      )}
+      <span className={s.nota}>Limite: 30% do valor do elenco. Juros de 1% a 7% ao mês, mais caros perto do limite, todo dia 2. No gráfico, o pontilhado claro é a projeção sem esta operação.</span>
       <button className={s.botaoBanco} disabled={!k.aberto || k.ocupado || valor === 0}
         onClick={() => void k.mandar({ tipo: 'banco', acao: valor > 0 ? 'pegar' : 'pagar', valor: Math.abs(valor) }).then((e) => { if (!e) setValor(0) })}>Confirmar</button>
       <Fechado k={k} />

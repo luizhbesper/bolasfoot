@@ -32,11 +32,11 @@ test('projeção de 6 meses: salário semanal e juros do dia 2 sobre a dívida',
   const fim = diaAbsoluto(2026, 9, 10)
   let domingos = 0
   for (let d = hoje; d <= fim; d++) if (domingo(d)) domingos++
-  const juros = Math.floor(1_000_000 * (0.01 + 0.04 / 3)) // limite = 30% de 10 mi
+  const juros = Math.floor(1_000_000 * (0.01 + 0.06 / 3)) // limite = 30% de 10 mi
   const { pontos, meses } = projetar(m, t)
   expect(pontos.at(-1)).toEqual([fim, 1_000_000 - domingos * 1_000 - 6 * juros]) // dia 2 de abr a set
   expect(meses.map((x) => x.mes)).toEqual([3, 4, 5, 6, 7, 8, 9])
   expect(meses.reduce((x, y) => x + y.saiuProj!, 0)).toBe(domingos * 1_000 + 6 * juros)
   // o pedido da rodada (pegar 500 mil) entra hoje e sobe os juros
-  expect(projetar(m, t, { pedido: -500_000, divida: 1_500_000 }).pontos.at(-1)![1]).toBe(1_500_000 - domingos * 1_000 - 6 * Math.floor(1_500_000 * 0.03))
+  expect(projetar(m, t, { pedido: -500_000, divida: 1_500_000 }).pontos.at(-1)![1]).toBe(1_500_000 - domingos * 1_000 - 6 * Math.floor(1_500_000 * 0.04))
 })

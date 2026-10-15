@@ -190,8 +190,8 @@ export function limiteEmprestimo(mundo: Mundo, t: TimeM): number {
   return Math.max(500_000, Math.floor((elenco * 0.3) / PASSO_EMPRESTIMO) * PASSO_EMPRESTIMO)
 }
 
-/** Juros ao mês: 1% + 4% × (dívida / limite), no máximo 5%. */
-export const taxaJuros = (divida: number, limite: number) => Math.min(0.05, 0.01 + (0.04 * divida) / Math.max(1, limite))
+/** Juros ao mês: 1% + 6% × (dívida / limite), no máximo 7%. */
+export const taxaJuros = (divida: number, limite: number) => Math.min(0.07, 0.01 + (0.06 * divida) / Math.max(1, limite))
 
 /** Juros de um mês sobre a dívida. */
 export const jurosDoMes = (divida: number, limite: number) => (divida > 0 ? Math.floor(divida * taxaJuros(divida, limite)) : 0)

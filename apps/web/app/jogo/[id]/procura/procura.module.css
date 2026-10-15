@@ -1,7 +1,7 @@
 /* Procurar jogadores: lateral de filtros fixa ao rolar; no celular vira uma folha que sobe de baixo. */
 .tela {
   display: grid;
-  grid-template-columns: 272px minmax(0, 1fr);
+  grid-template-columns: 300px minmax(0, 1fr);
   gap: 20px;
   align-items: start;
 }
@@ -74,6 +74,10 @@
   gap: 6px;
   padding-left: 10px;
   border-left: 2px solid var(--line);
+}
+
+.faixa > .rotulo {
+  white-space: nowrap;
 }
 
 .faixa.ligada {
