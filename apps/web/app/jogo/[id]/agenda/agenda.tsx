@@ -4,7 +4,7 @@
 import { data, diaAbsoluto, diaDaSemana, type Competicao, type Jogo } from '@bolasfoot/engine'
 import { useState } from 'react'
 import { Escudo } from '../../../_ui/ui.tsx'
-import { agendaDoTime, dataLonga, resultadoPara } from '../consultas.ts'
+import { agendaDoTime, confronto, dataLonga, resultadoPara, textoConfronto } from '../consultas.ts'
 import { useJogo } from '../contexto.tsx'
 import { Carregando, SemClube } from '../hub.tsx'
 import s from './agenda.module.css'
@@ -66,6 +66,7 @@ function Lista({ jogos, timeId, proximo }: { jogos: Item[]; timeId: number; prox
             const casa = jogo.casa === timeId
             const adv = m.times[casa ? jogo.fora : jogo.casa]!
             const r = resultadoPara(jogo, timeId)
+            const agregado = textoConfronto(confronto(m, comp.id, jogo.casa, jogo.fora, jogo.dia))
             return (
               <tr key={i} className={jogo === proximo ? 'eu' : undefined} style={jogo.gols ? undefined : { color: 'var(--muted)' }}>
                 <td style={{ whiteSpace: 'nowrap' }}>{dataLonga(jogo.dia)}</td>
@@ -74,6 +75,7 @@ function Lista({ jogos, timeId, proximo }: { jogos: Item[]; timeId: number; prox
                 <td><span className="clube"><Escudo fileRef={adv.fileRef} tamanho={18} mini />{adv.nome}</span></td>
                 <td className="num" style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>
                   {jogo.gols ? `${jogo.gols[0]} × ${jogo.gols[1]}${jogo.penaltis !== undefined ? ` (pên.: ${(jogo.penaltis === 0) === casa ? 'venceu' : 'perdeu'})` : ''}` : '—'}
+                  {agregado && <div className="fraco" style={{ fontWeight: 400, fontSize: 12 }}>{agregado}</div>}
                 </td>
                 <td className="num">{r ? <span className={`etiqueta ${COR[r]}`}>{r}</span> : jogo === proximo ? <span className="etiqueta ceu">Próximo</span> : null}</td>
               </tr>

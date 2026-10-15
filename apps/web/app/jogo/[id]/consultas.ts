@@ -74,6 +74,33 @@ export function etapaDoJogo(m: Mundo, compId: string, casa: number, fora: number
   return ''
 }
 
+export interface Confronto { ida: Jogo; agregado: [number, number] }
+
+/**
+ * Se o jogo é a volta de um mata-mata ida e volta: a ida e o agregado, ambos do ponto de vista do mandante da volta
+ * (`casa`). `placar` (ao vivo) substitui os gols da volta. Sem gol fora; null se não for volta ou a ida não foi jogada.
+ */
+export function confronto(m: Mundo, compId: string, casa: number, fora: number, dia: number, placar?: [number, number]): Confronto | null {
+  for (const f of m.competicoes.find((x) => x.id === compId)?.fases ?? []) {
+    if (f.tipo === 'liga') continue
+    for (const r of f.rodadas) {
+      const n = r.confrontos.length
+      const k = r.jogos.findIndex((j) => j.dia === dia && j.casa === casa && j.fora === fora)
+      if (k < 0) continue
+      const ida = r.jogos[k - n]
+      if (!r.idaVolta || k < n || !ida?.gols) return null
+      const volta = placar ?? r.jogos[k]!.gols ?? [0, 0]
+      return { ida, agregado: [ida.gols[1] + volta[0], ida.gols[0] + volta[1]] }
+    }
+  }
+  return null
+}
+
+/** "Ida 1×2 · Agregado 3×2", do ponto de vista do mandante da volta; vazio se não for volta. */
+export function textoConfronto(c: Confronto | null): string {
+  return c ? `Ida ${c.ida.gols![1]}×${c.ida.gols![0]} · Agregado ${c.agregado[0]}×${c.agregado[1]}` : ''
+}
+
 export interface ProximoJogo { dia: number; compId: string; comp: string; casa: boolean; adversario: number }
 
 /** O próximo jogo ainda não disputado do time, em qualquer competição. */

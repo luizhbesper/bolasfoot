@@ -7,7 +7,7 @@ import type { ResumoRodada } from '../../../lib/game/rodada.ts'
 import { Erro } from '../../_ui/pagina.tsx'
 import { SalaDeTrofeus } from '../../_ui/trofeu.tsx'
 import { ChipPosicao, Energia, Escudo, Forca, Forma, fundoEstadio } from '../../_ui/ui.tsx'
-import { alerta, dataLonga, dinheiro, etapaDoJogo, forma, jogadoresDe, proximoJogo, tabelaDoTime } from './consultas.ts'
+import { alerta, confronto, dataLonga, dinheiro, etapaDoJogo, forma, jogadoresDe, proximoJogo, tabelaDoTime, textoConfronto } from './consultas.ts'
 import { useJogo } from './contexto.tsx'
 import s from './hub.module.css'
 import { Legenda, Ponto, zonas } from './tabelas/zonas.tsx'
@@ -33,6 +33,7 @@ export function Hub({ ultima, erro }: { ultima: { n: number; resumo: ResumoRodad
   const prox = proximoJogo(m, t.id)
   const adv = prox ? m.times[prox.adversario]! : null
   const mandante = prox ? (prox.casa ? t : adv!) : null
+  const agregado = prox && textoConfronto(confronto(m, prox.compId, mandante!.id, prox.casa ? adv!.id : t.id, prox.dia))
   const tecnico = m.tecnicos[t.tecnico]!
   const tabela = prox ? tabelaDoTime(m, prox.compId, t.id) : null
   const compTabela = prox && m.competicoes.find((c) => c.id === prox.compId)
@@ -58,6 +59,7 @@ export function Hub({ ultima, erro }: { ultima: { n: number; resumo: ResumoRodad
               <span className="etiqueta ceu">Próximo jogo</span>
               <strong style={{ color: 'var(--text)' }}>{[prox.comp, etapaDoJogo(m, prox.compId, mandante!.id, prox.casa ? adv.id : t.id, prox.dia)].filter(Boolean).join(', ')}</strong>
               · {dataLonga(prox.dia)} · {mandante!.estadio.nome}
+              {agregado && ` · ${agregado}`}
             </div>
             <div className={s.confronto}>
               <Lado time={t} forma={forma(m, t.id)} />

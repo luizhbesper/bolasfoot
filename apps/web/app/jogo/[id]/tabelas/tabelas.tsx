@@ -139,6 +139,7 @@ function MataMata({ m, f, eu, sobem }: { m: Mundo; f: FaseMataMata; eu: number; 
                         <td style={{ textAlign: 'right' }}><Lado m={m} t={a} venceu={venceu} /></td>
                         <td className="num" style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
                           {placar(ida)}{volta && <span className="mudo"> · {placar(volta, true)}</span>}
+                          {ida?.gols && volta?.gols && <span className="fraco"> · Agregado {ida.gols[0] + volta.gols[1]} × {ida.gols[1] + volta.gols[0]}</span>}
                         </td>
                         <td><Lado m={m} t={b} venceu={venceu} /></td>
                       </tr>
