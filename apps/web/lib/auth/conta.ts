@@ -1,7 +1,8 @@
 // Contas e convites (docs/plano.md §2.4), sem cookie nem request: testável direto contra o banco.
 import { and, eq, sql } from 'drizzle-orm'
 import type { Db } from '../db/index.ts'
-import { gameMembers, invites, users } from '../db/schema.ts'
+import { gameMembers, games, invites, users } from '../db/schema.ts'
+import { entrarComJogoAndando } from '../game/rodada.ts'
 import { conferirSenha, hashSenha } from './senha.ts'
 
 export const normalizarUsuario = (u: string) => u.trim().toLowerCase()
@@ -43,7 +44,13 @@ export async function resgatarConvite(d: Db, codigo: string, conta: Conta): Prom
     const ja = await tx.select().from(gameMembers).where(and(eq(gameMembers.gameId, c.gameId), eq(gameMembers.userId, userId)))
     if (ja.length) return { userId, gameId: c.gameId }
     if (c.uses >= c.maxUses) return { erro: 'convite esgotado' }
-    await tx.insert(gameMembers).values({ gameId: c.gameId, userId })
+    const [mb] = await tx.insert(gameMembers).values({ gameId: c.gameId, userId }).returning()
+    // jogo andando: entra sem time, esperando proposta (o jogo travado: não cruza com a resolução da rodada)
+    const [g] = await tx.select().from(games).where(eq(games.id, c.gameId)).for('update')
+    if (g?.status === 'running' || g?.status === 'paused') {
+      const [u] = await tx.select({ username: users.username }).from(users).where(eq(users.id, userId))
+      await entrarComJogoAndando(tx, g, mb!.id, u!.username)
+    }
     await tx.update(invites).set({ uses: sql`${invites.uses} + 1` }).where(eq(invites.code, c.code))
     return { userId, gameId: c.gameId }
   })

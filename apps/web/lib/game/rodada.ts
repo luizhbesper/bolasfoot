@@ -7,10 +7,10 @@
 //                                                  └─ ninguém em campo (proposta de emprego, virada) ─► planejamento n+1
 //   resultados ─(prazo)─► planejamento n+1
 import {
-  avancarRodada, continuarRodada, contratarTecnicoHumano, novoJogo, possePct, tecnicosEmCampo, validar,
+  avancarRodada, continuarRodada, contratarTecnicoHumano, criarRng, novoJogo, novoTecnicoHumano, ofertasDeEmprego, registrarOferta, possePct, tecnicosEmCampo, validar,
   type Comando, type ComandoDe, type Mundo, type Partida, type Rodada,
 } from '@bolasfoot/engine'
-import { and, eq, isNotNull, or } from 'drizzle-orm'
+import { and, desc, eq, isNotNull, or } from 'drizzle-orm'
 import { createHash } from 'node:crypto'
 import { gunzipSync, gzipSync } from 'node:zlib'
 import type { Db } from '../db/index.ts'
@@ -98,6 +98,19 @@ export async function comecarJogo(tx: Tx, gameId: number): Promise<void> {
   }
   await salvarMundo(tx, gameId, 1, 0, m)
   await abrirRodada(tx, g!, 1, await settingsDe(tx, gameId))
+}
+
+/** Quem entra com o jogo andando vira técnico sem time e já recebe as primeiras propostas. Grava no mundo mais recente
+ * (é dele que sai a próxima resolução). Chame numa transação que já travou o jogo (FOR UPDATE). */
+export async function entrarComJogoAndando(tx: Tx, g: Jogo, memberId: number, nome: string): Promise<void> {
+  const [s] = await tx.select({ n: snapshots.n, etapa: snapshots.etapa }).from(snapshots).where(eq(snapshots.gameId, g.id))
+    .orderBy(desc(snapshots.n), desc(snapshots.etapa)).limit(1)
+  if (!s) throw new Error(`sem snapshot ${g.id}`)
+  const m = await carregarMundo(tx, g.id, s.n, s.etapa)
+  const c = novoTecnicoHumano(m, nome)
+  registrarOferta(m, c, ofertasDeEmprego(m, c, false, criarRng(sha256(`${g.gameSeed}:entrada:${memberId}`))))
+  await salvarMundo(tx, g.id, s.n, s.etapa, m)
+  await tx.update(gameMembers).set({ tecnicoId: c.id }).where(eq(gameMembers.id, memberId))
 }
 
 async function abrirRodada(tx: Tx, g: Jogo, n: number, s: Settings) {

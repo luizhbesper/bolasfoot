@@ -1,9 +1,10 @@
 import { and, eq } from 'drizzle-orm'
 import { beforeEach, expect, test } from 'vitest'
 import { db } from '../db/index.ts'
-import { gameMembers, games, roundLogs, rounds, snapshots, users, type FaseRodada } from '../db/schema.ts'
+import { gameMembers, games, invites, roundLogs, rounds, snapshots, users, type FaseRodada } from '../db/schema.ts'
 import { limpar } from '../db/teste.ts'
 import { tecnicosEmCampo } from '@bolasfoot/engine'
+import { resgatarConvite } from '../auth/conta.ts'
 import { criarJogo } from './admin.ts'
 import { base } from './base.ts'
 import { batida, carregarMundo, comandosPendentes, comecarJogo, definirComandos, enviarComandos, lancesDaRodada, marcarReady, pausar, retomar, sha256, transicionar, vigiarPresenca } from './rodada.ts'
@@ -181,4 +182,19 @@ test('retomar: o prazo anda o tempo parado, uma vez só', async () => {
   const depois = (await jogoAtual()).deadline!.getTime()
   expect(depois - antes).toBeGreaterThanOrEqual(60_000)
   expect(depois - antes).toBeLessThan(65_000)
+})
+
+test('quem entra com o jogo andando vira técnico sem time e recebe propostas', async () => {
+  await db().insert(invites).values({ code: 'MEIO-01', gameId: jogo, createdBy: ana! })
+  const r = await resgatarConvite(db(), 'MEIO-01', { usuario: 'cid', senha: '' })
+  expect(r).toMatchObject({ gameId: jogo })
+  const [mb] = await db().select().from(gameMembers).where(eq(gameMembers.userId, (r as { userId: number }).userId))
+  expect(mb!.tecnicoId).not.toBeNull()
+  const m = await carregarMundo(db(), jogo, 1, 0)
+  const c = m.tecnicos[mb!.tecnicoId!]!
+  expect(c).toMatchObject({ nome: 'cid', humano: true, time: null })
+  expect(m.ofertas.find((o) => o.tecnico === c.id)?.times.length).toBeGreaterThan(0)
+  // e pode aceitar uma delas
+  const time = m.ofertas.find((o) => o.tecnico === c.id)!.times[0]!
+  expect(await enviarComandos(db(), jogo, mb!.userId, [{ tipo: 'aceitarOferta', time }])).toEqual({ erros: [null] })
 })

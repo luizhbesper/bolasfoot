@@ -812,7 +812,7 @@ export function ofertasDeEmprego(m: Mundo, c: Tecnico, melhores: boolean, rng: R
   }
   return lista
 }
-function registrarOferta(m: Mundo, c: Tecnico, times: number[]): void {
+export function registrarOferta(m: Mundo, c: Tecnico, times: number[]): void {
   m.ofertas = m.ofertas.filter((o) => o.tecnico !== c.id)
   if (times.length > 0) m.ofertas.push({ tecnico: c.id, dia: m.dia, times })
 }
@@ -851,6 +851,16 @@ export function contratarTecnicoHumano(m: Mundo, nome: string, pais: number, tim
   t.humano = true
   for (const id of t.jogadores) m.jogadores[id]!.aVenda = m.jogadores[id]!.paraEmprestimo = false
   abrirCaixa(m, timeId)
+  return c
+}
+
+/** Um técnico humano que entra com o jogo andando: sem time, recebe propostas como quem saiu da Série C (a Série D
+ * só tem times no meio do ano). */
+export function novoTecnicoHumano(m: Mundo, nome: string, pais = BRA): Tecnico {
+  const c = novoTecnico(m.tecnicos.length, nome, pais, true, null, 0)
+  c.paisAnterior = pais
+  c.divisaoAnterior = 2
+  m.tecnicos.push(c)
   return c
 }
 

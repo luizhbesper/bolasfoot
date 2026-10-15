@@ -120,7 +120,7 @@ export function Partida({ log, pendentes }: { log: Log | null; pendentes: Comand
   const titulo = atrasado ? 'Carregando…' : !log ? 'Partida' : fase.aguardando ? 'Aguardando todos online' : fase.status === 'paused' ? 'Pausado'
     : aoVivo ? `Ao vivo, ${fase.fase === 'ao_vivo_1t' ? '1º' : '2º'} tempo` : noIntervalo ? 'Intervalo' : 'Encerrada'
 
-  const humanos = new Map(membros.filter((x) => x.teamRef).map((x) => [m?.times.find((t) => t.fileRef === x.teamRef)?.id, x.nome]))
+  const humanos = new Map<number | undefined, string>(membros.flatMap((x) => (x.tecnicoId !== null && m?.tecnicos[x.tecnicoId]?.time != null ? [[m.tecnicos[x.tecnicoId]!.time!, x.nome] as const] : [])))
   const amigos = partidas.filter((p) => p !== minha && p.times.some((t) => humanos.has(t)))
 
   // classificação: ao vivo o mundo é o de antes da rodada; nos resultados (e no planejamento seguinte), o de depois

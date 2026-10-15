@@ -19,8 +19,8 @@ export function Carregando() {
 export function SemClube() {
   return (
     <div className="card secao">
-      <h2>Você está sem clube</h2>
-      <p className="mudo" style={{ margin: 0 }}>As propostas de emprego chegam pela <Link href={`/jogo/${useJogo().jogo}/caixa`}>caixa de entrada</Link>.</p>
+      <h2>Aguardando convite de um clube</h2>
+      <p className="mudo" style={{ margin: 0 }}>Você está sem clube. As propostas de emprego chegam pela <Link href={`/jogo/${useJogo().jogo}/caixa`}>caixa de entrada</Link>; aceite uma para assumir o time.</p>
     </div>
   )
 }
@@ -38,8 +38,8 @@ export function Hub({ ultima, erro }: { ultima: { n: number; resumo: ResumoRodad
   const compTabela = prox && m.competicoes.find((c) => c.id === prox.compId)
   const z = tabela && compTabela ? zonas(m, compTabela, compTabela.fases.length - 1, tabela.linhas.length) : null
   const elenco = jogadoresDe(m, t.jogadores).sort((a, b) => a.posicao - b.posicao || b.forca - a.forca)
-  // técnico humano de cada time, para o feed
-  const humanos = new Map(membros.filter((x) => x.teamRef).map((x) => [m.times.find((tt) => tt.fileRef === x.teamRef)?.id, x.nome]))
+  // técnico humano de cada time, para o feed (pelo técnico: quem trocou de clube ou entrou depois também conta)
+  const humanos = new Map<number | undefined, string>(membros.flatMap((x) => (x.tecnicoId !== null && m.tecnicos[x.tecnicoId]?.time != null ? [[m.tecnicos[x.tecnicoId]!.time!, x.nome] as const] : [])))
 
   return (
     <div className={s.grade}>
