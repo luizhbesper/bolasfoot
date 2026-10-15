@@ -20,8 +20,8 @@ const FAIXAS = [
   { chave: 'forca', rotulo: 'Força', min: 'Força mínima', max: 'Força máxima', de: (j: JogadorM) => j.forca, escala: 1 },
   { chave: 'energia', rotulo: 'Energia', min: 'Energia mínima', max: 'Energia máxima', de: (j: JogadorM) => j.energia, escala: 1 },
   // à venda vale o preço pedido; fora da lista, o valor de mercado
-  { chave: 'preco', rotulo: 'Preço (R$ mi)', min: 'Preço mínimo', max: 'Preço máximo', de: (j: JogadorM) => (j.aVenda ? j.preco : j.valor), escala: 1e6 },
-  { chave: 'salario', rotulo: 'Salário (R$ mil)', min: 'Salário mínimo', max: 'Salário máximo', de: (j: JogadorM) => j.salario, escala: 1e3 },
+  { chave: 'preco', rotulo: 'Preço', unidade: 'R$ mi', min: 'Preço mínimo', max: 'Preço máximo', de: (j: JogadorM) => (j.aVenda ? j.preco : j.valor), escala: 1e6 },
+  { chave: 'salario', rotulo: 'Salário', unidade: 'R$ mil', min: 'Salário mínimo', max: 'Salário máximo', de: (j: JogadorM) => j.salario, escala: 1e3 },
 ] as const
 type Faixa = (typeof FAIXAS)[number]['chave']
 type Limites = Partial<Record<Faixa, { min?: number; max?: number }>>
@@ -125,7 +125,7 @@ export function Procura({ pendentes, paises }: { pendentes: Comando[]; paises: s
             )
             return (
               <div key={x.chave} className={`${s.faixa} ${l?.min !== undefined || l?.max !== undefined ? s.ligada : ''}`} role="group" aria-label={x.rotulo}>
-                <span className={s.rotulo}>{x.rotulo}</span>
+                <span className={s.rotulo}>{x.rotulo}{'unidade' in x && <small className="fraco"> {x.unidade}</small>}</span>
                 {campo('min')}
                 <span className="fraco" aria-hidden>–</span>
                 {campo('max')}
@@ -169,7 +169,7 @@ export function Procura({ pendentes, paises }: { pendentes: Comando[]; paises: s
 
         <Pendentes k={k} tipos={['comprar', 'pedirEmprestado']} />
         <div className="card rolagem">
-          <table className="tabela" style={{ minWidth: 900 }}>
+          <table className={`tabela ${s.tabela}`}>
             <thead>
               <tr>
                 {COLUNAS.map((c) => (
@@ -177,7 +177,6 @@ export function Procura({ pendentes, paises }: { pendentes: Comando[]; paises: s
                     <button className="ordenar" onClick={() => ordenar(c.chave)}>{c.rotulo}{ordem.col === c.chave && (ordem.desc ? ' ↓' : ' ↑')}</button>
                   </th>
                 ))}
-                <th>Caract.</th>
                 <th />
               </tr>
             </thead>
@@ -188,18 +187,17 @@ export function Procura({ pendentes, paises }: { pendentes: Comando[]; paises: s
                   <tr key={j.id} className={s.linha} onClick={() => setAberto(j.id)}>
                     <td><ChipPosicao posicao={j.posicao} /></td>
                     <td><button className={s.nome} onClick={() => setAberto(j.id)}>{j.nome}</button>
-                      {j.pais !== BRA && <span className="fraco" style={{ marginLeft: 6, fontSize: 12 }}>{paises[j.pais]}</span>}</td>
+                      <span className={s.sub}>{j.pais !== BRA && `${paises[j.pais]} · `}{caracteristicas(j)}</span></td>
                     <td className="num mudo">{j.idade}</td>
                     <td className="num"><Forca valor={j.forca} /></td>
                     <td><Energia valor={j.energia} /></td>
                     <td><span className="clube"><Escudo fileRef={dono.fileRef} tamanho={18} mini />{dono.nome}</span></td>
                     <td className="num mudo">{dinheiro(j.salario)}</td>
                     <td className="num">{dinheiro(j.valor)}</td>
-                    <td className="mudo">{caracteristicas(j)}</td>
-                    <td className="num">
+                    <td className="num"><span className={s.status}>
                       {j.aVenda && <span className="etiqueta ceu">à venda {dinheiro(j.preco)}</span>}
-                      {j.paraEmprestimo && <span className="etiqueta menta" style={{ marginLeft: 4 }}>empréstimo</span>}
-                    </td>
+                      {j.paraEmprestimo && <span className="etiqueta menta">empréstimo</span>}
+                    </span></td>
                   </tr>
                 )
               })}
