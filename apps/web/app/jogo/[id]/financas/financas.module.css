@@ -70,19 +70,7 @@
   gap: 12px;
 }
 
-.blocos {
-  display: flex;
-  gap: 2px;
-  height: 10px;
-}
-
-.blocos span {
-  flex: 1;
-  border-radius: 3px;
-}
-
 .botaoBanco {
-  flex: 1;
   height: 44px;
 }
 

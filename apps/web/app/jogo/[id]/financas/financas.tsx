@@ -1,15 +1,15 @@
 'use client'
-// Finanças (desenho no Claude Design): indicadores, a linha do caixa na temporada com a projeção (pedido da rodada +
-// próxima folha), entradas/saídas por mês, de onde veio e para onde foi, banco e o extrato com filtros. Tudo sai do
-// extrato do motor (caixa = saldo inicial + lançamentos); o pedido da rodada só mexe no caixa quando ela resolve.
-import { folha, limiteEmprestimo, orcamentoObra, PARCELA_EMPRESTIMO, type Comando, type Financas as FinancasM, type Lancamento, type Mundo, type TimeM } from '@bolasfoot/engine'
+// Finanças (desenho no Claude Design): indicadores, a linha do caixa na temporada com a projeção de 6 meses (pedido da
+// rodada, salários, juros, bilheteria, patrocínio), entradas/saídas por mês, de onde veio e para onde foi, banco e o
+// extrato com filtros. Tudo sai do extrato do motor (caixa = saldo inicial + lançamentos); o pedido da rodada só mexe no caixa quando ela resolve.
+import { folha, jurosDoMes, limiteEmprestimo, orcamentoObra, PASSO_EMPRESTIMO, taxaJuros, type Comando, type Financas as FinancasM, type Lancamento, type Mundo, type TimeM } from '@bolasfoot/engine'
 import { useState, type ReactNode } from 'react'
 import { descrever, Fechado, useComandos, type Comandos } from '../comandos.tsx'
 import { dataLonga, dinheiro } from '../consultas.ts'
 import { useJogo } from '../contexto.tsx'
 import { Carregando, SemClube } from '../hub.tsx'
 import s from './financas.module.css'
-import { porDia, porMes, proximaFolha, type Dia } from './fluxo.ts'
+import { porDia, porMes, projetar, proximaFolha, type Dia } from './fluxo.ts'
 import { BarrasMes, LinhaCaixa } from './graficos.tsx'
 
 const RECEITAS: [keyof FinancasM['receitas'], string][] = [
@@ -37,13 +37,15 @@ function custo(m: Mundo, t: TimeM, c: Comando): number | null {
   if (c.tipo === 'comprar' || c.tipo === 'lance') return c.valor
   if (c.tipo === 'comprarEmprestado') return m.jogadores[c.jogador]?.valor ?? 0
   if (c.tipo === 'obra') return orcamentoObra(t, c.mais).custo
-  if (c.tipo === 'banco') return c.acao === 'pagar' ? PARCELA_EMPRESTIMO : -PARCELA_EMPRESTIMO
+  if (c.tipo === 'banco') return c.acao === 'pagar' ? c.valor : -c.valor
   return null
 }
 
 export function Financas({ pendentes }: { pendentes: Comando[] }) {
   const { mundo: m, meuTime: t } = useJogo()
   const k = useComandos(pendentes)
+  // valor no controle do banco (+ pega, − devolve), ainda não confirmado: já entra na projeção
+  const [banco, setBanco] = useState(0)
   if (!m) return <Carregando />
   if (!t?.financas) return <SemClube />
   const f = t.financas
@@ -59,6 +61,18 @@ export function Financas({ pendentes }: { pendentes: Comando[] }) {
   const entrou = RECEITAS.reduce((x, [c]) => x + (c === 'emprestimo' ? 0 : f.receitas[c] ?? 0), 0)
   const saiu = DESPESAS.reduce((x, [c]) => x + (c === 'amortizacao' ? 0 : f.despesas[c] ?? 0), 0)
   const emDias = prox.dia - m.dia
+  const limite = limiteEmprestimo(m, t)
+  const divida = f.emprestimo + pendentes.reduce((x, c) => x + (c.tipo !== 'banco' ? 0 : c.acao === 'pegar' ? c.valor : -c.valor), 0)
+  const passos = (v: number) => Math.floor(Math.max(0, v) / PASSO_EMPRESTIMO) * PASSO_EMPRESTIMO
+  const faixa = { min: -passos(Math.min(divida, f.caixa - pedido)), max: passos(limite - divida) }
+  const valorBanco = Math.min(faixa.max, Math.max(faixa.min, banco))
+  const proj = projetar(m, t, { pedido: pedido - valorBanco, divida: divida + valorBanco })
+  const meses = porMes(dias)
+  for (const p of proj.meses) {
+    const x = meses.find((y) => y.ano === p.ano && y.mes === p.mes)
+    if (x) Object.assign(x, { entrouProj: p.entrouProj, saiuProj: p.saiuProj })
+    else meses.push(p)
+  }
 
   return (
     <div className="coluna" style={{ gap: 16 }}>
@@ -69,25 +83,25 @@ export function Financas({ pendentes }: { pendentes: Comando[] }) {
           sub={<>{dataCurta(prox.dia)} · <span style={{ color: 'var(--pessego)', fontWeight: 600 }}>{emDias <= 0 ? 'hoje' : emDias === 1 ? 'amanhã' : `em ${emDias} dias`}</span>{!prox.cobra && ' · sem jogo no mês, não cobra'}</>} />
         <Kpi rotulo="Resultado da temporada" valor={sinal(entrou - saiu)} cor={entrou - saiu < 0 ? 'rosa' : 'menta'}
           sub={`entrou ${dinheiro(entrou)} · saiu ${dinheiro(saiu)}`} />
-        <Kpi rotulo="Empréstimo do banco" valor={dinheiro(f.emprestimo)} sub={`de ${dinheiro(limiteEmprestimo(t))} · juros ${dinheiro(f.juros)}/mês`} />
+        <Kpi rotulo="Empréstimo do banco" valor={dinheiro(f.emprestimo)} sub={`de ${dinheiro(limite)} · juros ${dinheiro(f.juros)}/mês`} />
       </section>
 
       <div className={s.topo}>
         <section className={`card ${s.painel}`} aria-label="Caixa na temporada">
           <div className={s.cabeca}>
             <h2>Caixa na temporada</h2>
-            <span className={s.nota}>saldo depois de cada movimento · tracejado: o que vem</span>
+            <span className={s.nota}>saldo depois de cada movimento · tracejado: os próximos 6 meses</span>
             <span style={{ flex: 1 }} />
             <span className={s.legenda}><i style={{ width: 16, height: 2, background: 'var(--lavanda)' }} />saldo</span>
             <span className={s.legenda}><i style={{ width: 16, borderTop: '2px dashed var(--lavanda)' }} />projeção</span>
             <span className={s.legenda}><i style={{ width: 8, height: 8, borderRadius: 2, background: 'var(--pessego)' }} />dia de folha</span>
           </div>
-          <LinhaCaixa inicial={inicial} dias={dias} hoje={m.dia} caixa={f.caixa} pedido={pedido} folha={proxFolha} />
+          <LinhaCaixa inicial={inicial} dias={dias} hoje={m.dia} caixa={f.caixa} proj={proj.pontos} folha={proxFolha.dia} />
         </section>
 
         <div className="coluna" style={{ gap: 16 }}>
           {pedidos.length > 0 && <Pedido k={k} m={m} pedidos={pedidos} caixa={f.caixa} folha={proxFolha} />}
-          <Banco k={k} f={f} limite={limiteEmprestimo(t)} pendentes={pendentes} />
+          <Banco k={k} divida={divida} limite={limite} faixa={faixa} valor={valorBanco} setValor={setBanco} />
         </div>
       </div>
 
@@ -98,8 +112,9 @@ export function Financas({ pendentes }: { pendentes: Comando[] }) {
             <span style={{ flex: 1 }} />
             <span className={s.legenda}><i style={{ width: 8, height: 8, borderRadius: 2, background: 'var(--menta)' }} />entrou (acima)</span>
             <span className={s.legenda}><i style={{ width: 8, height: 8, borderRadius: 2, background: 'var(--rosa)' }} />saiu (abaixo)</span>
+            <span className={s.legenda}><i style={{ width: 8, height: 8, borderRadius: 2, background: 'var(--faint)', opacity: 0.4 }} />projetado</span>
           </div>
-          {dias.length ? <BarrasMes meses={porMes(dias)} /> : <p className="mudo" style={{ margin: 0 }}>Nenhum movimento ainda nesta temporada.</p>}
+          {meses.length ? <BarrasMes meses={meses} /> : <p className="mudo" style={{ margin: 0 }}>Nenhum movimento ainda nesta temporada.</p>}
           <span className={s.nota}>Última linha: saldo do mês.</span>
         </section>
         <section className={`card ${s.painel}`} aria-label="De onde veio, para onde foi" style={{ gap: 16 }}>
@@ -161,25 +176,26 @@ function Pedido({ k, m, pedidos, caixa, folha }: {
   )
 }
 
-function Banco({ k, f, limite, pendentes }: { k: Comandos; f: FinancasM; limite: number; pendentes: Comando[] }) {
-  const pedidos = pendentes.reduce((x, c) => x + (c.tipo !== 'banco' ? 0 : c.acao === 'pegar' ? 1 : -1), 0)
-  const blocos = Math.round(limite / PARCELA_EMPRESTIMO)
-  const usados = Math.round(f.emprestimo / PARCELA_EMPRESTIMO)
+function Banco({ k, divida, limite, faixa, valor, setValor }: {
+  k: Comandos; divida: number; limite: number; faixa: { min: number; max: number }; valor: number; setValor: (v: number) => void
+}) {
+  const nova = divida + valor
   return (
     <section className={`card ${s.painel}`} aria-label="Banco">
       <div className="linha" style={{ justifyContent: 'space-between' }}>
-        <h2>Banco</h2><span className={s.nota}>{dinheiro(f.emprestimo)} de {dinheiro(limite)}</span>
+        <h2>Banco</h2><span className={s.nota}>{dinheiro(divida)} de {dinheiro(limite)}</span>
       </div>
-      <div className={s.blocos} role="img" aria-label={`Usado ${Math.round((usados / blocos) * 100)}% do limite de empréstimo`}>
-        {Array.from({ length: blocos }, (_, i) => <span key={i} style={{ background: i < usados ? 'var(--lavanda)' : 'var(--line)' }} />)}
+      <input type="range" min={faixa.min} max={faixa.max} step={PASSO_EMPRESTIMO} value={valor} disabled={!k.aberto || faixa.min === faixa.max}
+        onChange={(e) => setValor(Number(e.target.value))} aria-label="Pegar (direita) ou devolver (esquerda)" aria-valuetext={sinal(valor)} />
+      <div className={s.linhaValor}><span className="mudo">{valor < 0 ? 'Devolver' : 'Pegar'}</span><strong>{dinheiro(Math.abs(valor))}</strong></div>
+      <div className={s.linhaValor}><span className="mudo">Dívida depois</span><strong>{dinheiro(nova)}</strong></div>
+      <div className={s.linhaValor}>
+        <span className="mudo">Juros ({(taxaJuros(nova, limite) * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}% ao mês)</span>
+        <strong>{dinheiro(jurosDoMes(nova, limite))}/mês</strong>
       </div>
-      <span className={s.nota}>Cada bloco é {dinheiro(PARCELA_EMPRESTIMO)}. Juros de 3% do saldo todo dia 2.</span>
-      <div className="linha" style={{ flexWrap: 'nowrap' }}>
-        <button className={s.botaoBanco} disabled={!k.aberto || k.ocupado || f.emprestimo + (pedidos + 1) * PARCELA_EMPRESTIMO > limite}
-          onClick={() => void k.mandar({ tipo: 'banco', acao: 'pegar' })}>Pegar {dinheiro(PARCELA_EMPRESTIMO)}</button>
-        <button className={s.botaoBanco} disabled={!k.aberto || k.ocupado || f.emprestimo + (pedidos - 1) * PARCELA_EMPRESTIMO < 0}
-          onClick={() => void k.mandar({ tipo: 'banco', acao: 'pagar' })}>Devolver {dinheiro(PARCELA_EMPRESTIMO)}</button>
-      </div>
+      <span className={s.nota}>Limite: 30% do valor do elenco. Juros de 1% a 5% ao mês, mais caros perto do limite, todo dia 2.</span>
+      <button className={s.botaoBanco} disabled={!k.aberto || k.ocupado || valor === 0}
+        onClick={() => void k.mandar({ tipo: 'banco', acao: valor > 0 ? 'pegar' : 'pagar', valor: Math.abs(valor) }).then((e) => { if (!e) setValor(0) })}>Confirmar</button>
       <Fechado k={k} />
     </section>
   )

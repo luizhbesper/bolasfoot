@@ -3,7 +3,7 @@ import type { Base } from '@bolasfoot/data'
 import { describe, expect, it } from 'vitest'
 import { datas, TIPO } from './calendario.ts'
 import { avancarDia, type FaseLiga } from './competicoes.ts'
-import { abrirCaixa, iniciarObra, lancamentos, orcamentoObra, pagarEmprestimo, pegarEmprestimo, salarioJogador, tetoEstadio, valorJogador } from './economia.ts'
+import { abrirCaixa, iniciarObra, lancamentos, limiteEmprestimo, orcamentoObra, pagarEmprestimo, pegarEmprestimo, salarioJogador, taxaJuros, tetoEstadio, valorJogador } from './economia.ts'
 import { mundoSintetico } from './fixtures.ts'
 import { novoJogo } from './mundo.ts'
 
@@ -44,18 +44,24 @@ describe('jogador', () => {
 })
 
 describe('caixa', () => {
-  it('empréstimo em blocos de 500 mil até o limite; juros de 3%', () => {
+  it('empréstimo: limite de 30% do elenco, valor em passos de 100 mil, juros progressivos', () => {
     const m = mundoSintetico()
     const t = m.times[0]!
     const f = abrirCaixa(m, 0)
     expect(f.caixa).toBe(15_000_000)
-    let n = 0
-    while (pegarEmprestimo(t, m.dia)) n++
-    expect(n).toBe(10)
-    expect(f.emprestimo).toBe(5_000_000)
-    expect(f.juros).toBe(150_000)
-    expect(pagarEmprestimo(t, m.dia)).toBe(true)
-    expect(f.juros).toBe(135_000)
+    const elenco = t.jogadores.reduce((s, id) => s + m.jogadores[id]!.valor, 0)
+    const limite = limiteEmprestimo(m, t)
+    expect(limite).toBe(Math.max(500_000, Math.floor((elenco * 0.3) / 100_000) * 100_000))
+    expect(pegarEmprestimo(m, t, 150_000, m.dia)).toBe(false) // fora do passo
+    expect(pegarEmprestimo(m, t, limite + 100_000, m.dia)).toBe(false)
+    expect(pegarEmprestimo(m, t, limite, m.dia)).toBe(true)
+    expect(f.emprestimo).toBe(limite)
+    expect(f.juros).toBe(Math.floor(limite * 0.05)) // dívida no limite: 5%
+    expect(pagarEmprestimo(m, t, limite + 100_000, m.dia)).toBe(false) // mais que a dívida
+    expect(pagarEmprestimo(m, t, limite, m.dia)).toBe(true)
+    expect(f.juros).toBe(0)
+    expect(taxaJuros(0, limite)).toBe(0.01)
+    expect(taxaJuros(limite / 2, limite)).toBeCloseTo(0.03)
     // o empréstimo entra no extrato: caixa = saldo inicial + lançamentos
     expect(f.caixa - lancamentos(f).reduce((s, l) => s + l.valor, 0)).toBe(15_000_000 - f.receitas.patrocinio)
   })

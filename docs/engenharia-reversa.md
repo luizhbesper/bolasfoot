@@ -409,6 +409,7 @@ Ordem do `aa()` (os passos internacionais e de seleções ficam para a Fase 6):
   - Blocos de 500 mil, até 5M / 3M / 2M / 1,5M nas Séries A a D, ou 1M fora delas.
   - Devolve 500 mil se houver caixa.
   - Juros = `floor(saldo × 3 / 100)`, cobrados no dia 2 (`dJ`, `a.o`).
+  - **Desvio no port**: valor livre em passos de 100 mil; limite = 30% do valor do elenco (mínimo 500 mil); juros ao mês = 1% + 4% × (dívida / limite), no máximo 5%, recalculados no dia 2.
 - **Bilheteria** (`I.hf`): só para o mandante humano, nunca no Mundial nem em jogo de seleções. O público vem de `v_0` (ver acima).
 - **Prêmios** (só humanos):
 

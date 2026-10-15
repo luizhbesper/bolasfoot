@@ -11,7 +11,7 @@ export interface Financas {
   caixa: number
   /** saldo do empréstimo (C.dW) */
   emprestimo: number
-  /** juros do mês: 3% do saldo (C.dX) */
+  /** juros do mês (C.dX): taxa progressiva do port, ver taxaJuros */
   juros: number
   /** extrato da temporada por categoria (C: dN, dM, dL, dO / dR, dT, dQ, dV, dS). Empréstimo do banco é do port: no
    * original ele mexia no caixa por fora do extrato, que então não fechava */
@@ -109,9 +109,6 @@ export function folha(mundo: Mundo, t: TimeM): number {
 /** Caixa inicial e patrocínio anual por divisão (0 = fora das séries). Fonte: best/aq.java:658-659 (sC, sD) */
 const CAIXA_INICIAL = [3_500_000, 15_000_000, 12_000_000, 10_000_000, 3_500_000]
 const PATROCINIO = [3_500_000, 6_000_000, 4_500_000, 2_500_000, 2_000_000]
-/** Limite do empréstimo por divisão. Fonte: best/C.java:229 (m) */
-const LIMITE_EMPRESTIMO = [1_000_000, 5_000_000, 3_000_000, 2_000_000, 1_500_000]
-const BLOCO = 500_000
 
 const div = (t: TimeM) => (t.divisao >= 0 && t.divisao <= 4 ? t.divisao : 0)
 
@@ -159,10 +156,17 @@ export function pagar(t: TimeM, valor: number, cat: keyof Financas['despesas'], 
   lancamentos(f).push({ dia, cat, valor: -valor, ...(desc ? { desc } : {}) })
 }
 
+/** Bônus de time estrangeiro com estaduais ligados (+3,2 folhas). Fonte: best/ah.java:1694 */
+const bonusEstrangeiro = (mundo: Mundo, t: TimeM) => (t.pais !== 29 && mundo.opcoes.jogaEstadual !== false ? Math.round(3.2 * folha(mundo, t)) : 0)
+
+/** Quanto entra na virada da temporada (patrocínio + bônus). */
+export const valorPatrocinio = (mundo: Mundo, t: TimeM) => PATROCINIO[div(t)]! + bonusEstrangeiro(mundo, t)
+
 /** Patrocínio anual, pago na virada da temporada (W7). Fonte: best/ah.java:1692-1698 (kG) */
 export function receberPatrocinio(mundo: Mundo, t: TimeM): void {
   if (!t.financas) return
-  if (t.pais !== 29 && mundo.opcoes.jogaEstadual !== false) receber(t, Math.round(3.2 * folha(mundo, t)), 'patrocinio', mundo.dia, 'Bônus de time estrangeiro')
+  const bonus = bonusEstrangeiro(mundo, t)
+  if (bonus) receber(t, bonus, 'patrocinio', mundo.dia, 'Bônus de time estrangeiro')
   receber(t, PATROCINIO[div(t)]!, 'patrocinio', mundo.dia)
 }
 
@@ -174,29 +178,45 @@ export function zerarExtrato(t: TimeM): void {
   t.financas.lancamentos = []
 }
 
-/** Até quanto o time pode dever (por divisão) e o tamanho de cada parcela. */
-export const limiteEmprestimo = (t: TimeM) => LIMITE_EMPRESTIMO[div(t)]!
-export const PARCELA_EMPRESTIMO = BLOCO
+// Empréstimo. Fonte: best/C.java:228-238 (m) — desvio do port: valor livre, limite pelo valor do elenco, juros progressivos.
+// O original dava blocos de 500 mil até um teto por divisão (5M na Série A) com juros fixos de 3%.
 
-const atualizarJuros = (f: Financas) => (f.juros = f.emprestimo > 0 ? Math.floor((f.emprestimo * 3) / 100) : 0)
+/** O valor do empréstimo anda de 100 em 100 mil. */
+export const PASSO_EMPRESTIMO = 100_000
 
-/** Pega 500 mil, até o limite da divisão. Fonte: best/C.java:228-238 (m) */
-export function pegarEmprestimo(t: TimeM, dia: number): boolean {
+/** Até quanto o time pode dever: 30% do valor do elenco (mínimo 500 mil), arredondado para baixo em 100 mil. */
+export function limiteEmprestimo(mundo: Mundo, t: TimeM): number {
+  const elenco = t.jogadores.reduce((s, id) => s + mundo.jogadores[id]!.valor, 0)
+  return Math.max(500_000, Math.floor((elenco * 0.3) / PASSO_EMPRESTIMO) * PASSO_EMPRESTIMO)
+}
+
+/** Juros ao mês: 1% + 4% × (dívida / limite), no máximo 5%. */
+export const taxaJuros = (divida: number, limite: number) => Math.min(0.05, 0.01 + (0.04 * divida) / Math.max(1, limite))
+
+/** Juros de um mês sobre a dívida. */
+export const jurosDoMes = (divida: number, limite: number) => (divida > 0 ? Math.floor(divida * taxaJuros(divida, limite)) : 0)
+
+const atualizarJuros = (mundo: Mundo, t: TimeM) => (t.financas!.juros = jurosDoMes(t.financas!.emprestimo, limiteEmprestimo(mundo, t)))
+
+const valorValido = (valor: number) => Number.isInteger(valor) && valor > 0 && valor % PASSO_EMPRESTIMO === 0
+
+/** Pega `valor` (múltiplo de 100 mil), se a dívida não passar do limite. */
+export function pegarEmprestimo(mundo: Mundo, t: TimeM, valor: number, dia: number): boolean {
   const f = t.financas
-  if (!f || f.emprestimo >= LIMITE_EMPRESTIMO[div(t)]!) return false
-  f.emprestimo += BLOCO
-  receber(t, BLOCO, 'emprestimo', dia)
-  atualizarJuros(f)
+  if (!f || !valorValido(valor) || f.emprestimo + valor > limiteEmprestimo(mundo, t)) return false
+  f.emprestimo += valor
+  receber(t, valor, 'emprestimo', dia)
+  atualizarJuros(mundo, t)
   return true
 }
 
-/** Devolve 500 mil, se houver dívida e caixa. Fonte: best/C.java:218-226 (l) */
-export function pagarEmprestimo(t: TimeM, dia: number): boolean {
+/** Devolve `valor` (múltiplo de 100 mil), até a dívida e o caixa. Fonte: best/C.java:218-226 (l) */
+export function pagarEmprestimo(mundo: Mundo, t: TimeM, valor: number, dia: number): boolean {
   const f = t.financas
-  if (!f || f.emprestimo <= 0 || f.caixa < BLOCO) return false
-  f.emprestimo -= BLOCO
-  pagar(t, BLOCO, 'amortizacao', dia)
-  atualizarJuros(f)
+  if (!f || !valorValido(valor) || valor > Math.min(f.emprestimo, f.caixa)) return false
+  f.emprestimo -= valor
+  pagar(t, valor, 'amortizacao', dia)
+  atualizarJuros(mundo, t)
   return true
 }
 
@@ -221,7 +241,8 @@ export function eventosEconomicos(mundo: Mundo, dia: number): void {
   for (const t of humanos) {
     const f = t.financas!
     if (pagaSalario && jogaNoMes(mundo, t.id, ano, mes)) pagar(t, folha(mundo, t), 'salarios', dia)
-    if (diaDePagamento(dia) && f.juros > 0) pagar(t, f.juros, 'juros', dia)
+    // o limite muda com o valor do elenco: a taxa do mês sai na hora de cobrar
+    if (diaDePagamento(dia) && atualizarJuros(mundo, t) > 0) pagar(t, f.juros, 'juros', dia)
     if (f.obra && f.obra.fim < dia) {
       f.obra.setores.forEach((n, k) => (t.estadio.setores[k] = t.estadio.setores[k]! + n))
       f.obra = null
